@@ -17,7 +17,7 @@ export default function LoginPage() {
             const email = user.email;
 
             // ✅ ドメイン制限チェック
-            const allowedDomain = "gmail.com";
+            const allowedDomain = "dokkyo-saitama.ed.jp";
             if (!email.endsWith(`@${allowedDomain}`)) {
                 alert(`このシステムは ${allowedDomain} のアカウントでのみ利用できます。`);
 

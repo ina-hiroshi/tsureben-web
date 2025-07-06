@@ -6,6 +6,7 @@ import { db } from '../firebase';
 import { FaRegEdit, FaBook, FaUsers } from "react-icons/fa";
 import { AiOutlineClose } from 'react-icons/ai';
 import { Dialog } from '@headlessui/react';
+import Header from '../components/Header';
 import InitialSetupDialog from '../components/InitialSetupDialog';
 import ScheduleColumn from '../components/ScheduleColumn';
 import TimeInputDialog from '../components/TimeInputDialog';
@@ -122,6 +123,7 @@ export default function Home() {
         if (!user || !user.email) return;
 
         await setDoc(doc(db, 'users', user.email), {
+            name: user.displayName || '',  // ← 追加：ユーザー名を `name` フィールドに保存
             grade,
             class: classNum,
             number,
@@ -167,81 +169,84 @@ export default function Home() {
     if (checkingUserData) return null;
 
     return (
-        <div className="min-h-screen bg-[#4b4039] text-[#3a2e28] pt-24 p-6 font-sans">
-            <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* 左列 */}
-                <div className="lg:col-span-2 space-y-6">
-                    {/* メニュー */}
-                    <section className="bg-[#ede3d2] p-6 rounded-2xl shadow-md flex flex-col gap-4">
-                        <h2 className="text-xl font-bold text-[#6b4a2b]">メニュー</h2>
-                        <div className="grid grid-cols-3 gap-4">
-                            <button
-                                onClick={() => navigate('/studyplan')}
-                                className="btn bg-[#a67c52] hover:bg-[#b68b60] flex items-center justify-center gap-2"
-                            >
-                                <FaRegEdit className="w-5 h-5" />
-                                学習計画
-                            </button>
-                            <button className="btn bg-[#8f735a] hover:bg-[#a1866b] flex items-center justify-center gap-2">
-                                <FaBook className="w-5 h-5" />
-                                学習記録
-                            </button>
-                            <button className="btn bg-[#726256] hover:bg-[#85756a] flex items-center justify-center gap-2">
-                                <FaUsers className="w-5 h-5" />
-                                友達の様子
-                            </button>
+        <>
+            <Header />
+            <div className="min-h-screen bg-[#4b4039] text-[#3a2e28] pt-24 p-6 font-sans">
+                <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* 左列 */}
+                    <div className="lg:col-span-2 space-y-6">
+                        {/* メニュー */}
+                        <section className="bg-[#ede3d2] p-6 rounded-2xl shadow-md flex flex-col gap-4">
+                            <h2 className="text-xl font-bold text-[#6b4a2b]">メニュー</h2>
+                            <div className="grid grid-cols-3 gap-4">
+                                <button
+                                    onClick={() => navigate('/studyplan')}
+                                    className="btn bg-[#a67c52] hover:bg-[#b68b60] flex items-center justify-center gap-2"
+                                >
+                                    <FaRegEdit className="w-5 h-5" />
+                                    学習計画
+                                </button>
+                                <button className="btn bg-[#8f735a] hover:bg-[#a1866b] flex items-center justify-center gap-2">
+                                    <FaBook className="w-5 h-5" />
+                                    学習記録
+                                </button>
+                                <button className="btn bg-[#726256] hover:bg-[#85756a] flex items-center justify-center gap-2">
+                                    <FaUsers className="w-5 h-5" />
+                                    友達の様子
+                                </button>
+                            </div>
+                        </section>
+
+                        {/* グラフ・ランキング */}
+                        <section className="bg-[#ede3d2] p-6 rounded-2xl shadow-md h-64 flex items-center justify-center text-[#927b65]">
+                            グラフ（準備中）
+                        </section>
+                        <section className="bg-[#ede3d2] p-6 rounded-2xl shadow-md h-64 flex items-center justify-center text-[#927b65]">
+                            連れ勉仲間（準備中）
+                        </section>
+                    </div>
+
+                    {/* 右列 */}
+                    <div className="bg-[#ede3d2] p-6 rounded-2xl shadow-md">
+                        <h2 className="text-xl font-bold text-[#6b4a2b] mb-4 text-center">
+                            {selectedDate.format('M月D日（ddd）')}のスケジュール
+                        </h2>
+                        <div className="h-[calc(100vh-120px)] overflow-y-auto pr-2">
+                            <ScheduleColumn
+                                title=""
+                                titleDate={selectedDate.format('YYYY-MM-DD')} // ← 🔸追加
+                                hours={hoursFullDay}
+                                onClickSlot={openDialog}
+                                plans={dayPlans}
+                                onDeleteSlot={handleDelete}
+                            />
                         </div>
-                    </section>
-
-                    {/* グラフ・ランキング */}
-                    <section className="bg-[#ede3d2] p-6 rounded-2xl shadow-md h-64 flex items-center justify-center text-[#927b65]">
-                        グラフ（準備中）
-                    </section>
-                    <section className="bg-[#ede3d2] p-6 rounded-2xl shadow-md h-64 flex items-center justify-center text-[#927b65]">
-                        連れ勉仲間（準備中）
-                    </section>
-                </div>
-
-                {/* 右列 */}
-                <div className="bg-[#ede3d2] p-6 rounded-2xl shadow-md">
-                    <h2 className="text-xl font-bold text-[#6b4a2b] mb-4 text-center">
-                        {selectedDate.format('M月D日（ddd）')}のスケジュール
-                    </h2>
-                    <div className="h-[calc(100vh-120px)] overflow-y-auto pr-2">
-                        <ScheduleColumn
-                            title=""
-                            titleDate={selectedDate.format('YYYY-MM-DD')} // ← 🔸追加
-                            hours={hoursFullDay}
-                            onClickSlot={openDialog}
-                            plans={dayPlans}
-                            onDeleteSlot={handleDelete}
-                        />
                     </div>
                 </div>
+
+                {/* 初回設定ダイアログ */}
+                <InitialSetupDialog
+                    show={showSetupDialog}
+                    grade={grade}
+                    classNum={classNum}
+                    number={number}
+                    shareScope={shareScope}
+                    setGrade={setGrade}
+                    setClassNum={setClassNum}
+                    setNumber={setNumber}
+                    setShareScope={setShareScope}
+                    onSave={handleSaveUserSettings}
+                />
+
+                <TimeInputDialog
+                    open={dialogOpen}
+                    onClose={() => setDialogOpen(false)}
+                    selectedHour={selectedHour}
+                    selectedDate={selectedDate}
+                    selectedEntryIndex={selectedEntryIndex}
+                    reloadPlans={reloadPlans}
+                />
             </div>
-
-            {/* 初回設定ダイアログ */}
-            <InitialSetupDialog
-                show={showSetupDialog}
-                grade={grade}
-                classNum={classNum}
-                number={number}
-                shareScope={shareScope}
-                setGrade={setGrade}
-                setClassNum={setClassNum}
-                setNumber={setNumber}
-                setShareScope={setShareScope}
-                onSave={handleSaveUserSettings}
-            />
-
-            <TimeInputDialog
-                open={dialogOpen}
-                onClose={() => setDialogOpen(false)}
-                selectedHour={selectedHour}
-                selectedDate={selectedDate}
-                selectedEntryIndex={selectedEntryIndex}
-                reloadPlans={reloadPlans}
-            />
-        </div>
+        </>
     );
 }

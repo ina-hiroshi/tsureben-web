@@ -9,6 +9,15 @@ export default {
       fontFamily: {
         script: ['"Dancing Script"', 'cursive'],
       },
+      animation: {
+        marqueeVertical: 'marqueeVertical 30s linear infinite',
+      },
+      keyframes: {
+        marqueeVertical: {
+          '0%': { transform: 'translateY(0%)' },
+          '100%': { transform: 'translateY(-50%)' }, // ← 全体の半分だけ上へ
+        },
+      },
     },
   },
   plugins: [],

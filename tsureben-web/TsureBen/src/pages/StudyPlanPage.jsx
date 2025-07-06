@@ -3,6 +3,7 @@ import { auth } from '../firebase';
 import { doc, getDoc, updateDoc, deleteField } from 'firebase/firestore';
 import { db } from '../firebase';
 import { FaRegEdit, FaChevronLeft, FaChevronRight, FaCalendarDay } from 'react-icons/fa';
+import Header from '../components/Header';
 import dayjs from 'dayjs';
 import 'dayjs/locale/ja';
 import ScheduleColumn from '../components/ScheduleColumn';
@@ -113,72 +114,75 @@ export default function StudyPlanPage() {
     };
 
     return (
-        <div className="min-h-screen bg-[#4b4039] text-[#3a2e28] pt-24 px-4 sm:px-6 font-sans">
-            <div className="max-w-5xl mx-auto w-full">
-                <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2 text-[#ede3d2] mb-4">
-                    <FaRegEdit className="w-5 h-5 sm:w-6 sm:h-6" />
-                    学習計画
-                </h1>
+        <>
+            <Header />
+            <div className="min-h-screen bg-[#4b4039] text-[#3a2e28] pt-24 px-4 sm:px-6 font-sans">
+                <div className="max-w-5xl mx-auto w-full">
+                    <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2 text-[#ede3d2] mb-4">
+                        <FaRegEdit className="w-5 h-5 sm:w-6 sm:h-6" />
+                        学習計画
+                    </h1>
 
-                <div className="bg-[#ede3d2] p-4 rounded-xl shadow-md mb-6">
-                    {/* 日付ナビ */}
-                    <div className="mb-4 flex flex-col sm:relative sm:items-center">
-                        {/* 日付テキスト：モバイルでは上に表示 */}
-                        <span className="text-base sm:text-lg font-bold text-[#6b4a2b] mb-2 sm:mb-0 sm:absolute sm:left-4 sm:top-1/2 sm:-translate-y-1/2">
-                            {selectedDate.format('YYYY年M月D日（ddd）')}
-                        </span>
+                    <div className="bg-[#ede3d2] p-4 rounded-xl shadow-md mb-6">
+                        {/* 日付ナビ */}
+                        <div className="mb-4 flex flex-col sm:relative sm:items-center">
+                            {/* 日付テキスト：モバイルでは上に表示 */}
+                            <span className="text-base sm:text-lg font-bold text-[#6b4a2b] mb-2 sm:mb-0 sm:absolute sm:left-4 sm:top-1/2 sm:-translate-y-1/2">
+                                {selectedDate.format('YYYY年M月D日（ddd）')}
+                            </span>
 
-                        {/* ボタン群 */}
-                        <div className="flex justify-center flex-wrap gap-2 sm:gap-3">
-                            <button
-                                onClick={handlePrevDay}
-                                className="flex items-center gap-1 px-3 py-1 bg-[#dac7b4] rounded hover:bg-[#cbb89f] transition text-sm sm:text-base"
-                            >
-                                <FaChevronLeft className="w-4 h-4" /> 前の日
-                            </button>
-                            <button
-                                onClick={handleToday}
-                                className="flex items-center gap-1 px-3 py-1 bg-[#dac7b4] rounded hover:bg-[#cbb89f] transition text-sm sm:text-base"
-                            >
-                                <FaCalendarDay className="w-4 h-4" /> 今日
-                            </button>
-                            <button
-                                onClick={handleNextDay}
-                                className="flex items-center gap-1 px-3 py-1 bg-[#dac7b4] rounded hover:bg-[#cbb89f] transition text-sm sm:text-base"
-                            >
-                                次の日 <FaChevronRight className="w-4 h-4" />
-                            </button>
+                            {/* ボタン群 */}
+                            <div className="flex justify-center flex-wrap gap-2 sm:gap-3">
+                                <button
+                                    onClick={handlePrevDay}
+                                    className="flex items-center gap-1 px-3 py-1 bg-[#dac7b4] rounded hover:bg-[#cbb89f] transition text-sm sm:text-base"
+                                >
+                                    <FaChevronLeft className="w-4 h-4" /> 前の日
+                                </button>
+                                <button
+                                    onClick={handleToday}
+                                    className="flex items-center gap-1 px-3 py-1 bg-[#dac7b4] rounded hover:bg-[#cbb89f] transition text-sm sm:text-base"
+                                >
+                                    <FaCalendarDay className="w-4 h-4" /> 今日
+                                </button>
+                                <button
+                                    onClick={handleNextDay}
+                                    className="flex items-center gap-1 px-3 py-1 bg-[#dac7b4] rounded hover:bg-[#cbb89f] transition text-sm sm:text-base"
+                                >
+                                    次の日 <FaChevronRight className="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* AM / PM 列 */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                            <ScheduleColumn
+                                title="AM（0:00〜12:00）"
+                                hours={hoursAM}
+                                plans={dayPlans}
+                                onClickSlot={openDialog}
+                                onDeleteSlot={handleDelete}
+                            />
+                            <ScheduleColumn
+                                title="PM（12:00〜24:00）"
+                                hours={hoursPM}
+                                plans={dayPlans}
+                                onClickSlot={openDialog}
+                                onDeleteSlot={handleDelete}
+                            />
                         </div>
                     </div>
-
-                    {/* AM / PM 列 */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                        <ScheduleColumn
-                            title="AM（0:00〜12:00）"
-                            hours={hoursAM}
-                            plans={dayPlans}
-                            onClickSlot={openDialog}
-                            onDeleteSlot={handleDelete}
-                        />
-                        <ScheduleColumn
-                            title="PM（12:00〜24:00）"
-                            hours={hoursPM}
-                            plans={dayPlans}
-                            onClickSlot={openDialog}
-                            onDeleteSlot={handleDelete}
-                        />
-                    </div>
                 </div>
-            </div>
 
-            <TimeInputDialog
-                open={dialogOpen}
-                onClose={() => setDialogOpen(false)}
-                selectedHour={selectedHour}
-                selectedDate={selectedDate}
-                selectedEntryIndex={selectedEntryIndex}
-                reloadPlans={reloadPlans}
-            />
-        </div>
+                <TimeInputDialog
+                    open={dialogOpen}
+                    onClose={() => setDialogOpen(false)}
+                    selectedHour={selectedHour}
+                    selectedDate={selectedDate}
+                    selectedEntryIndex={selectedEntryIndex}
+                    reloadPlans={reloadPlans}
+                />
+            </div>
+        </>
     );
 }

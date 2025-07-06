@@ -4,10 +4,11 @@ import { getAuth, onAuthStateChanged } from "firebase/auth";
 import { FaPenNib } from "react-icons/fa";
 import { AiOutlineClockCircle, AiOutlineMenu, AiOutlineClose } from 'react-icons/ai';
 
-export default function Header() {
+export default function Header({ isRunning, startTime, elapsedSeconds }) {
     const [userName, setUserName] = useState(null);
     const [menuOpen, setMenuOpen] = useState(false);
     const navigate = useNavigate();
+
 
     useEffect(() => {
         const auth = getAuth();
@@ -31,7 +32,13 @@ export default function Header() {
             {/* 🔸 中央タイトル（常時表示） */}
             <div
                 className="flex items-center gap-2 mx-auto cursor-pointer hover:opacity-80 transition order-last sm:order-none absolute left-1/2 transform -translate-x-1/2"
-                onClick={() => navigate('/home')}
+                onClick={() => {
+                    if (isRunning || (startTime && elapsedSeconds > 0)) {
+                        const confirmed = window.confirm("学習中のようです。移動すると記録されません。移動してもよろしいですか？");
+                        if (!confirmed) return;
+                    }
+                    navigate('/home');
+                }}
             >
                 <h1 className="text-4xl sm:text-6xl font-script text-[#5a3e28] drop-shadow-sm">
                     TsureBen

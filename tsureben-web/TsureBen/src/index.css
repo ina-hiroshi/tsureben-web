@@ -9,7 +9,9 @@
 }
 
 @layer base {
+
+  html,
   body {
-    @apply m-0;
+    @apply h-full bg-[#4b4039] m-0 p-0;
   }
 }
