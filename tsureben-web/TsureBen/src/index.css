@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .btn {
+    @apply text-white py-3 rounded-xl shadow transition transform hover:scale-105 font-semibold;
+  }
+}
+
+@layer base {
+  body {
+    @apply m-0;
+  }
+}
