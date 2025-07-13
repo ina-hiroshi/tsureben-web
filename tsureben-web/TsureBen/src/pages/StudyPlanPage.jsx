@@ -116,14 +116,14 @@ export default function StudyPlanPage() {
     return (
         <>
             <Header />
-            <div className="min-h-screen bg-[#4b4039] text-[#3a2e28] pt-24 px-4 sm:px-6 font-sans">
-                <div className="max-w-5xl mx-auto w-full">
+            <div className="h-[calc(100vh-6rem)] bg-[#4b4039] text-[#3a2e28] pt-24 px-4 sm:px-6 font-sans overflow-hidden">
+                <div className="max-w-7xl mx-auto w-full h-full flex flex-col">
                     <h1 className="text-xl sm:text-2xl font-bold flex items-center gap-2 text-[#ede3d2] mb-4">
                         <FaRegEdit className="w-5 h-5 sm:w-6 sm:h-6" />
                         学習計画
                     </h1>
 
-                    <div className="bg-[#ede3d2] p-4 rounded-xl shadow-md mb-6">
+                    <div className="bg-[#ede3d2] p-4 rounded-xl shadow-md mb-0 flex-1 overflow-hidden">
                         {/* 日付ナビ */}
                         <div className="mb-4 flex flex-col sm:relative sm:items-center">
                             {/* 日付テキスト：モバイルでは上に表示 */}
@@ -135,19 +135,19 @@ export default function StudyPlanPage() {
                             <div className="flex justify-center flex-wrap gap-2 sm:gap-3">
                                 <button
                                     onClick={handlePrevDay}
-                                    className="flex items-center gap-1 px-3 py-1 bg-[#dac7b4] rounded hover:bg-[#cbb89f] transition text-sm sm:text-base"
+                                    className="flex items-center gap-1 px-3 py-1 bg-[#dac7b4] text-[#6b4a2b] rounded hover:bg-[#e6d7c5] transition text-sm sm:text-base"
                                 >
                                     <FaChevronLeft className="w-4 h-4" /> 前の日
                                 </button>
                                 <button
                                     onClick={handleToday}
-                                    className="flex items-center gap-1 px-3 py-1 bg-[#dac7b4] rounded hover:bg-[#cbb89f] transition text-sm sm:text-base"
+                                    className="flex items-center gap-1 px-3 py-1 bg-[#dac7b4] text-[#6b4a2b] rounded hover:bg-[#e6d7c5] transition text-sm sm:text-base"
                                 >
                                     <FaCalendarDay className="w-4 h-4" /> 今日
                                 </button>
                                 <button
                                     onClick={handleNextDay}
-                                    className="flex items-center gap-1 px-3 py-1 bg-[#dac7b4] rounded hover:bg-[#cbb89f] transition text-sm sm:text-base"
+                                    className="flex items-center gap-1 px-3 py-1 bg-[#dac7b4] text-[#6b4a2b] rounded hover:bg-[#e6d7c5] transition text-sm sm:text-base"
                                 >
                                     次の日 <FaChevronRight className="w-4 h-4" />
                                 </button>
@@ -155,7 +155,7 @@ export default function StudyPlanPage() {
                         </div>
 
                         {/* AM / PM 列 */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 h-full overflow-y-auto pr-2">
                             <ScheduleColumn
                                 title="AM（0:00〜12:00）"
                                 hours={hoursAM}

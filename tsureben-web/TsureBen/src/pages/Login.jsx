@@ -16,13 +16,14 @@ export default function LoginPage() {
             const user = result.user;
             const email = user.email;
 
-            // ✅ ドメイン制限チェック
-            const allowedDomain = "dokkyo-saitama.ed.jp";
-            if (!email.endsWith(`@${allowedDomain}`)) {
-                alert(`このシステムは ${allowedDomain} のアカウントでのみ利用できます。`);
+            // ✅ 許可されたドメインリスト
+            const allowedDomains = ["dokkyo-saitama.ed.jp", "st.dokkyo-saitama.ed.jp"];
+            const domain = email.split('@')[1];
 
-                await auth.signOut();            // 強制ログアウト
-                window.location.reload();        // 自動ログインを防ぐためリロード
+            if (!allowedDomains.includes(domain)) {
+                alert(`このアプリはこのアカウントでは利用できません。`);
+                await auth.signOut(); // 強制ログアウト
+                window.location.reload(); // 自動ログインを防ぐためリロード
                 return;
             }
 

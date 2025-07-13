@@ -91,10 +91,9 @@ export default function InitialSetupDialog({
                                 value={shareScope}
                                 onChange={e => setShareScope(e.target.value)}
                             >
-                                <option value="全体公開">全体公開</option>
                                 <option value="学年のみ">学年のみ</option>
                                 <option value="組のみ">組のみ</option>
-                                <option value="個別指定">個別ユーザーのみ</option>
+                                <option value="連れ勉仲間のみ">連れ勉仲間のみ</option>
                             </select>
                         </div>
                     </div>

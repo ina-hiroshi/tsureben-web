@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { auth, db } from '../firebase';
-import { doc, getDoc, setDoc, collection, query, onSnapshot } from 'firebase/firestore';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { doc, getDoc, setDoc, collection, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { AiOutlineClockCircle, AiOutlineEdit } from 'react-icons/ai';
 import { MdMenuBook } from 'react-icons/md';
 import { FaUsers } from 'react-icons/fa';
@@ -19,13 +20,19 @@ export default function StudyPomodoroPage() {
     const [dialogOpen, setDialogOpen] = useState(false);
     const [selectedEntryIndex, setSelectedEntryIndex] = useState(null);
     const [startTime, setStartTime] = useState(null);
+    const [initialStartTime, setInitialStartTime] = useState(null);
     const [elapsedSeconds, setElapsedSeconds] = useState(0);
     const [isRunning, setIsRunning] = useState(false);
-    const [editingData, setEditingData] = useState(null); // 編集 or 新規登録用データ
     const todayStr = dayjs().format('YYYY-MM-DD');
-    const currentHour = String(dayjs().hour()).padStart(2, '0');
-    const currentMinute = String(dayjs().minute()).padStart(2, '0');
+    const [startDateStr, setStartDateStr] = useState(dayjs().format('YYYY-MM-DD'));
     const [activeUsers, setActiveUsers] = useState([]);
+    const [pauseElapsedSeconds, setPauseElapsedSeconds] = useState(0);
+    const intervalRef = useRef(null);
+    const [selectedHour, setSelectedHour] = useState(null);
+    const [selectedGrade, setSelectedGrade] = useState(null);
+    const [selectedClass, setSelectedClass] = useState(null);
+    const [isTeacher, setIsTeacher] = useState(false);
+
     const timerRef = useRef(null);
     const [animationDuration, setAnimationDuration] = useState(30); // 秒数
     const marqueeRef = useRef(null);
@@ -76,7 +83,20 @@ export default function StudyPomodoroPage() {
 
         setSelectedPlan(currentPlan);
         setSelectedEntryIndex(idx);
+        setSelectedHour(hourKey);
     };
+
+    const reloadPlans = async () => {
+        if (user) {
+            await fetchPlans(user);
+        }
+    };
+
+    useEffect(() => {
+        if (selectedHour !== null && selectedEntryIndex !== null) {
+            setDialogOpen(true);
+        }
+    }, [selectedHour, selectedEntryIndex]);
 
     const handleStart = async () => {
         if (!selectedPlan) {
@@ -86,14 +106,34 @@ export default function StudyPomodoroPage() {
 
         if (isRunning) return;
 
-        setIsRunning(true);
         const now = dayjs();
-        setStartTime(now);
 
+        if (!initialStartTime) {
+            setInitialStartTime(now);
+        }
+
+        const dateStr = now.format('YYYY-MM-DD');
+        setStartDateStr(dateStr);
+        localStorage.setItem('pomodoro-start-date', dateStr); // 🔸 永続化
+
+        setStartTime(now);
+        setIsRunning(true);
+
+        // ✅ 初回スタート時
         if (elapsedSeconds === 0 && user) {
+            const docRef = doc(db, 'studyPomodoroLogs', user.email);
+            const snap = await getDoc(docRef);
+            const data = snap.exists() ? snap.data() : {};
+            let logsForDate = data[dateStr] || [];
+
+            // duration: null を duration: 0 に補正
+            logsForDate = logsForDate.map(log =>
+                log.duration == null ? { ...log, duration: 0 } : log
+            );
+
             const newRecord = {
                 startTime: now.format('HH:mm'),
-                date: todayStr,
+                date: dateStr,
                 subject: selectedPlan.subject || 'その他',
                 topic: selectedPlan.topic || 'ポモドーロ',
                 book: selectedPlan.book || '',
@@ -101,64 +141,170 @@ export default function StudyPomodoroPage() {
                 duration: null,
             };
 
-            const docRef = doc(db, 'studyPomodoroLogs', user.email);
-            const snap = await getDoc(docRef);
-            const data = snap.exists() ? snap.data() : {};
-            const todayLogs = data[todayStr] || [];
-
-            todayLogs.push(newRecord);
+            logsForDate.push(newRecord);
 
             await setDoc(docRef, {
                 ...data,
-                [todayStr]: todayLogs,
+                [dateStr]: logsForDate,
+            });
+
+            const userDoc = await getDoc(doc(db, 'users', user.email));
+            if (!userDoc.exists()) return;
+
+            const userData = userDoc.data();
+
+            // ✅ 🔸activePomodoroUsers にも登録
+            await setDoc(doc(db, 'activePomodoroUsers', user.email), {
+                subject: newRecord.subject,
+                topic: newRecord.topic,
+                book: newRecord.book,
+                content: newRecord.content,
+                startTime: newRecord.startTime,
+
+                // 🔸 キャッシュ（名前・表示範囲情報）
+                name: userData.name || user.email.split('@')[0],
+                grade: userData.grade,
+                class: userData.class,
+                shareScope: userData.shareScope || '学年のみ',
+                turebenRequests: userData.turebenRequests ?? [],
+                hiddenRequests: userData.hiddenRequests ?? [],
+                hiddenMates: userData.hiddenMates ?? [],
             });
         }
-
-        timerRef.current = setInterval(() => {
-            setElapsedSeconds(prev => prev + 1);
-        }, 1000);
     };
 
     const handleStop = () => {
         setIsRunning(false);
+        setPauseElapsedSeconds(elapsedSeconds);
         clearInterval(timerRef.current);
     };
 
     const handleFinish = async () => {
-        if (!startTime || !user) return;
+        let currentUser = auth.currentUser;
+
+        // ✅ ユーザーまたはメールアドレスがない場合 → 再ログイン
+        if (!startTime || !currentUser || !currentUser.email) {
+            try {
+                const provider = new GoogleAuthProvider();
+                const result = await signInWithPopup(auth, provider);
+                currentUser = result.user;
+
+                if (!currentUser?.email) {
+                    throw new Error("メールアドレスの取得に失敗しました。");
+                }
+
+                localStorage.setItem('userEmail', currentUser.email);
+                alert("再ログインに成功しました。記録を続けます。");
+
+            } catch (error) {
+                console.error("再ログイン失敗:", error);
+
+                let manualMinutes = null;
+
+                while (true) {
+                    const manual = window.prompt("再ログインに失敗しました。\n手動で学習時間（分）を入力してください。\n（1〜1000の数値）");
+
+                    if (manual === null) {
+                        alert("キャンセルされました。記録は保存されませんでした。");
+                        return;
+                    }
+
+                    manualMinutes = Number(manual);
+                    if (Number.isFinite(manualMinutes) && manualMinutes > 0 && manualMinutes <= 1000) break;
+
+                    alert("入力が不正です。もう一度、1〜1000の数値で入力してください。");
+                }
+
+                alert(`${manualMinutes}分として記録しました。`);
+                return;
+            }
+        }
+
+        const userEmail = currentUser.email;
 
         const confirmed = window.confirm("学習を終了して保存します。よろしいですか？");
         if (!confirmed) return;
 
-        const docRef = doc(db, 'studyPomodoroLogs', user.email);
+        // 🔸 startDateStr を localStorage から復元（なければ fallback）
+        const startDateStr = localStorage.getItem('pomodoro-start-date') || dayjs().format('YYYY-MM-DD');
+
+        const docRef = doc(db, 'studyPomodoroLogs', userEmail);
         const snap = await getDoc(docRef);
         if (!snap.exists()) return;
 
         const data = snap.data();
-        const todayLogs = data[todayStr] || [];
+        const logsForDate = data[startDateStr] || [];
 
-        const formattedStart = startTime.format('HH:mm');
+        const formattedStart = initialStartTime?.format('HH:mm');
+        if (!formattedStart) return;
 
-        // 後ろから duration が null の該当 startTime を探す
-        const index = [...todayLogs].reverse().findIndex(
+        const index = [...logsForDate].reverse().findIndex(
             r => r.startTime === formattedStart && r.duration == null
         );
         if (index === -1) return;
 
-        const realIndex = todayLogs.length - 1 - index;
-        todayLogs[realIndex].duration = Math.floor(elapsedSeconds / 60);
+        const realIndex = logsForDate.length - 1 - index;
+        let minutes = Math.floor(elapsedSeconds / 60);
+
+        if (!Number.isFinite(minutes) || minutes <= 0 || minutes > 1000) {
+            let manualMinutes = null;
+
+            while (true) {
+                const manual = window.prompt("学習時間が不正です。\n手動で学習時間（分）を入力してください。\n（1〜1000の数値）");
+
+                if (manual === null) {
+                    alert("キャンセルされました。記録は保存されませんでした。");
+                    return;
+                }
+
+                manualMinutes = Number(manual);
+                if (Number.isFinite(manualMinutes) && manualMinutes > 0 && manualMinutes <= 1000) break;
+
+                alert("入力が不正です。もう一度、1〜1000の数値で入力してください。");
+            }
+
+            minutes = manualMinutes;
+            alert(`${minutes}分として手動記録します`);
+        }
+
+        logsForDate[realIndex].duration = minutes;
 
         await setDoc(docRef, {
             ...data,
-            [todayStr]: todayLogs,
+            [startDateStr]: logsForDate,
         });
 
-        // 状態リセット
+        // ✅ 後始末
+        localStorage.removeItem('pomodoro-timer-state');
+        localStorage.removeItem('pomodoro-start-date');
+
         setStartTime(null);
         setElapsedSeconds(0);
+        setPauseElapsedSeconds(0);
         setIsRunning(false);
         clearInterval(timerRef.current);
+
+        try {
+            await deleteDoc(doc(db, 'activePomodoroUsers', userEmail));
+        } catch (e) {
+            console.warn("activePomodoroUsers の削除に失敗:", e);
+        }
     };
+
+    useEffect(() => {
+        if (!isRunning || !startTime) return;
+
+        const updateElapsed = () => {
+            const now = dayjs();
+            const seconds = now.diff(startTime, 'second') + pauseElapsedSeconds;
+            setElapsedSeconds(seconds);
+        };
+
+        updateElapsed();
+        timerRef.current = setInterval(updateElapsed, 200);
+
+        return () => clearInterval(timerRef.current);
+    }, [isRunning, startTime, pauseElapsedSeconds]);
 
     useEffect(() => {
         const unsubscribe = auth.onAuthStateChanged(async (u) => {
@@ -171,59 +317,136 @@ export default function StudyPomodoroPage() {
     }, []);
 
     useEffect(() => {
-        const q = query(collection(db, 'studyPomodoroLogs'));
+        if (!user) return;
 
-        const unsubscribe = onSnapshot(q, async snapshot => {
-            const result = [];
+        let unsubscribe;
 
-            const promises = snapshot.docs.map(async docSnap => {
-                const data = docSnap.data();
-                const todayLogs = data[todayStr] || [];
+        const fetchAndSubscribe = async () => {
+            const currentEmail = user.email;
 
-                const unfinished = todayLogs.find(log => log.duration == null);
-                if (!unfinished) return null;
+            // 🔸 自分のユーザーデータを取得（grade/class 判定用）
+            const currentUserDoc = await getDoc(doc(db, 'users', currentEmail));
+            if (!currentUserDoc.exists()) return;
 
-                const email = docSnap.id;
+            const currentUserData = currentUserDoc.data();
+            const currentGrade = currentUserData.grade;
+            const currentClass = currentUserData.class;
+            setIsTeacher(currentUserData.teacher === true);
+            if (selectedGrade === null) setSelectedGrade(currentGrade);
+            if (selectedClass === null) setSelectedClass(currentClass);
 
-                // 🔍 users コレクションから名前を取得
-                try {
-                    const userDoc = await getDoc(doc(db, 'users', email));
-                    const userName = userDoc.exists() ? userDoc.data().name || email.split('@')[0] : email.split('@')[0];
+            // 🔸 アクティブユーザーの監視
+            unsubscribe = onSnapshot(collection(db, 'activePomodoroUsers'), snapshot => {
+                const users = snapshot.docs.map(docSnap => {
+                    const email = docSnap.id;
+                    if (email === currentEmail) return null;
 
-                    return {
-                        name: userName,
-                        subject: unfinished.subject || '－',
-                        topic: unfinished.topic || '－',
-                        book: unfinished.book || '－',
-                        content: unfinished.content || '－',
-                    };
-                } catch (e) {
-                    console.error(`ユーザー情報の取得に失敗: ${email}`, e);
-                    return {
-                        name: email.split('@')[0],
-                        subject: unfinished.subject || '－',
-                        topic: unfinished.topic || '－',
-                        book: unfinished.book || '－',
-                        content: unfinished.content || '－',
-                    };
+                    const data = docSnap.data();
+
+                    // 🔸 教員ならすべて表示（公開設定に関わらず）
+                    if (isTeacher) {
+                        return {
+                            email,
+                            name: data.name || email.split('@')[0],
+                            subject: data.subject || '－',
+                            topic: data.topic || '－',
+                            book: data.book || '－',
+                            content: data.content || '－',
+                            grade: data.grade || '',
+                            class: data.class || '',
+                        };
+                    }
+
+                    const show = (() => {
+                        switch (data.shareScope) {
+                            case 'すべて公開':
+                                return true;
+                            case '学年のみ':
+                                return data.grade === currentGrade;
+                            case '組のみ':
+                                return data.grade === currentGrade && data.class === currentClass;
+                            case '連れ勉仲間のみ':
+                                return (
+                                    (data.turebenRequests || []).includes(currentEmail) &&
+                                    !(data.hiddenMates || []).includes(currentEmail)
+                                );
+                            default:
+                                return false;
+                        }
+                    })();
+
+                    return show
+                        ? {
+                            email,
+                            name: data.name || email.split('@')[0],
+                            subject: data.subject || '－',
+                            topic: data.topic || '－',
+                            book: data.book || '－',
+                            content: data.content || '－',
+                            grade: data.grade || '',
+                            class: data.class || '',
+                        }
+                        : null;
+                });
+
+                let filtered = users.filter(Boolean);
+
+                if (isTeacher) {
+                    if (selectedGrade) {
+                        filtered = filtered.filter(u => u.grade === selectedGrade);
+                    }
+                    if (selectedClass) {
+                        filtered = filtered.filter(u => u.class === selectedClass);
+                    }
                 }
+
+                setActiveUsers(filtered);
             });
+        };
 
-            const resolved = await Promise.all(promises);
-            setActiveUsers(resolved.filter(Boolean)); // nullを除く
-        });
+        fetchAndSubscribe();
 
-        return () => unsubscribe();
-    }, []);
+        return () => {
+            if (unsubscribe) unsubscribe();
+        };
+    }, [user, selectedGrade, selectedClass]);
 
     useEffect(() => {
         if (marqueeRef.current) {
             const height = marqueeRef.current.offsetHeight;
             // 高さに応じて時間を決定（例えば1pxあたり0.1秒）
-            const duration = Math.max(10, height * 0.06);
+            const duration = Math.max(60, height * 0.01);
             setAnimationDuration(duration);
         }
     }, [activeUsers]);
+
+    useEffect(() => {
+        const handleBeforeUnload = (e) => {
+            if (elapsedSeconds > 0) {
+                e.preventDefault();
+                e.returnValue = ''; // Chromeなどで警告を出すために必要
+            }
+        };
+
+        window.addEventListener('beforeunload', handleBeforeUnload);
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload);
+        };
+    }, [elapsedSeconds]);
+
+    useEffect(() => {
+        const el = marqueeRef.current;
+        if (!el) return;
+
+        el.classList.remove('animate-marqueeVertical');
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                el.classList.add('animate-marqueeVertical');
+            });
+        });
+    }, [activeUsers.length, animationDuration]);
+
 
     return (
         <>
@@ -240,9 +463,9 @@ export default function StudyPomodoroPage() {
 
                     <div className="flex flex-col md:flex-row gap-6">
                         {/* 🔸 左側：学習計画 + 一緒に勉強中 */}
-                        <div className="md:w-1/3 space-y-4">
+                        <div className="md:w-1/3 flex flex-col space-y-4 h-full md:h-[calc(100vh-7rem)]">
                             {/* この時間の学習 */}
-                            <div className="p-4 bg-[#ede3d2] rounded shadow text-[#5a3e28] space-y-2 relative">
+                            <div className="p-4 bg-[#ede3d2] rounded shadow text-[#5a3e28] space-y-2">
                                 <div className="text-xl font-bold flex items-center gap-2">
                                     <MdMenuBook className="text-[#5a3e28]" />
                                     この時間の学習
@@ -302,41 +525,81 @@ export default function StudyPomodoroPage() {
                             </div>
 
                             {/* 一緒に勉強中 */}
-                            <div className="p-4 bg-[#ede3d2] rounded shadow text-[#5a3e28] space-y-2">
-                                <div className="text-xl font-bold flex items-center gap-2">
+                            <div
+                                className="p-4 bg-[#ede3d2] rounded shadow text-[#5a3e28] flex flex-col grow justify-start"
+                                style={{ maxHeight: 'calc(100vh - 7rem - 280px)' }} // ← 190px は「この時間の学習」の高さ分（仮）
+                            >
+                                <div className="text-xl font-bold flex items-center gap-2 mb-2">
                                     <FaUsers className="text-[#5a3e28]" />
                                     一緒に勉強中
                                 </div>
+                                {isTeacher && (
+                                    <div className="bg-[#ede3d2] px-2 py-3 sm:p-4 rounded-xl mb-4">
+                                        {/* 🔸 見出しと説明 */}
+                                        <div className="mb-3 flex items-center gap-2">
+                                            <span className="px-2 py-1 text-xs font-bold bg-[#8f735a] text-white rounded">
+                                                教員限定
+                                            </span>
+                                            <span className="text-sm text-[#4b3b2b]">
+                                                勉強中の生徒を絞り込んで表示できます
+                                            </span>
+                                        </div>
 
-                                <div className="overflow-hidden relative h-80">
-                                    <div
-                                        ref={marqueeRef}
-                                        className="absolute top-0 space-y-4"
-                                        style={{
-                                            animation: `marqueeVertical ${animationDuration}s linear infinite`,
-                                        }}
-                                    >
-                                        {[...activeUsers, ...activeUsers].map((user, i) => (
-                                            <div
-                                                key={i}
-                                                className="mx-auto px-4 py-2 rounded-xl shadow-md border border-[#b3936a]"
-                                                style={{
-                                                    backgroundColor: '#f0e0c0',
-                                                    minWidth: '220px',
-                                                    maxWidth: '300px',
-                                                    whiteSpace: 'normal',
-                                                    fontWeight: 'bold',
-                                                    color: '#5a3e28',
-                                                }}
+                                        {/* 🔸 フィルター */}
+                                        <div className="flex flex-col sm:flex-row gap-3 items-center">
+                                            <select
+                                                value={selectedGrade}
+                                                onChange={e => setSelectedGrade(e.target.value)}
+                                                className="p-2 border border-[#8f735a] rounded-md w-full sm:w-auto bg-white text-[#4b3b2b]"
                                             >
-                                                <div className="text-base">{user.name} さん</div>
-                                                <div className="text-sm">
-                                                    {user.subject} / {user.topic} / {user.book || '－'}
-                                                </div>
-                                                <div className="text-sm mt-1">{user.content}</div>
-                                            </div>
-                                        ))}
+                                                <option value="">学年選択</option>
+                                                {['中1', '中2', '中3', '高1', '高2', '高3'].map(g => (
+                                                    <option key={g} value={g}>{g}</option>
+                                                ))}
+                                            </select>
+
+                                            <select
+                                                value={selectedClass}
+                                                onChange={e => setSelectedClass(e.target.value)}
+                                                className="p-2 border border-[#8f735a] rounded-md w-full sm:w-auto bg-white text-[#4b3b2b]"
+                                            >
+                                                <option value="">全クラス</option>
+                                                {[...Array(9)].map((_, i) => (
+                                                    <option key={i + 1} value={String(i + 1)}>{i + 1}組</option>
+                                                ))}
+                                            </select>
+                                        </div>
                                     </div>
+                                )}
+
+                                <div className="flex flex-col gap-4">
+                                    {activeUsers.length === 0 ? (
+                                        <div className="text-sm text-gray-500">現在一緒に勉強中の仲間はいません</div>
+                                    ) : (
+                                        <div
+                                            ref={marqueeRef}
+                                            className="w-full space-y-4 absolute top-0 animate-marqueeVertical"
+                                            style={{
+                                                ['--tw-animation-duration']: `${animationDuration}s`, // ← TailwindのCSS変数名に合わせて修正
+                                            }}
+                                        >
+                                            {[...activeUsers, ...activeUsers].map((user, i) => (
+                                                <div
+                                                    key={i}
+                                                    className="w-full px-4 py-2 rounded-xl shadow-md border border-[#b3936a] bg-[#f0e0c0] text-[#5a3e28] font-bold"
+                                                    style={{
+                                                        whiteSpace: 'normal',
+                                                    }}
+                                                >
+                                                    <div className="text-base">{user.name} さん</div>
+                                                    <div className="text-sm">
+                                                        {user.subject} / {user.topic} / {user.book || '－'}
+                                                    </div>
+                                                    <div className="text-sm mt-1">{user.content}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
@@ -349,7 +612,14 @@ export default function StudyPomodoroPage() {
                                 <PomodoroClock
                                     elapsedMinutes={elapsedSeconds / 60}
                                     isRunning={isRunning}
-                                    onToggle={selectedPlan ? (isRunning ? handleStop : handleStart) : null}
+                                    onToggle={() => {
+                                        if (selectedPlan) {
+                                            isRunning ? handleStop() : handleStart();
+                                        } else {
+                                            // 🔸編集ダイアログを開く処理をここに
+                                            setDialogOpen(true); // 例：TimeInputDialog表示用state
+                                        }
+                                    }}
                                     onFinish={handleFinish}
                                 />
                             </div>
@@ -360,11 +630,10 @@ export default function StudyPomodoroPage() {
                     <TimeInputDialog
                         open={dialogOpen}
                         onClose={() => setDialogOpen(false)}
-                        selectedHour={currentHour}
-                        selectedMinute={currentMinute}
-                        selectedDate={dayjs()}
+                        selectedHour={selectedHour}
                         selectedEntryIndex={selectedEntryIndex}
-                        reloadPlans={() => window.location.reload()}
+                        selectedDate={dayjs()}
+                        reloadPlans={reloadPlans}
                     />
                 </div>
             </div>
