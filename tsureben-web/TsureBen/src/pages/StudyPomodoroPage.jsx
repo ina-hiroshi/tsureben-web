@@ -524,77 +524,73 @@ export default function StudyPomodoroPage() {
                                 </div>
                             </div>
 
+                            {/* 🔸 教員限定のプルダウンを外に出す */}
+                            {isTeacher && (
+                                <div className="bg-[#ede3d2] px-2 py-3 sm:p-4 rounded-xl shadow-md">
+                                    <div className="mb-3 flex items-center gap-2">
+                                        <span className="px-2 py-1 text-xs font-bold bg-[#8f735a] text-white rounded">
+                                            教員限定
+                                        </span>
+                                        <span className="text-sm text-[#4b3b2b]">
+                                            勉強中の生徒を絞り込んで表示できます
+                                        </span>
+                                    </div>
+
+                                    <div className="flex flex-col sm:flex-row gap-3 items-center">
+                                        <select
+                                            value={selectedGrade}
+                                            onChange={e => setSelectedGrade(e.target.value)}
+                                            className="p-2 border border-[#8f735a] rounded-md w-full sm:w-auto bg-white text-[#4b3b2b]"
+                                        >
+                                            <option value="">学年選択</option>
+                                            {['中1', '中2', '中3', '高1', '高2', '高3'].map(g => (
+                                                <option key={g} value={g}>{g}</option>
+                                            ))}
+                                        </select>
+
+                                        <select
+                                            value={selectedClass}
+                                            onChange={e => setSelectedClass(e.target.value)}
+                                            className="p-2 border border-[#8f735a] rounded-md w-full sm:w-auto bg-white text-[#4b3b2b]"
+                                        >
+                                            <option value="">全クラス</option>
+                                            {[...Array(9)].map((_, i) => (
+                                                <option key={i + 1} value={String(i + 1)}>{i + 1}組</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* 一緒に勉強中 */}
                             <div
                                 className="p-4 bg-[#ede3d2] rounded shadow text-[#5a3e28] flex flex-col grow justify-start"
-                                style={{ maxHeight: 'calc(100vh - 7rem - 280px)' }} // ← 190px は「この時間の学習」の高さ分（仮）
+                                style={{ maxHeight: 'calc(100vh - 7rem - 280px)' }} // ← 高さ調整は必要に応じて微調整
                             >
                                 <div className="text-xl font-bold flex items-center gap-2 mb-2">
                                     <FaUsers className="text-[#5a3e28]" />
                                     一緒に勉強中
                                 </div>
-                                {isTeacher && (
-                                    <div className="bg-[#ede3d2] px-2 py-3 sm:p-4 rounded-xl mb-4">
-                                        {/* 🔸 見出しと説明 */}
-                                        <div className="mb-3 flex items-center gap-2">
-                                            <span className="px-2 py-1 text-xs font-bold bg-[#8f735a] text-white rounded">
-                                                教員限定
-                                            </span>
-                                            <span className="text-sm text-[#4b3b2b]">
-                                                勉強中の生徒を絞り込んで表示できます
-                                            </span>
-                                        </div>
 
-                                        {/* 🔸 フィルター */}
-                                        <div className="flex flex-col sm:flex-row gap-3 items-center">
-                                            <select
-                                                value={selectedGrade}
-                                                onChange={e => setSelectedGrade(e.target.value)}
-                                                className="p-2 border border-[#8f735a] rounded-md w-full sm:w-auto bg-white text-[#4b3b2b]"
-                                            >
-                                                <option value="">学年選択</option>
-                                                {['中1', '中2', '中3', '高1', '高2', '高3'].map(g => (
-                                                    <option key={g} value={g}>{g}</option>
-                                                ))}
-                                            </select>
-
-                                            <select
-                                                value={selectedClass}
-                                                onChange={e => setSelectedClass(e.target.value)}
-                                                className="p-2 border border-[#8f735a] rounded-md w-full sm:w-auto bg-white text-[#4b3b2b]"
-                                            >
-                                                <option value="">全クラス</option>
-                                                {[...Array(9)].map((_, i) => (
-                                                    <option key={i + 1} value={String(i + 1)}>{i + 1}組</option>
-                                                ))}
-                                            </select>
-                                        </div>
-                                    </div>
-                                )}
-
-                                <div className="flex flex-col gap-4">
+                                <div className="relative overflow-hidden h-full">
                                     {activeUsers.length === 0 ? (
                                         <div className="text-sm text-gray-500">現在一緒に勉強中の仲間はいません</div>
                                     ) : (
                                         <div
                                             ref={marqueeRef}
-                                            className="w-full space-y-4 absolute top-0 animate-marqueeVertical"
+                                            className="w-full space-y-4 animate-marqueeVertical"
                                             style={{
-                                                ['--tw-animation-duration']: `${animationDuration}s`, // ← TailwindのCSS変数名に合わせて修正
+                                                ['--tw-animation-duration']: `${animationDuration}s`,
                                             }}
                                         >
                                             {[...activeUsers, ...activeUsers].map((user, i) => (
                                                 <div
                                                     key={i}
                                                     className="w-full px-4 py-2 rounded-xl shadow-md border border-[#b3936a] bg-[#f0e0c0] text-[#5a3e28] font-bold"
-                                                    style={{
-                                                        whiteSpace: 'normal',
-                                                    }}
+                                                    style={{ whiteSpace: 'normal' }}
                                                 >
                                                     <div className="text-base">{user.name} さん</div>
-                                                    <div className="text-sm">
-                                                        {user.subject} / {user.topic} / {user.book || '－'}
-                                                    </div>
+                                                    <div className="text-sm">{user.subject} / {user.topic} / {user.book || '－'}</div>
                                                     <div className="text-sm mt-1">{user.content}</div>
                                                 </div>
                                             ))}

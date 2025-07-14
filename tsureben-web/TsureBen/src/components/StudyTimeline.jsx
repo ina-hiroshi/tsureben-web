@@ -1,12 +1,19 @@
 import React, { useEffect, useState } from 'react';
 import { auth, db } from '../firebase';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import dayjs from 'dayjs';
 import { FaChevronLeft, FaChevronRight, FaCalendarDay, FaBookOpen, FaClock, FaChalkboardTeacher, FaFileAlt } from 'react-icons/fa';
 
 export default function StudyTimeline({ userEmail }) {
     const [logsPerDay, setLogsPerDay] = useState({});
     const [weekStartDate, setWeekStartDate] = useState(dayjs().startOf('week'));
+
+    //学習時間入力用
+    const [selectedLog, setSelectedLog] = useState(null);
+    const [durationInput, setDurationInput] = useState('');
+    const [editDateKey, setEditDateKey] = useState('');
+    const [editIndex, setEditIndex] = useState(null);
+
 
     const subjectColors = {
         国語: 'bg-pink-200 text-pink-800 border-l-4 border-pink-400',
@@ -65,6 +72,42 @@ export default function StudyTimeline({ userEmail }) {
         setWeekStartDate(dayjs().startOf('week'));
     };
 
+    const handleCardClick = (log, key, index) => {
+        if (log.duration == null || log.duration === 0) {
+            setSelectedLog(log);
+            setEditDateKey(key);
+            setEditIndex(index);
+            setDurationInput('');
+        }
+    };
+
+    const handleSaveDuration = async () => {
+        if (!userEmail || !editDateKey || editIndex == null) return;
+        const docRef = doc(db, 'studyPomodoroLogs', userEmail);
+        const snap = await getDoc(docRef);
+
+        if (!snap.exists()) return;
+
+        const data = snap.data();
+        const logs = data[editDateKey] || [];
+        logs[editIndex] = { ...logs[editIndex], duration: Number(durationInput) };
+
+        await setDoc(docRef, {
+            ...data,
+            [editDateKey]: logs
+        });
+
+        setSelectedLog(null);
+        setEditDateKey('');
+        setEditIndex(null);
+
+        // 最新の状態取得
+        setLogsPerDay(prev => ({
+            ...prev,
+            [editDateKey]: logs
+        }));
+    };
+
     return (
         <div className="text-[#6b4a2b]">
             {/* ナビゲーション */}
@@ -112,33 +155,53 @@ export default function StudyTimeline({ userEmail }) {
                                     <p className="text-xs text-gray-500 text-center">記録なし</p>
                                 ) : (
                                     <ul className="space-y-2">
-                                        {logs.map((log, idx) => (
-                                            <li
-                                                key={idx}
-                                                className={`relative rounded-md text-xs sm:text-sm shadow-sm cursor-pointer transition-transform overflow-hidden ${subjectColors[log.subject] || subjectColors.その他}`}
-                                            >
-                                                <div className="px-2 py-2 space-y-1 whitespace-normal break-words">
-                                                    <div className="font-bold text-sm">
-                                                        <FaClock className="inline-block mr-1 text-[#6b4a2b]" />
-                                                        {log.startTime || '未記録'}（{log.duration}分）
-                                                    </div>
-                                                    <div className="text-xs font-semibold">
-                                                        <FaBookOpen className="inline-block mr-1 text-[#6b4a2b]" />
-                                                        {log.book || '未指定'}
-                                                    </div>
-                                                    <div className="text-xs">
-                                                        <FaChalkboardTeacher className="inline-block mr-1 text-[#6b4a2b]" />
-                                                        {log.subject || '教科未設定'} / {log.topic || '単元未設定'}
-                                                    </div>
-                                                    {log.content && (
-                                                        <div className="text-xs font-normal text-[#4b3b2b] whitespace-pre-wrap break-words">
-                                                            <FaFileAlt className="inline-block mr-1 text-[#6b4a2b]" />
-                                                            {log.content}
-                                                        </div>
+                                        {logs.map((log, idx) => {
+                                            const isEditable = log.duration == null || log.duration === 0;
+
+                                            return (
+                                                <li
+                                                    key={idx}
+                                                    onClick={() => handleCardClick(log, key, idx)}
+                                                    className={`relative rounded-md text-xs sm:text-sm shadow-sm transition-transform
+                        ${isEditable
+                                                            ? 'bg-[#fff3e0] cursor-pointer hover:brightness-105 ring-2 ring-dashed ring-[#e69b00]'
+                                                            : ''}
+                        ${subjectColors[log.subject] || subjectColors.その他}
+                    `}
+                                                >
+                                                    {isEditable && (
+                                                        <span className="absolute top-1 right-1 bg-[#e69b00] text-white text-[10px] px-2.5 py-0.5 rounded-full shadow-sm">
+                                                            入力待ち
+                                                        </span>
                                                     )}
-                                                </div>
-                                            </li>
-                                        ))}
+                                                    <div className="px-2 py-2 space-y-1 whitespace-normal break-words">
+                                                        <div className="font-bold text-sm">
+                                                            <FaClock className="inline-block mr-1 text-[#6b4a2b]" />
+                                                            {log.startTime || '未記録'}（{log.duration}分）
+                                                        </div>
+                                                        <div className="text-xs font-semibold">
+                                                            <FaBookOpen className="inline-block mr-1 text-[#6b4a2b]" />
+                                                            {log.book || '未指定'}
+                                                        </div>
+                                                        <div className="text-xs">
+                                                            <FaChalkboardTeacher className="inline-block mr-1 text-[#6b4a2b]" />
+                                                            {log.subject || '教科未設定'} / {log.topic || '単元未設定'}
+                                                        </div>
+                                                        {log.content && (
+                                                            <div className="text-xs font-normal text-[#4b3b2b] whitespace-pre-wrap break-words">
+                                                                <FaFileAlt className="inline-block mr-1 text-[#6b4a2b]" />
+                                                                {log.content}
+                                                            </div>
+                                                        )}
+                                                        {isEditable && (
+                                                            <div className="text-xs italic text-[#aa6b00] font-bold mt-1">
+                                                                ※クリックして学習時間を入力
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </li>
+                                            );
+                                        })}
                                     </ul>
                                 )}
                             </div>
@@ -167,7 +230,11 @@ export default function StudyTimeline({ userEmail }) {
                                         {logs.map((log, idx) => (
                                             <li
                                                 key={idx}
-                                                className={`relative rounded-md text-xs sm:text-sm shadow-sm cursor-pointer transition-transform overflow-hidden ${subjectColors[log.subject] || subjectColors.その他}`}
+                                                onClick={() => handleCardClick(log, key, idx)}
+                                                className={`relative rounded-md text-xs sm:text-sm shadow-sm 
+        ${(log.duration == null || log.duration === 0) ? 'cursor-pointer hover:brightness-105 ring-2 ring-dashed ring-[#6b4a2b]' : ''}
+        ${subjectColors[log.subject] || subjectColors.その他}
+    `}
                                             >
                                                 <div className="px-2 py-2 space-y-1 whitespace-nowrap">
                                                     <div className="font-bold text-sm sm:text-base">
@@ -188,6 +255,11 @@ export default function StudyTimeline({ userEmail }) {
                                                             {log.content}
                                                         </div>
                                                     )}
+                                                    {(log.duration == null || log.duration === 0) && (
+                                                        <div className="text-xs italic text-[#aa6b00] font-bold mt-1">
+                                                            ※クリックして学習時間を入力
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </li>
                                         ))}
@@ -198,6 +270,34 @@ export default function StudyTimeline({ userEmail }) {
                     })}
                 </div>
             </div>
+            {selectedLog && (
+                <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50">
+                    <div className="bg-white p-6 rounded-xl shadow-xl w-80 max-w-full space-y-4">
+                        <h2 className="text-lg font-bold text-[#5a3e28]">学習時間を入力</h2>
+                        <input
+                            type="number"
+                            value={durationInput}
+                            onChange={(e) => setDurationInput(e.target.value)}
+                            placeholder="学習時間（分）"
+                            className="w-full p-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-[#6b4a2b]"
+                        />
+                        <div className="flex justify-end gap-3">
+                            <button
+                                onClick={() => setSelectedLog(null)}
+                                className="px-4 py-1 rounded bg-gray-300 hover:bg-gray-200"
+                            >
+                                キャンセル
+                            </button>
+                            <button
+                                onClick={handleSaveDuration}
+                                className="px-4 py-1 rounded bg-[#5a3e28] text-white hover:bg-[#6b4a2b]"
+                            >
+                                保存
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

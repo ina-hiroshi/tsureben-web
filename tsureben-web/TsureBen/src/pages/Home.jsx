@@ -231,17 +231,12 @@ export default function Home() {
             <div className="min-h-screen bg-[#4b4039] text-[#3a2e28] pt-24 p-6 font-sans">
                 {/* フィードバックリンク */}
                 <div className="max-w-7xl mx-auto mb-6">
-                    <div className="bg-[#fff8e6] border border-[#e6cfa4] rounded-2xl shadow p-4 text-[#5a3e28]">
+                    <div className="bg-[#ede3d2] border border-[#e6cfa4] rounded-2xl shadow p-4 text-[#5a3e28]">
                         <h2 className="text-lg font-bold mb-2">このアプリについてのご意見・ご要望</h2>
                         <p className="mb-3 text-sm">
                             改善のために、ぜひ皆さんのフィードバックをお聞かせください。
                             不具合の報告・機能の提案など、どんなことでも歓迎です。（伊奈）
                         </p>
-                        <p className="mb-3 text-sm"> ☆一時停止した学習計測で，保存できない不具合を修正しました。</p>
-                        <p className="mb-3 text-sm">☆学習計測での学習計画の編集の不具合を修正しました。</p>
-                        <p className="mb-3 text-sm">☆HOME画面の円グラフの表示を最適化しました。</p>
-                        <p className="mb-3 text-sm">☆一緒に勉強中の公開範囲が選択通りになりました（ヘッダーの歯車のアイコンから設定を変更できます）</p>
-                        <p className="mb-3 text-sm">☆すでに登録した科目・問題集を一括で変更できるようになりました。</p>
                         <a
                             href="https://docs.google.com/forms/d/e/1FAIpQLSembw-uo9NbOfUD-w4YLxvYoWTRU-koEwPoAM7BXoH5QBQG7g/viewform?usp=dialog"
                             target="_blank"
