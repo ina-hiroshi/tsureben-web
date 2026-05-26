@@ -9,7 +9,7 @@ import Login from './pages/Login';
 import OAuthCallback from './pages/OAuthCallback';
 import Home from './pages/Home';
 import StudyPlanPage from './pages/StudyPlanPage';
-import StudyPomodoroPage from './pages/StudyPomodoroPage';
+import StudyTimerPage from './pages/StudyTimerPage';
 import StudyRecordPage from './pages/StudyRecordPage';
 import TureBenMatePage from './pages/TureBenMatePage';
 import SettingsPage from './pages/SettingsPage';
@@ -40,7 +40,7 @@ function AppLayout() {
         path="/pomodoro"
         element={
           <ProtectedRoute>
-            <StudyPomodoroPage />
+            <StudyTimerPage />
           </ProtectedRoute>
         }
       />

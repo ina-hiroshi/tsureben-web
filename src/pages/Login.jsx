@@ -1,6 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FaPenNib } from 'react-icons/fa';
+import Card from '../components/ui/Card';
+import Button from '../components/ui/Button';
+import Input from '../components/ui/Input';
+import AppLogo from '../components/ui/AppLogo';
 import { Capacitor } from '@capacitor/core';
 import {
   GoogleAuthProvider,
@@ -236,42 +239,32 @@ export default function Login() {
   if (loading) return null;
 
   return (
-    <div className="min-h-screen bg-[#ede3d2] flex items-center justify-center p-4">
-      <div className="bg-white p-8 rounded-xl shadow-md w-full max-w-md">
-        <div className="flex justify-center items-center gap-2 mb-6">
-          <h1 className="font-script text-4xl text-[#5a3e28]">TsureBen</h1>
-          <FaPenNib className="text-[#5a3e28] w-6 h-6 mt-1" />
+    <div
+      className="min-h-screen bg-tsure-bg flex items-center justify-center p-4"
+      style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)' }}
+    >
+      <Card className="w-full max-w-md">
+        <div className="flex justify-center mb-6">
+          <AppLogo variant="login" />
         </div>
 
         <div className="flex gap-2 mb-6">
-          <button
+          <Button
             type="button"
-            onClick={() => {
-              setTab('teacher');
-              setError(null);
-            }}
-            className={`flex-1 py-2 rounded-lg font-semibold ${
-              tab === 'teacher'
-                ? 'bg-[#5a3e28] text-white'
-                : 'bg-[#ede3d2] text-[#5a3e28]'
-            }`}
+            variant={tab === 'teacher' ? 'primary' : 'secondary'}
+            className="flex-1"
+            onClick={() => { setTab('teacher'); setError(null); }}
           >
             教員
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            onClick={() => {
-              setTab('student');
-              setError(null);
-            }}
-            className={`flex-1 py-2 rounded-lg font-semibold ${
-              tab === 'student'
-                ? 'bg-[#5a3e28] text-white'
-                : 'bg-[#ede3d2] text-[#5a3e28]'
-            }`}
+            variant={tab === 'student' ? 'primary' : 'secondary'}
+            className="flex-1"
+            onClick={() => { setTab('student'); setError(null); }}
           >
             生徒
-          </button>
+          </Button>
         </div>
 
         {tab === 'teacher' && (
@@ -280,18 +273,18 @@ export default function Login() {
             <p className="text-sm text-gray-500">
               ログイン済みの場合は自動的にホームへ移動します
             </p>
-            <button
+            <Button
               type="button"
               onClick={handleTeacherLogin}
               disabled={submitting || redirecting}
-              className="btn bg-[#5a3e28] hover:bg-[#7a5639] px-6 w-full disabled:opacity-50"
+              className="w-full"
             >
               {redirecting
                 ? 'Google へ移動中...'
                 : submitting
                   ? 'ログイン中...'
                   : 'Googleでログイン'}
-            </button>
+            </Button>
             {import.meta.env.DEV && isLocalhost() && (
               <p className="text-xs text-gray-400 break-all">
                 redirect URI: {getLocalhostRedirectUri()}
@@ -376,24 +369,20 @@ export default function Login() {
                 自己登録の場合はメールに認証コードが送信されます
               </p>
             )}
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full bg-[#5a3e28] text-white py-2 rounded hover:bg-[#7a5639] disabled:opacity-50"
-            >
+            <Button type="submit" disabled={submitting} className="w-full">
               {submitting
                 ? '処理中...'
                 : isRegisterMode
                   ? '認証コードを送信'
                   : 'ログイン'}
-            </button>
+            </Button>
             <button
               type="button"
               onClick={() => {
                 setIsRegisterMode(!isRegisterMode);
                 setError(null);
               }}
-              className="w-full text-sm text-[#5a3e28] underline"
+              className="w-full text-sm text-tsure-primary underline min-h-touch"
             >
               {isRegisterMode ? 'ログインに戻る' : '新規登録（認証コード必要）'}
             </button>
@@ -415,20 +404,16 @@ export default function Login() {
               className="w-full border rounded px-3 py-2 text-center tracking-widest"
               placeholder="000000"
             />
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full bg-[#5a3e28] text-white py-2 rounded hover:bg-[#7a5639] disabled:opacity-50"
-            >
+            <Button type="submit" disabled={submitting} className="w-full">
               {submitting ? '登録中...' : '登録を完了'}
-            </button>
+            </Button>
             <button
               type="button"
               onClick={() => {
                 setShowVerificationStep(false);
                 setVerificationCode('');
               }}
-              className="w-full text-sm text-[#5a3e28] underline"
+              className="w-full text-sm text-tsure-primary underline min-h-touch"
             >
               戻る
             </button>
@@ -436,7 +421,7 @@ export default function Login() {
         )}
 
         {error && <p className="mt-4 text-sm text-red-600 text-center">{error}</p>}
-      </div>
+      </Card>
     </div>
   );
 }

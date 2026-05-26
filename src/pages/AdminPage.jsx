@@ -1,10 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import Header from '../components/Header';
 import SchoolManagementPanel from '../components/admin/SchoolManagementPanel';
 import BulkRegistrationPanel from '../components/admin/BulkRegistrationPanel';
 import StudentManagementPanel from '../components/admin/StudentManagementPanel';
 import UiFeedbackPreviewPanel from '../components/admin/UiFeedbackPreviewPanel';
 import { useTeacherStatus } from '../hooks/useTeacherStatus';
+import PageLayout from '../components/ui/PageLayout';
+import Card from '../components/ui/Card';
+import SectionTitle from '../components/ui/SectionTitle';
+import { useEffect, useState } from 'react';
 
 export default function AdminPage() {
   const { schoolId: teacherSchoolId, isSuperAdmin } = useTeacherStatus();
@@ -18,42 +20,34 @@ export default function AdminPage() {
   }, [teacherSchoolId, isSuperAdmin]);
 
   return (
-    <>
-      <Header />
-      <div className="min-h-screen bg-[#4b4039] text-[#3a2e28] pt-24 p-6 font-sans">
-        <div className="max-w-6xl mx-auto space-y-8">
-          <h1 className="text-2xl font-bold text-[#ede3d2]">管理者ページ</h1>
-
-          <section className="bg-[#ede3d2] p-6 rounded-2xl shadow-md">
-            <h2 className="text-xl font-bold text-[#5a3e28] mb-4">学校管理</h2>
-            <SchoolManagementPanel
-              selectedSchoolId={selectedSchoolId}
-              onSelectSchool={setSelectedSchoolId}
-            />
-          </section>
-
-          <section className="bg-[#ede3d2] p-6 rounded-2xl shadow-md">
-            <h2 className="text-xl font-bold text-[#5a3e28] mb-4">一括登録（CSV）</h2>
-            <BulkRegistrationPanel
-              schoolId={selectedSchoolId}
-              onStudentsChanged={() => setStudentsRefreshKey((k) => k + 1)}
-            />
-          </section>
-
-          <section className="bg-[#ede3d2] p-6 rounded-2xl shadow-md">
-            <h2 className="text-xl font-bold text-[#5a3e28] mb-4">生徒情報管理</h2>
-            <StudentManagementPanel
-              schoolId={selectedSchoolId}
-              refreshKey={studentsRefreshKey}
-            />
-          </section>
-
-          <section className="bg-[#ede3d2] p-6 rounded-2xl shadow-md">
-            <h2 className="text-xl font-bold text-[#5a3e28] mb-4">UI コンポーネント</h2>
-            <UiFeedbackPreviewPanel />
-          </section>
-        </div>
+    <PageLayout title="管理">
+      <div className="space-y-4 pb-8 max-w-4xl">
+        <Card>
+          <SectionTitle>学校管理</SectionTitle>
+          <SchoolManagementPanel
+            selectedSchoolId={selectedSchoolId}
+            onSelectSchool={setSelectedSchoolId}
+          />
+        </Card>
+        <Card>
+          <SectionTitle>一括登録（CSV）</SectionTitle>
+          <BulkRegistrationPanel
+            schoolId={selectedSchoolId}
+            onStudentsChanged={() => setStudentsRefreshKey((k) => k + 1)}
+          />
+        </Card>
+        <Card>
+          <SectionTitle>生徒情報管理</SectionTitle>
+          <StudentManagementPanel
+            schoolId={selectedSchoolId}
+            refreshKey={studentsRefreshKey}
+          />
+        </Card>
+        <Card>
+          <SectionTitle>UI プレビュー</SectionTitle>
+          <UiFeedbackPreviewPanel />
+        </Card>
       </div>
-    </>
+    </PageLayout>
   );
 }

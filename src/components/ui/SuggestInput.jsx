@@ -64,7 +64,7 @@ export default function SuggestInput({
   return (
     <div ref={wrapperRef} className="relative">
       {label && (
-        <label className="block text-sm font-semibold text-[#5a3e28] mb-1">{label}</label>
+        <label className="block text-sm font-medium text-tsure-primary mb-1">{label}</label>
       )}
       <input
         type="text"
@@ -82,14 +82,14 @@ export default function SuggestInput({
         aria-expanded={open && filtered.length > 0}
         aria-controls={listId}
         aria-autocomplete="list"
-        className="w-full border border-[#c4b5a0] rounded-lg px-3 py-2 bg-white disabled:opacity-50"
+        className="w-full border border-tsure-border rounded-xl px-3 py-2.5 min-h-touch bg-white text-tsure-primary placeholder:text-tsure-muted focus:outline-none focus:ring-2 focus:ring-tsure-accent/50 disabled:opacity-50"
         autoComplete="off"
       />
       {open && filtered.length > 0 && (
         <ul
           id={listId}
           role="listbox"
-          className="absolute z-20 mt-1 w-full max-h-48 overflow-auto bg-white border border-[#c4b5a0] rounded-lg shadow-lg py-1"
+          className="absolute z-20 mt-1 w-full max-h-48 overflow-auto bg-white border border-tsure-border rounded-xl shadow-lg py-1"
         >
           {filtered.map((item, index) => (
             <li key={item} role="option" aria-selected={index === activeIndex}>
@@ -97,8 +97,8 @@ export default function SuggestInput({
                 type="button"
                 className={`w-full text-left px-3 py-2 text-sm ${
                   index === activeIndex
-                    ? 'bg-[#f5ebe0] text-[#5a3e28]'
-                    : 'text-[#3a2e28] hover:bg-[#f5ebe0]'
+                    ? 'bg-tsure-surface-hover text-tsure-primary'
+                    : 'text-tsure-primary hover:bg-tsure-surface-hover'
                 }`}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => pick(item)}

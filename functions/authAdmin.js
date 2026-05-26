@@ -171,10 +171,18 @@ export async function bulkImportStudentsHandler(callerEmail, { schoolId, rows })
           schoolId,
           role: "student",
           name,
+          nameLower: name.toLowerCase(),
           grade,
           class: classNum,
           number,
           shareScope: "学年のみ",
+          mateScope: "学内のみ",
+          mutualMates: [],
+          pendingSent: [],
+          pendingReceived: [],
+          hiddenMates: [],
+          hiddenRequests: [],
+          subjectCatalog: {},
           registrationType: "school_provisioned",
           profileComplete,
           mustChangePassword: true,
@@ -371,14 +379,60 @@ export async function createSelfRegisteredStudentHandler({ email, password, scho
   await db().collection("users").doc(normalized).set({
     role: "student",
     name: normalized.split("@")[0],
+    nameLower: normalized.split("@")[0].toLowerCase(),
     schoolId: schoolId || null,
     registrationType: "self_registered",
     profileComplete: false,
     shareScope: "学年のみ",
+    mateScope: "学内のみ",
+    mutualMates: [],
+    pendingSent: [],
+    pendingReceived: [],
+    hiddenMates: [],
+    hiddenRequests: [],
+    subjectCatalog: {},
     createdAt: FieldValue.serverTimestamp(),
   });
 
   await codeSnap.ref.delete();
 
   return { success: true, uid: userRecord.uid };
+}
+
+export async function acceptMateRequestHandler(callerEmail, { fromEmail }) {
+  const myEmail = normalizeEmail(callerEmail);
+  const theirEmail = normalizeEmail(fromEmail);
+  if (!theirEmail) {
+    throw new HttpsError("invalid-argument", "fromEmail が必要です");
+  }
+
+  const dbRef = db();
+  await dbRef.runTransaction(async (tx) => {
+    const myRef = dbRef.collection("users").doc(myEmail);
+    const theirRef = dbRef.collection("users").doc(theirEmail);
+    const [mySnap, theirSnap] = await Promise.all([tx.get(myRef), tx.get(theirRef)]);
+
+    if (!mySnap.exists() || !theirSnap.exists()) {
+      throw new HttpsError("not-found", "ユーザーが見つかりません");
+    }
+
+    const myData = mySnap.data();
+    const pendingReceived = myData.pendingReceived || [];
+    if (!pendingReceived.includes(theirEmail)) {
+      throw new HttpsError("failed-precondition", "承認待ちの申請がありません");
+    }
+
+    tx.update(myRef, {
+      pendingReceived: FieldValue.arrayRemove(theirEmail),
+      mutualMates: FieldValue.arrayUnion(theirEmail),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    tx.update(theirRef, {
+      pendingSent: FieldValue.arrayRemove(myEmail),
+      mutualMates: FieldValue.arrayUnion(myEmail),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+
+  return { success: true };
 }

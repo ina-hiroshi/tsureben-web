@@ -36,6 +36,12 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(targetEmail)).data.schoolId == teacherDoc().data.schoolId;
     }
 
+    function canAccessUserData(targetEmail) {
+      return userEmail() == targetEmail
+        || (isTeacher() && sameSchoolAsTarget(targetEmail))
+        || (isTeacher() && !exists(/databases/$(database)/documents/users/$(targetEmail)));
+    }
+
     match /schools/{schoolId} {
       allow read: if isAuthenticated();
       allow create: if isSuperAdmin();
@@ -51,34 +57,24 @@ service cloud.firestore {
     match /users/{email} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && userEmail() == email;
-      allow update: if isAuthenticated() && userEmail() == email;
+      allow update: if isAuthenticated() && userEmail() == email
+        && request.resource.data.grade == resource.data.get('grade', null)
+        && request.resource.data.class == resource.data.get('class', null)
+        && request.resource.data.number == resource.data.get('number', null);
       allow delete: if false;
     }
 
-    match /studyPlans/{email} {
-      allow read, write: if isAuthenticated() && (
-        userEmail() == email
-        || (isTeacher() && sameSchoolAsTarget(email))
-        || (isTeacher() && !exists(/databases/$(database)/documents/users/$(email)))
-      );
+    match /plans/{email}/days/{dateKey} {
+      allow read, write: if isAuthenticated() && canAccessUserData(email);
     }
 
-    match /studyPomodoroLogs/{email} {
-      allow read, write: if isAuthenticated() && (
-        userEmail() == email
-        || (isTeacher() && sameSchoolAsTarget(email))
-        || (isTeacher() && !exists(/databases/$(database)/documents/users/$(email)))
-      );
+    match /logs/{email}/days/{dateKey} {
+      allow read, write: if isAuthenticated() && canAccessUserData(email);
     }
 
-    match /activePomodoroUsers/{email} {
+    match /activeSessions/{email} {
       allow read: if isAuthenticated();
       allow create, update, delete: if isAuthenticated() && userEmail() == email;
-    }
-
-    match /scatterChartData_summary/{docId} {
-      allow read: if isAuthenticated();
-      allow write: if false;
     }
 
     match /verification_codes/{email} {

@@ -1,25 +1,26 @@
-import { FaCheckCircle, FaExclamationCircle, FaInfoCircle, FaTimes } from 'react-icons/fa';
+import { CheckCircle2, AlertCircle, Info, X } from 'lucide-react';
+import AppIcon from './AppIcon';
 
 const TYPE_STYLES = {
   success: {
-    bar: 'bg-[#5a3e28]',
-    icon: FaCheckCircle,
-    iconClass: 'text-[#5a3e28]',
+    bar: 'bg-tsure-primary',
+    icon: CheckCircle2,
+    iconClass: 'text-tsure-primary',
   },
   error: {
-    bar: 'bg-[#9c4a3a]',
-    icon: FaExclamationCircle,
-    iconClass: 'text-[#9c4a3a]',
+    bar: 'bg-red-700',
+    icon: AlertCircle,
+    iconClass: 'text-red-700',
   },
   warning: {
-    bar: 'bg-[#b8860b]',
-    icon: FaExclamationCircle,
-    iconClass: 'text-[#b8860b]',
+    bar: 'bg-amber-600',
+    icon: AlertCircle,
+    iconClass: 'text-amber-600',
   },
   info: {
-    bar: 'bg-[#726256]',
-    icon: FaInfoCircle,
-    iconClass: 'text-[#726256]',
+    bar: 'bg-tsure-muted',
+    icon: Info,
+    iconClass: 'text-tsure-muted',
   },
 };
 
@@ -33,25 +34,24 @@ export default function ToastContainer({ toasts, onDismiss }) {
     >
       {toasts.map((toast) => {
         const style = TYPE_STYLES[toast.type] || TYPE_STYLES.info;
-        const Icon = style.icon;
         return (
           <div
             key={toast.id}
-            className="pointer-events-auto w-[min(100%,22rem)] bg-[#ede3d2] border border-[#c4b5a0] rounded-xl shadow-2xl overflow-hidden animate-[toastFadeIn_0.25s_ease-out]"
+            className="pointer-events-auto w-[min(100%,22rem)] bg-tsure-surface border border-tsure-border rounded-xl shadow-2xl overflow-hidden animate-[toastFadeIn_0.25s_ease-out]"
           >
             <div className={`h-1 ${style.bar}`} />
             <div className="flex items-start gap-3 p-4">
-              <Icon className={`w-5 h-5 mt-0.5 shrink-0 ${style.iconClass}`} />
-              <p className="flex-1 text-sm text-[#5a3e28] whitespace-pre-wrap leading-relaxed">
+              <AppIcon icon={style.icon} size="md" className={`mt-0.5 ${style.iconClass}`} />
+              <p className="flex-1 text-sm text-tsure-primary whitespace-pre-wrap leading-relaxed">
                 {toast.message}
               </p>
               <button
                 type="button"
                 onClick={() => onDismiss(toast.id)}
-                className="text-[#8f735a] hover:text-[#5a3e28] shrink-0"
+                className="text-tsure-muted hover:text-tsure-primary shrink-0 min-w-touch min-h-touch flex items-center justify-center"
                 aria-label="閉じる"
               >
-                <FaTimes className="w-4 h-4" />
+                <AppIcon icon={X} size="sm" />
               </button>
             </div>
           </div>
