@@ -1,8 +1,7 @@
 import Card from './ui/Card';
-import { Pencil, Trash2 } from 'lucide-react';
-import AppIcon from './ui/AppIcon';
 import { subjectColorClass } from '../utils/planUtils';
 import EntryDetails from './StudyEntryDetails';
+import StudyEntryCardActions from './StudyEntryCardActions';
 
 function formatDuration(mins) {
   const h = Math.floor(mins / 60);
@@ -30,44 +29,15 @@ export default function StudyLogCardList({ entries = [], onEdit, onDelete }) {
     <ul className="space-y-3">
       {entries.map((entry) => (
         <li key={entry.id}>
-          <Card className="relative">
-            <div className={`border-l-4 pl-3 ${subjectColorClass(entry.subject).split(' ')[0]}`}>
-              <div className="flex justify-between items-baseline gap-3 mb-1.5">
-                <p className="text-base font-bold text-tsure-muted tabular-nums tracking-wide">
-                  {formatTimeRange(entry.startTime, entry.duration)}
-                </p>
-                <p className="text-xl font-bold text-tsure-primary tabular-nums shrink-0">
-                  {formatDuration(entry.duration || 0)}
-                </p>
-              </div>
+          <Card className="relative !p-3 sm:!p-4">
+            <StudyEntryCardActions entry={entry} onEdit={onEdit} onDelete={onDelete} />
+            <div
+              className={`border-l-4 pl-2.5 sm:pl-3 pr-1 sm:pr-24 ${subjectColorClass(entry.subject).split(' ')[0]}`}
+            >
               <EntryDetails
                 entry={entry}
-                actions={
-                  (onEdit || onDelete) && (
-                    <div className="flex gap-1 shrink-0">
-                      {onEdit && (
-                        <button
-                          type="button"
-                          className="min-w-touch min-h-touch flex items-center justify-center text-tsure-muted hover:text-tsure-primary"
-                          onClick={() => onEdit(entry)}
-                          aria-label="編集"
-                        >
-                          <AppIcon icon={Pencil} size="sm" />
-                        </button>
-                      )}
-                      {onDelete && (
-                        <button
-                          type="button"
-                          className="min-w-touch min-h-touch flex items-center justify-center text-red-600 hover:text-red-800"
-                          onClick={() => onDelete(entry)}
-                          aria-label="削除"
-                        >
-                          <AppIcon icon={Trash2} size="sm" />
-                        </button>
-                      )}
-                    </div>
-                  )
-                }
+                timeRange={formatTimeRange(entry.startTime, entry.duration)}
+                durationLabel={formatDuration(entry.duration || 0)}
               />
             </div>
           </Card>

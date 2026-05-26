@@ -7,13 +7,15 @@
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --safe-left: env(safe-area-inset-left, 0px);
   --safe-right: env(safe-area-inset-right, 0px);
+  /* サイドバーロゴ行と DateNav の高さ（py-4 + logo + py-4） */
+  --app-subheader-height: 5rem;
 }
 
 @layer base {
   html,
   body,
   #root {
-    @apply h-full m-0 p-0 font-sans text-tsure-primary bg-tsure-bg;
+    @apply min-h-full m-0 p-0 font-sans text-tsure-primary bg-tsure-bg;
     -webkit-tap-highlight-color: transparent;
   }
 

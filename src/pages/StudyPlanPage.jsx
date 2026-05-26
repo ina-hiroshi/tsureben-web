@@ -5,11 +5,11 @@ import { getProfile } from '../services/firestore/userService';
 import { getDayPlans, deleteEntry as deletePlanEntry } from '../services/firestore/planService';
 import { flattenDayPlans } from '../utils/planUtils';
 import PageLayout from '../components/ui/PageLayout';
-import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import DateNav from '../components/ui/DateNav';
 import PlanCardList from '../components/PlanCardList';
 import TimeInputDialog from '../components/TimeInputDialog';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import AppIcon from '../components/ui/AppIcon';
 import { useUiFeedback } from '../contexts/UiFeedbackContext';
 
@@ -64,19 +64,14 @@ export default function StudyPlanPage() {
 
   return (
     <PageLayout title="学習計画">
-      <Card className="sticky top-16 z-10 mb-4">
-        <div className="flex items-center justify-between gap-2">
-          <Button variant="secondary" size="sm" className="min-w-touch px-3" onClick={() => shiftDate(-1)} aria-label="前の日">
-            <AppIcon icon={ChevronLeft} size="md" />
-          </Button>
-          <span className="font-bold text-tsure-primary">{selectedDate.format('M月D日（ddd）')}</span>
-          <Button variant="secondary" size="sm" className="min-w-touch px-3" onClick={() => shiftDate(1)} aria-label="次の日">
-            <AppIcon icon={ChevronRight} size="md" />
-          </Button>
-        </div>
-      </Card>
+      <div className="pb-8">
+      <DateNav
+        date={selectedDate}
+        onPrevious={() => shiftDate(-1)}
+        onNext={() => shiftDate(1)}
+      />
 
-      <div className="flex justify-end mb-3">
+      <div className="flex justify-end mb-3 shrink-0">
         <Button onClick={openNew} className="inline-flex items-center gap-2">
           <AppIcon icon={Plus} size="sm" />
           計画を追加
@@ -95,6 +90,7 @@ export default function StudyPlanPage() {
         onSaved={reload}
         onDelete={editingEntry ? () => handleDelete(editingEntry) : undefined}
       />
+      </div>
     </PageLayout>
   );
 }

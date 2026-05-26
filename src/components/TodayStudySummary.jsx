@@ -43,10 +43,10 @@ export default function TodayStudySummary({ totalMinutes = 0, entries = [] }) {
 
   return (
     <Card className="overflow-hidden !p-0">
-      <div className="px-4 pt-4 pb-3 bg-gradient-to-br from-tsure-accent/15 via-transparent to-transparent">
+      <div className="px-4 pt-4 pb-3">
         <div className="flex items-center gap-2 text-tsure-primary mb-3">
-          <AppIcon icon={Clock} size="sm" />
-          <span className="text-xs font-semibold tracking-wide">本日の学習時間</span>
+          <AppIcon icon={Clock} size="md" />
+          <span className="text-base font-bold">本日の学習時間</span>
         </div>
 
         <div className="flex items-end justify-center gap-1 tabular-nums text-tsure-primary">

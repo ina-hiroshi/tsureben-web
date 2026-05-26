@@ -12,15 +12,14 @@ import { getProfile } from '../services/firestore/userService';
 import PageLayout from '../components/ui/PageLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
+import DateNav from '../components/ui/DateNav';
 import StudyLogCardList from '../components/StudyLogCardList';
 import StudyContentModal from '../components/StudyContentModal';
 import DailySubjectPieChart from '../components/DailySubjectPieChart';
 import StudyTimeLineChart from '../components/StudyTimeLineChart';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import AppIcon from '../components/ui/AppIcon';
 import { useUiFeedback } from '../contexts/UiFeedbackContext';
-
-const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 
 export default function StudyRecordPage() {
   const { email } = useAuth();
@@ -127,45 +126,36 @@ export default function StudyRecordPage() {
 
   return (
     <PageLayout title="学習記録">
-      <div className="space-y-4">
-        <Card>
-          <DailySubjectPieChart
-            totalMinutes={dayLogs.totalMinutes}
-            bySubject={dayLogs.bySubject}
-          />
-        </Card>
-        <Card>
-          <StudyTimeLineChart email={email} refreshKey={logsRefreshKey} />
-        </Card>
+      <div className="space-y-4 pb-8">
+        <DateNav
+          date={selectedDate}
+          onPrevious={() => setSelectedDate((d) => d.subtract(1, 'day'))}
+          onNext={() => setSelectedDate((d) => d.add(1, 'day'))}
+        />
+
+        <div className="space-y-4 shrink-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
+          <Card>
+            <DailySubjectPieChart
+              totalMinutes={dayLogs.totalMinutes}
+              bySubject={dayLogs.bySubject}
+            />
+          </Card>
+          <Card>
+            <StudyTimeLineChart email={email} refreshKey={logsRefreshKey} />
+          </Card>
+        </div>
 
         <section>
-          <div className="flex items-center justify-between gap-2 mb-4">
-            <Button variant="secondary" size="sm" className="min-w-touch px-3 shrink-0" onClick={() => setSelectedDate((d) => d.subtract(1, 'day'))} aria-label="前の日">
-              <AppIcon icon={ChevronLeft} size="md" />
-            </Button>
-            <div
-              className="flex flex-col items-center flex-1 min-w-0 py-1"
-              aria-label={`${selectedDate.format('M月D日')} ${DAY_LABELS[selectedDate.day()]}曜日`}
+          <div className="flex justify-end mb-3 shrink-0">
+            <Button
+              className="inline-flex items-center gap-2"
+              onClick={handleAddManual}
+              disabled={isFutureDate}
             >
-              <span className="text-2xl font-bold text-tsure-on-primary tabular-nums leading-none tracking-wide">
-                {selectedDate.format('M月D日')}
-                （{DAY_LABELS[selectedDate.day()]}）
-              </span>
-            </div>
-            <Button variant="secondary" size="sm" className="min-w-touch px-3 shrink-0" onClick={() => setSelectedDate((d) => d.add(1, 'day'))} aria-label="次の日">
-              <AppIcon icon={ChevronRight} size="md" />
+              <AppIcon icon={Plus} size="sm" />
+              計測漏れを追加
             </Button>
           </div>
-          <Button
-            variant="secondary"
-            size="md"
-            className="w-full mb-3 inline-flex items-center justify-center gap-2"
-            onClick={handleAddManual}
-            disabled={isFutureDate}
-          >
-            <AppIcon icon={Plus} size="sm" />
-            計測漏れを追加
-          </Button>
           <StudyLogCardList entries={dayLogs.entries} onEdit={handleEdit} onDelete={handleDelete} />
         </section>
       </div>

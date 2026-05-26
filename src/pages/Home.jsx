@@ -94,8 +94,8 @@ export default function Home() {
 
   return (
     <PageLayout>
-      <div className="space-y-4 pb-8">
-        <section>
+      <div className="space-y-4 pb-8 md:space-y-6">
+        <section className="shrink-0">
           <SectionTitle
             onDark
             action={
@@ -111,14 +111,14 @@ export default function Home() {
           <StudyPresenceGrid users={activeMates} />
         </section>
 
-        <Button to="/pomodoro" variant="accent" size="lg" className="w-full">
+        <Button
+          to="/pomodoro"
+          variant="accent"
+          size="lg"
+          className="w-full shrink-0 md:py-5 md:text-2xl md:min-h-[4.5rem] md:rounded-2xl"
+        >
           学習を始める
         </Button>
-
-        <TodayStudySummary
-          totalMinutes={todayLog.totalMinutes}
-          entries={todayLog.entries}
-        />
 
         {pendingReceived.length > 0 && (
           <Card>
@@ -136,7 +136,7 @@ export default function Home() {
           </Card>
         )}
 
-        <div className="grid grid-cols-5 gap-2 w-full">
+        <div className="grid grid-cols-5 gap-2 w-full md:hidden">
           <NavCard to="/pomodoro" icon={NAV_CARD_ICONS.timer} label="タイマー" />
           <NavCard to="/studyplan" icon={NAV_CARD_ICONS.plan} label="計画" />
           <NavCard to="/studyrecord" icon={NAV_CARD_ICONS.record} label="記録" />
@@ -144,20 +144,27 @@ export default function Home() {
           <NavCard to="/settings" icon={NAV_CARD_ICONS.settings} label="設定" />
         </div>
 
-        <section>
-          <SectionTitle
-            onDark
-            action={
-              <Button to="/studyplan" variant="ghost" size="sm" className="inline-flex items-center gap-1">
-                編集
-                <AppIcon icon={ChevronRight} size="sm" />
-              </Button>
-            }
-          >
-            今日の計画
-          </SectionTitle>
-          <PlanCardList entries={plans} />
-        </section>
+        <div className="space-y-4">
+          <TodayStudySummary
+            totalMinutes={todayLog.totalMinutes}
+            entries={todayLog.entries}
+          />
+
+          <section>
+            <SectionTitle
+              onDark
+              action={
+                <Button to="/studyplan" variant="ghost" size="sm" className="inline-flex items-center gap-1">
+                  編集
+                  <AppIcon icon={ChevronRight} size="sm" />
+                </Button>
+              }
+            >
+              今日の計画
+            </SectionTitle>
+            <PlanCardList entries={plans} />
+          </section>
+        </div>
       </div>
     </PageLayout>
   );
