@@ -1,58 +1,109 @@
-import { useEffect, useState } from 'react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import { getDayLogs } from '../services/firestore/logService';
+import { useMemo } from 'react';
+import { BookOpen } from 'lucide-react';
+import SectionTitle from './ui/SectionTitle';
+import AppIcon from './ui/AppIcon';
 
 const SUBJECT_COLORS = {
-  国語: '#db2777',
-  数学: '#2563eb',
-  英語: '#7c3aed',
-  理科: '#16a34a',
-  社会: '#ca8a04',
-  情報: '#4f46e5',
-  その他: '#6b7280',
+  国語: 'bg-pink-400',
+  数学: 'bg-blue-400',
+  英語: 'bg-purple-400',
+  理科: 'bg-green-400',
+  社会: 'bg-amber-400',
+  情報: 'bg-indigo-400',
+  その他: 'bg-gray-400',
 };
 
-export default function DailySubjectPieChart({ email, dateKey }) {
-  const [data, setData] = useState([]);
-  const [totalMinutes, setTotalMinutes] = useState(0);
+function barColor(subject) {
+  return SUBJECT_COLORS[subject] || 'bg-tsure-muted';
+}
 
-  useEffect(() => {
-    if (!email || !dateKey) return;
-    getDayLogs(email, dateKey).then((logs) => {
-      const bySubject = logs.bySubject || {};
-      const chartData = Object.entries(bySubject).map(([name, value]) => ({
-        name,
-        value,
-        subject: name,
-      }));
-      setData(chartData);
-      setTotalMinutes(logs.totalMinutes || 0);
-    });
-  }, [email, dateKey]);
+function formatDuration(totalMinutes) {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  if (h > 0) return `${h}時間${m}分`;
+  return `${m}分`;
+}
 
-  const formatTotalTime = (total) => {
-    const h = Math.floor(total / 60);
-    const m = total % 60;
-    return h > 0 ? `${h}時間${m}分` : `${m}分`;
-  };
+export default function DailySubjectPieChart({ totalMinutes = 0, bySubject = {} }) {
+  const subjects = useMemo(
+    () =>
+      Object.entries(bySubject)
+        .map(([name, minutes]) => ({ name, minutes }))
+        .sort((a, b) => b.minutes - a.minutes),
+    [bySubject]
+  );
 
-  if (!data.length) {
-    return <p className="text-sm text-tsure-muted text-center py-6">データがありません</p>;
+  if (!subjects.length || totalMinutes <= 0) {
+    return (
+      <div>
+        <SectionTitle>教科別の学習時間</SectionTitle>
+        <p className="text-sm text-tsure-muted text-center py-6">この日の学習記録はありません</p>
+      </div>
+    );
   }
+
+  const hours = Math.floor(totalMinutes / 60);
+  const mins = totalMinutes % 60;
 
   return (
     <div className="w-full">
-      <p className="text-sm font-semibold text-tsure-primary mb-2">教科別（{formatTotalTime(totalMinutes)}）</p>
-      <ResponsiveContainer width="100%" height={220}>
-        <PieChart>
-          <Pie data={data} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label>
-            {data.map((entry) => (
-              <Cell key={entry.name} fill={SUBJECT_COLORS[entry.subject] || SUBJECT_COLORS['その他']} />
-            ))}
-          </Pie>
-          <Tooltip formatter={(v) => `${v}分`} />
-        </PieChart>
-      </ResponsiveContainer>
+      <SectionTitle>教科別の学習時間</SectionTitle>
+
+      <div className="flex items-end justify-center gap-1 tabular-nums text-tsure-primary mb-4">
+        {hours > 0 && (
+          <>
+            <span className="text-4xl font-bold leading-none">{hours}</span>
+            <span className="text-sm font-medium text-tsure-muted pb-1">時間</span>
+          </>
+        )}
+        <span className="text-4xl font-bold leading-none">{hours > 0 ? mins : totalMinutes}</span>
+        <span className="text-sm font-medium text-tsure-muted pb-1">分</span>
+        <span className="text-xs text-tsure-muted pb-1 ml-1">（合計）</span>
+      </div>
+
+      <div
+        className="flex h-3 rounded-full overflow-hidden bg-tsure-surface-hover mb-4"
+        role="img"
+        aria-label={`教科別 ${formatDuration(totalMinutes)}`}
+      >
+        {subjects.map(({ name, minutes }) => (
+          <div
+            key={name}
+            className={`${barColor(name)} transition-all`}
+            style={{ width: `${(minutes / totalMinutes) * 100}%` }}
+            title={`${name} ${minutes}分`}
+          />
+        ))}
+      </div>
+
+      <ul className="space-y-2.5">
+        {subjects.map(({ name, minutes }) => {
+          const pct = Math.round((minutes / totalMinutes) * 100);
+          return (
+            <li key={name} className="flex items-center gap-3 min-w-0">
+              <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${barColor(name)}`} />
+              <span className="text-sm font-medium text-tsure-primary shrink-0 w-12">{name}</span>
+              <div className="flex-1 h-2 rounded-full bg-tsure-surface-hover overflow-hidden min-w-0">
+                <div
+                  className={`h-full rounded-full ${barColor(name)}`}
+                  style={{ width: `${pct}%` }}
+                />
+              </div>
+              <span className="text-xs text-tsure-muted tabular-nums shrink-0 w-10 text-right">
+                {pct}%
+              </span>
+              <span className="text-sm text-tsure-primary tabular-nums shrink-0 w-14 text-right">
+                {minutes}分
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+
+      <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-tsure-muted">
+        <AppIcon icon={BookOpen} size="sm" />
+        選択した日の記録を表示しています
+      </p>
     </div>
   );
 }

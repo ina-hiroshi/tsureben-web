@@ -12,7 +12,7 @@ function formatDuration(mins) {
 }
 
 function formatTimeRange(startTime, durationMins) {
-  if (!startTime) return '';
+  if (!startTime) return '時刻未入力';
   const [h, m] = startTime.split(':').map(Number);
   const endTotal = h * 60 + m + (Number(durationMins) || 0);
   const endH = Math.floor(endTotal / 60) % 24;

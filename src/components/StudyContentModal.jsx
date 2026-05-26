@@ -19,6 +19,7 @@ export default function StudyContentModal({
   const [book, setBook] = useState('');
   const [content, setContent] = useState('');
   const [duration, setDuration] = useState('');
+  const [startTime, setStartTime] = useState('');
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -28,34 +29,48 @@ export default function StudyContentModal({
     setBook(initial.book || '');
     setContent(initial.content || '');
     setDuration(initial.duration != null ? String(initial.duration) : '');
+    setStartTime(initial.startTime || '');
   }, [open, initial]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!subject.trim() || !topic.trim()) return;
+    if (mode === 'manual' && (!duration || Number(duration) < 1)) return;
     setSaving(true);
     try {
-      await onSave({
+      const saved = await onSave({
         subject: subject.trim(),
         topic: topic.trim(),
         book: book.trim(),
         content: content.trim(),
         duration: duration ? Number(duration) : initial.duration,
-        startTime: initial.startTime,
+        startTime: mode === 'manual' || mode === 'edit' ? startTime.trim() : initial.startTime,
       });
-      onClose();
+      if (saved !== false) onClose();
     } finally {
       setSaving(false);
     }
   };
 
+  const title =
+    mode === 'edit'
+      ? '学習記録を編集'
+      : mode === 'manual'
+        ? '計測漏れを追加'
+        : '学習内容を登録';
+
   return (
     <Modal
       open={open}
       onClose={onClose}
-      title={mode === 'edit' ? '学習記録を編集' : '学習内容を登録'}
+      title={title}
     >
       <form onSubmit={handleSubmit} className="space-y-4">
+        {mode === 'manual' && (
+          <p className="text-sm text-tsure-muted leading-relaxed">
+            タイマーで記録できなかった学習を、選択中の日付に追加できます。
+          </p>
+        )}
         <SuggestInput
           label="教科 *"
           value={subject}
@@ -79,14 +94,22 @@ export default function StudyContentModal({
           value={content}
           onChange={(e) => setContent(e.target.value)}
         />
-        {(mode === 'edit' || initial.showDuration) && (
+        {(mode === 'manual' || mode === 'edit') && (
+          <Input
+            label="開始時刻（任意）"
+            type="time"
+            value={startTime}
+            onChange={(e) => setStartTime(e.target.value)}
+          />
+        )}
+        {(mode === 'edit' || mode === 'manual' || initial.showDuration) && (
           <Input
             label="学習時間（分）"
             type="number"
             min="1"
             value={duration}
             onChange={(e) => setDuration(e.target.value)}
-            required={mode === 'edit'}
+            required={mode === 'edit' || mode === 'manual'}
           />
         )}
         <div className="flex flex-col gap-2 pt-2">

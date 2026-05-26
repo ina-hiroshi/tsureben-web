@@ -17,7 +17,9 @@ function recomputeAggregates(entries) {
 export async function getDayLogs(email, dateKey) {
   const snap = await getDoc(doc(db, 'logs', email, 'days', dateKey));
   if (!snap.exists()) return { entries: [], totalMinutes: 0, bySubject: {} };
-  return snap.data();
+  const entries = snap.data().entries || [];
+  const { totalMinutes, bySubject } = recomputeAggregates(entries);
+  return { ...snap.data(), entries, totalMinutes, bySubject };
 }
 
 export async function getDayRange(email, startDate, endDate) {
@@ -25,7 +27,9 @@ export async function getDayRange(email, startDate, endDate) {
   const result = {};
   snap.docs.forEach((d) => {
     if (d.id >= startDate && d.id <= endDate) {
-      result[d.id] = d.data();
+      const entries = d.data().entries || [];
+      const { totalMinutes, bySubject } = recomputeAggregates(entries);
+      result[d.id] = { ...d.data(), entries, totalMinutes, bySubject };
     }
   });
   return result;
