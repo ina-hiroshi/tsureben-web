@@ -1,0 +1,18 @@
+<svg width="200" height="220" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="marshBody" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="100%" stop-color="#ffeef7" />
+    </linearGradient>
+  </defs>
+  <g fill="none" fill-rule="evenodd">
+    <ellipse cx="100" cy="190" rx="70" ry="28" fill="rgba(0,0,0,0.1)" />
+    <rect x="40" y="50" width="120" height="120" rx="32" fill="url(#marshBody)" stroke="#f3d5ea" stroke-width="4" />
+    <ellipse cx="100" cy="52" rx="58" ry="16" fill="#fff5fc" stroke="#f3d5ea" stroke-width="3" />
+    <circle cx="80" cy="115" r="9" fill="#4b4039" />
+    <circle cx="120" cy="115" r="9" fill="#4b4039" />
+    <path d="M90 135c4 6 10 9 18 9s14-3 18-9" stroke="#4b4039" stroke-width="4" stroke-linecap="round" />
+    <circle cx="68" cy="125" r="5" fill="#ffd0de" />
+    <circle cx="132" cy="125" r="5" fill="#ffd0de" />
+  </g>
+</svg>

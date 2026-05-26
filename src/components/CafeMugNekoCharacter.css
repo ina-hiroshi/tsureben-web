@@ -1,0 +1,83 @@
+.cafe-mugneko-wrapper {
+  position: relative;
+  width: 220px;
+  height: 260px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.cafe-mugneko-shadow {
+  position: absolute;
+  bottom: 26px;
+  width: 140px;
+  height: 26px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.16);
+  filter: blur(2px);
+}
+
+.cafe-mugneko-image {
+  width: 170px;
+  height: auto;
+  object-fit: contain;
+  animation: cafe-mugneko-bob 3.2s ease-in-out infinite;
+}
+
+.cafe-mugneko-speech {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 280px;
+  padding: 8px 12px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #3a2a1c;
+}
+
+.cafe-mugneko-speech::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 8px 8px 0 8px;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.96) transparent transparent transparent;
+}
+
+@keyframes cafe-mugneko-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+.cafe-mugneko-wrapper--happy .cafe-mugneko-image {
+  animation-duration: 2.2s;
+  transform-origin: 50% 90%;
+}
+
+.cafe-mugneko-wrapper--happy .cafe-mugneko-speech {
+  background: rgba(255, 250, 230, 0.97);
+}
+
+.cafe-mugneko-wrapper--tired .cafe-mugneko-image {
+  animation-duration: 4s;
+  filter: brightness(0.95);
+}
+
+.cafe-mugneko-wrapper--tired .cafe-mugneko-speech {
+  background: rgba(248, 248, 248, 0.96);
+}
+

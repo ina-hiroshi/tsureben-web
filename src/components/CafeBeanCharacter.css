@@ -1,0 +1,82 @@
+.cafe-bean-wrapper {
+  position: relative;
+  width: 220px;
+  height: 260px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.cafe-bean-shadow {
+  position: absolute;
+  bottom: 24px;
+  width: 140px;
+  height: 28px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.15);
+  filter: blur(2px);
+}
+
+.cafe-bean-image {
+  width: 180px;
+  height: auto;
+  object-fit: contain;
+  animation: cafe-bean-bob 3s ease-in-out infinite;
+}
+
+.cafe-bean-speech {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 260px;
+  padding: 8px 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  font-size: 0.85rem;
+  line-height: 1.4;
+  color: #3a2a1c;
+}
+
+.cafe-bean-speech::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 8px 8px 0 8px;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.9) transparent transparent transparent;
+}
+
+@keyframes cafe-bean-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.cafe-bean-wrapper--happy .cafe-bean-image {
+  animation-duration: 2.2s;
+  transform-origin: 50% 90%;
+}
+
+.cafe-bean-wrapper--happy .cafe-bean-speech {
+  background: rgba(255, 252, 230, 0.95);
+}
+
+.cafe-bean-wrapper--tired .cafe-bean-image {
+  animation-duration: 4s;
+  filter: brightness(0.9);
+}
+
+.cafe-bean-wrapper--tired .cafe-bean-speech {
+  background: rgba(245, 245, 245, 0.9);
+}

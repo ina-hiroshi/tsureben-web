@@ -1,18 +1,88 @@
-rules_version='2'
+rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2025, 8, 4);
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function userEmail() {
+      return request.auth.token.email;
+    }
+
+    function teacherDoc() {
+      return get(/databases/$(database)/documents/teachers/$(userEmail()));
+    }
+
+    function isTeacher() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/teachers/$(userEmail()));
+    }
+
+    function teacherRole() {
+      return teacherDoc().data.role;
+    }
+
+    function isSchoolAdmin() {
+      return isTeacher() && teacherRole() in ['school_admin', 'super_admin'];
+    }
+
+    function isSuperAdmin() {
+      return isTeacher() && teacherRole() == 'super_admin';
+    }
+
+    function sameSchoolAsTarget(targetEmail) {
+      return isTeacher()
+        && get(/databases/$(database)/documents/users/$(targetEmail)).data.schoolId == teacherDoc().data.schoolId;
+    }
+
+    match /schools/{schoolId} {
+      allow read: if isAuthenticated();
+      allow create: if isSuperAdmin();
+      allow update: if isSuperAdmin();
+      allow delete: if false;
+    }
+
+    match /teachers/{email} {
+      allow read: if isAuthenticated() && (userEmail() == email || isSchoolAdmin());
+      allow write: if false;
+    }
+
+    match /users/{email} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && userEmail() == email;
+      allow update: if isAuthenticated() && userEmail() == email;
+      allow delete: if false;
+    }
+
+    match /studyPlans/{email} {
+      allow read, write: if isAuthenticated() && (
+        userEmail() == email
+        || (isTeacher() && sameSchoolAsTarget(email))
+        || (isTeacher() && !exists(/databases/$(database)/documents/users/$(email)))
+      );
+    }
+
+    match /studyPomodoroLogs/{email} {
+      allow read, write: if isAuthenticated() && (
+        userEmail() == email
+        || (isTeacher() && sameSchoolAsTarget(email))
+        || (isTeacher() && !exists(/databases/$(database)/documents/users/$(email)))
+      );
+    }
+
+    match /activePomodoroUsers/{email} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAuthenticated() && userEmail() == email;
+    }
+
+    match /scatterChartData_summary/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+
+    match /verification_codes/{email} {
+      allow read, write: if false;
     }
   }
 }

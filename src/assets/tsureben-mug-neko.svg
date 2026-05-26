@@ -1,0 +1,28 @@
+<svg width="220" height="260" viewBox="0 0 220 260" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="mugBody" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fff7f1" />
+      <stop offset="100%" stop-color="#ffe0cc" />
+    </linearGradient>
+    <linearGradient id="mugCoffee" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#c08a5a" />
+      <stop offset="100%" stop-color="#8b5a30" />
+    </linearGradient>
+  </defs>
+  <g fill="none" fill-rule="evenodd">
+    <ellipse cx="110" cy="220" rx="80" ry="30" fill="rgba(0,0,0,0.12)" />
+    <rect x="40" y="80" width="140" height="110" rx="24" fill="url(#mugBody)" stroke="#f1c2a0" stroke-width="4" />
+    <path d="M180 105c18 0 30 15 30 32s-12 32-30 32" stroke="#f1c2a0" stroke-width="8" fill="none" stroke-linecap="round" />
+    <rect x="50" y="95" width="120" height="12" rx="6" fill="#fbe1ce" />
+    <rect x="56" y="102" width="108" height="10" rx="5" fill="url(#mugCoffee)" />
+    <path d="M70 70c-2-14 8-24 20-22" stroke="#f1c2a0" stroke-width="5" stroke-linecap="round" />
+    <path d="M150 70c2-14-8-24-20-22" stroke="#f1c2a0" stroke-width="5" stroke-linecap="round" />
+    <circle cx="88" cy="142" r="9" fill="#4b4039" />
+    <circle cx="132" cy="142" r="9" fill="#4b4039" />
+    <path d="M102 150c0 3 5 6 8 6s8-3 8-6" stroke="#4b4039" stroke-width="4" stroke-linecap="round" />
+    <circle cx="110" cy="158" r="4" fill="#ff8aa0" />
+    <circle cx="78" cy="150" r="5" fill="#ffd3dd" />
+    <circle cx="142" cy="150" r="5" fill="#ffd3dd" />
+    <path d="M62 185c14 8 30 12 48 12s34-4 48-12" stroke="#f1c2a0" stroke-width="6" stroke-linecap="round" />
+  </g>
+</svg>

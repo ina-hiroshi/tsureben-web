@@ -1,0 +1,22 @@
+<svg width="200" height="220" viewBox="0 0 200 220" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="cookieBody" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#fbe0b8" />
+      <stop offset="100%" stop-color="#f1c58f" />
+    </linearGradient>
+  </defs>
+  <g fill="none" fill-rule="evenodd">
+    <ellipse cx="100" cy="190" rx="70" ry="26" fill="rgba(0,0,0,0.12)" />
+    <circle cx="100" cy="115" r="60" fill="url(#cookieBody)" stroke="#e0a96a" stroke-width="4" />
+    <circle cx="75" cy="105" r="7" fill="#8b5a30" />
+    <circle cx="125" cy="102" r="7" fill="#8b5a30" />
+    <circle cx="95" cy="85" r="6" fill="#8b5a30" />
+    <circle cx="115" cy="130" r="6" fill="#8b5a30" />
+    <circle cx="80" cy="135" r="6" fill="#8b5a30" />
+    <circle cx="78" cy="118" r="9" fill="#4b4039" />
+    <circle cx="122" cy="118" r="9" fill="#4b4039" />
+    <path d="M88 136c3 7 8 11 12 11 4 0 9-4 12-11" stroke="#4b4039" stroke-width="4" stroke-linecap="round" />
+    <circle cx="68" cy="130" r="5" fill="#ffd0d0" />
+    <circle cx="132" cy="130" r="5" fill="#ffd0d0" />
+  </g>
+</svg>

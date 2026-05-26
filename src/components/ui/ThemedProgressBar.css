@@ -1,0 +1,28 @@
+.themed-progress-track {
+  height: 8px;
+  background: #dac7b4;
+  border-radius: 9999px;
+  overflow: hidden;
+  border: 1px solid #c4b5a0;
+}
+
+.themed-progress-bar {
+  height: 100%;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, #5a3e28 0%, #8f735a 50%, #5a3e28 100%);
+  background-size: 200% 100%;
+}
+
+.themed-progress-bar--indeterminate {
+  width: 45%;
+  animation: themed-progress-slide 1.35s ease-in-out infinite;
+}
+
+@keyframes themed-progress-slide {
+  0% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(320%);
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "appId": "com.tsureben.app",
+  "appName": "TsureBenApp",
+  "webDir": "dist",
+  "iosScheme": "capacitor",
+  "plugins": {
+    "GoogleAuth": {
+      "scopes": [
+        "profile",
+        "email"
+      ],
+      "serverClientId": "77789669140-61nhedsb0v3i2qsthnsq0pm7nba0ahkr.apps.googleusercontent.com",
+      "iosClientId": "77789669140-inaoihtj3lg3q0sqbfb0cjqmoduu1oes.apps.googleusercontent.com",
+      "forceCodeForRefreshToken": true
+    }
+  },
+  "packageClassList": []
+}

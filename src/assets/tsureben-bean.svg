@@ -1,0 +1,28 @@
+<svg width="240" height="300" viewBox="0 0 240 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="beanGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffe4d7" />
+      <stop offset="100%" stop-color="#ffd0c7" />
+    </linearGradient>
+    <linearGradient id="earGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ffd0c7" />
+      <stop offset="100%" stop-color="#ffb6a9" />
+    </linearGradient>
+  </defs>
+  <g fill="none" fill-rule="evenodd">
+    <ellipse cx="120" cy="220" rx="90" ry="50" fill="rgba(0,0,0,0.12)" />
+    <path d="M45 190c0-85 80-145 135-125 25 8 60 40 45 100S180 270 120 270 45 205 45 190z" fill="url(#beanGradient)" stroke="#f0b0a0" stroke-width="4" />
+    <path d="M75 120c-10-20 4-50 30-55s40 10 45 30" stroke="#ff9f9f" stroke-width="6" stroke-linecap="round" />
+    <path d="M165 120c10-20-4-50-30-55s-40 10-45 30" stroke="#ff9f9f" stroke-width="6" stroke-linecap="round" />
+    <circle cx="95" cy="160" r="10" fill="#4b4039" />
+    <circle cx="145" cy="160" r="10" fill="#4b4039" />
+    <path d="M110 180c0 4 6 8 10 8s10-4 10-8" stroke="#4b4039" stroke-width="4" stroke-linecap="round" />
+    <circle cx="120" cy="190" r="5" fill="#ff7ea7" />
+    <g opacity="0.6">
+      <circle cx="70" cy="95" r="15" fill="#fff" />
+      <circle cx="175" cy="90" r="15" fill="#fff" />
+    </g>
+    <circle cx="70" cy="95" r="7" fill="#ffd9e1" />
+    <circle cx="175" cy="90" r="7" fill="#ffd9e1" />
+  </g>
+</svg>

@@ -1,0 +1,82 @@
+.cafe-marsh-wrapper {
+  position: relative;
+  width: 200px;
+  height: 230px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.cafe-marsh-shadow {
+  position: absolute;
+  bottom: 20px;
+  width: 130px;
+  height: 24px;
+  border-radius: 9999px;
+  background: rgba(0, 0, 0, 0.14);
+  filter: blur(2px);
+}
+
+.cafe-marsh-image {
+  width: 150px;
+  height: auto;
+  object-fit: contain;
+  animation: cafe-marsh-bob 3.4s ease-in-out infinite;
+}
+
+.cafe-marsh-speech {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 240px;
+  padding: 6px 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.06);
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: #3a2a1c;
+}
+
+.cafe-marsh-speech::after {
+  content: "";
+  position: absolute;
+  bottom: -8px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-width: 8px 8px 0 8px;
+  border-style: solid;
+  border-color: rgba(255, 255, 255, 0.96) transparent transparent transparent;
+}
+
+@keyframes cafe-marsh-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.cafe-marsh-wrapper--happy .cafe-marsh-image {
+  animation-duration: 2.4s;
+}
+
+.cafe-marsh-wrapper--happy .cafe-marsh-speech {
+  background: rgba(255, 246, 252, 0.97);
+}
+
+.cafe-marsh-wrapper--tired .cafe-marsh-image {
+  animation-duration: 4.2s;
+  filter: brightness(0.95);
+}
+
+.cafe-marsh-wrapper--tired .cafe-marsh-speech {
+  background: rgba(248, 248, 248, 0.96);
+}
+
