@@ -37,12 +37,12 @@ export default function ToastContainer({ toasts, onDismiss }) {
         return (
           <div
             key={toast.id}
-            className="pointer-events-auto w-[min(100%,22rem)] bg-tsure-surface border border-tsure-border rounded-xl shadow-2xl overflow-hidden animate-[toastFadeIn_0.25s_ease-out]"
+            className="pointer-events-auto w-[min(100%,22rem)] bg-white border-2 border-tsure-primary/20 rounded-xl shadow-tsure-raised ring-1 ring-black/10 overflow-hidden animate-[toastFadeIn_0.25s_ease-out]"
           >
             <div className={`h-1 ${style.bar}`} />
             <div className="flex items-start gap-3 p-4">
               <AppIcon icon={style.icon} size="md" className={`mt-0.5 ${style.iconClass}`} />
-              <p className="flex-1 text-sm text-tsure-primary whitespace-pre-wrap leading-relaxed">
+              <p className="flex-1 text-sm font-medium text-tsure-primary whitespace-pre-wrap leading-relaxed">
                 {toast.message}
               </p>
               <button
