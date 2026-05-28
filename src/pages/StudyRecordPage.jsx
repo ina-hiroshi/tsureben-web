@@ -104,6 +104,7 @@ export default function StudyRecordPage() {
 
     if (modalMode === 'edit') {
       await updateEntry(email, dateKey, editEntry.id, fields);
+      await updateSubjectCatalog(email, fields);
       toast.success('記録を更新しました');
       closeModal();
       reload();
@@ -138,10 +139,23 @@ export default function StudyRecordPage() {
             <DailySubjectPieChart
               totalMinutes={dayLogs.totalMinutes}
               bySubject={dayLogs.bySubject}
+              emptyAction={
+                <Button to="/pomodoro" variant="secondary" size="sm">
+                  学習タイマーを開く
+                </Button>
+              }
             />
           </Card>
           <Card>
-            <StudyTimeLineChart email={email} refreshKey={logsRefreshKey} />
+            <StudyTimeLineChart
+              email={email}
+              refreshKey={logsRefreshKey}
+              emptyAction={
+                <Button to="/pomodoro" variant="secondary" size="sm">
+                  学習タイマーを開く
+                </Button>
+              }
+            />
           </Card>
         </div>
 
@@ -156,7 +170,22 @@ export default function StudyRecordPage() {
               計測漏れを追加
             </Button>
           </div>
-          <StudyLogCardList entries={dayLogs.entries} onEdit={handleEdit} onDelete={handleDelete} />
+          <StudyLogCardList
+            entries={dayLogs.entries}
+            onEdit={handleEdit}
+            onDelete={handleDelete}
+            emptyAction={
+              <Button
+                className="inline-flex items-center gap-2"
+                onClick={handleAddManual}
+                disabled={isFutureDate}
+                size="sm"
+              >
+                <AppIcon icon={Plus} size="sm" />
+                計測漏れを追加
+              </Button>
+            }
+          />
         </section>
       </div>
 

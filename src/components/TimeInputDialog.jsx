@@ -4,9 +4,9 @@ import Input from './ui/Input';
 import Button from './ui/Button';
 import SuggestInput from './ui/SuggestInput';
 import { saveEntry } from '../services/firestore/planService';
+import { updateSubjectCatalog } from '../services/firestore/logService';
 import { useUiFeedback } from '../contexts/UiFeedbackContext';
-
-const SUBJECTS = ['国語', '数学', '英語', '理科', '社会', '情報', 'その他'];
+import { SUBJECTS } from '../constants/subjects';
 
 export default function TimeInputDialog({
   open,
@@ -75,6 +75,7 @@ export default function TimeInputDialog({
     setSaving(true);
     try {
       await saveEntry(email, dateKey, form, entry?.id);
+      await updateSubjectCatalog(email, form);
       toast.success('保存しました');
       onSaved?.();
       onClose();

@@ -6,6 +6,7 @@ const MAIN_WIDTH = {
   default: 'max-w-2xl mx-auto md:max-w-none md:mx-0',
   wide: 'max-w-2xl mx-auto md:max-w-none md:mx-0',
   narrow: 'max-w-2xl mx-auto md:max-w-xl md:mx-auto',
+  settings: 'max-w-2xl mx-auto md:max-w-none md:mx-0 lg:max-w-6xl lg:mx-auto',
 };
 
 export default function PageLayout({

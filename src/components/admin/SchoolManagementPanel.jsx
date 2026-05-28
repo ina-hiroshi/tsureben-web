@@ -9,6 +9,7 @@ import { auth, db } from '../../firebase';
 import { useTeacherStatus } from '../../hooks/useTeacherStatus';
 import { useUiFeedback } from '../../contexts/UiFeedbackContext';
 import LoadingOverlay from '../ui/LoadingOverlay';
+import FilterSelect from '../ui/FilterSelect';
 
 export default function SchoolManagementPanel({ selectedSchoolId, onSelectSchool }) {
   const { isSuperAdmin } = useTeacherStatus();
@@ -66,21 +67,16 @@ export default function SchoolManagementPanel({ selectedSchoolId, onSelectSchool
   return (
     <div className="space-y-4">
       <LoadingOverlay open={loading} label="学校を登録しています..." />
-      <div>
-        <label className="block font-semibold text-[#5a3e28] mb-1">操作対象の学校</label>
-        <select
-          value={selectedSchoolId}
-          onChange={(e) => onSelectSchool(e.target.value)}
-          className="w-full border rounded px-3 py-2"
-        >
-          <option value="">選択してください</option>
-          {schools.map((s) => (
-            <option key={s.id} value={s.id}>
-              {s.name}
-            </option>
-          ))}
-        </select>
-      </div>
+      <FilterSelect
+        label="操作対象の学校"
+        value={selectedSchoolId}
+        onChange={onSelectSchool}
+        options={[
+          { value: '', label: '選択してください' },
+          ...schools.map((s) => ({ value: s.id, label: s.name })),
+        ]}
+        placeholder="選択してください"
+      />
 
       {isSuperAdmin && (
         <form onSubmit={handleCreateSchool} className="border-t pt-4 space-y-3">

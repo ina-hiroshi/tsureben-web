@@ -5,6 +5,7 @@ import { adminResetStudentPassword } from '../../services/authApi';
 import { fetchStudentsForSchool, uniqueSorted } from '../../utils/adminStudents';
 import { useUiFeedback } from '../../contexts/UiFeedbackContext';
 import LoadingOverlay from '../ui/LoadingOverlay';
+import FilterSelect from '../ui/FilterSelect';
 import SuggestInput from '../ui/SuggestInput';
 
 function PasswordResetModal({ student, schoolName, onClose, onSuccess }) {
@@ -196,41 +197,29 @@ export default function StudentManagementPanel({ schoolId, refreshKey = 0 }) {
       )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <div>
-          <label className="block text-sm font-semibold text-[#5a3e28] mb-1">学年</label>
-          <select
-            value={filterGrade}
-            onChange={(e) => {
-              setFilterGrade(e.target.value);
-              setFilterClass('');
-            }}
-            disabled={!schoolId || loading}
-            className="w-full border border-[#c4b5a0] rounded-lg px-3 py-2 bg-white disabled:opacity-50"
-          >
-            <option value="">すべて</option>
-            {gradeOptions.map((g) => (
-              <option key={g} value={g}>
-                {g}年
-              </option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-semibold text-[#5a3e28] mb-1">組</label>
-          <select
-            value={filterClass}
-            onChange={(e) => setFilterClass(e.target.value)}
-            disabled={!schoolId || loading}
-            className="w-full border border-[#c4b5a0] rounded-lg px-3 py-2 bg-white disabled:opacity-50"
-          >
-            <option value="">すべて</option>
-            {classOptions.map((c) => (
-              <option key={c} value={c}>
-                {c}組
-              </option>
-            ))}
-          </select>
-        </div>
+        <FilterSelect
+          label="学年"
+          value={filterGrade}
+          onChange={(value) => {
+            setFilterGrade(value);
+            setFilterClass('');
+          }}
+          options={[
+            { value: '', label: 'すべて' },
+            ...gradeOptions.map((g) => ({ value: g, label: `${g}年` })),
+          ]}
+          disabled={!schoolId || loading}
+        />
+        <FilterSelect
+          label="組"
+          value={filterClass}
+          onChange={setFilterClass}
+          options={[
+            { value: '', label: 'すべて' },
+            ...classOptions.map((c) => ({ value: c, label: `${c}組` })),
+          ]}
+          disabled={!schoolId || loading}
+        />
         <SuggestInput
           label="氏名"
           value={nameQuery}

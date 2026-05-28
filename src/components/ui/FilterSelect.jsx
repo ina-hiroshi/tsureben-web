@@ -13,19 +13,23 @@ export default function FilterSelect({
   options,
   placeholder = 'すべて',
   className = '',
+  disabled = false,
 }) {
   const selected =
     options.find((opt) => opt.value === value) ||
     options.find((opt) => opt.value === '') || { value: '', label: placeholder };
 
   return (
-    <Listbox value={value} onChange={onChange}>
+    <Listbox value={value} onChange={onChange} disabled={disabled}>
       <div className={`block space-y-1 ${className}`}>
         {label && (
           <Listbox.Label className="text-sm font-medium text-tsure-primary">{label}</Listbox.Label>
         )}
         <div className="relative">
-          <ListboxButton className="group relative w-full flex items-center justify-between gap-2 px-3 py-2.5 min-h-touch rounded-xl border border-tsure-border bg-white text-left text-tsure-primary shadow-tsure-chip focus:outline-none focus:ring-2 focus:ring-tsure-accent/50">
+          <ListboxButton
+            disabled={disabled}
+            className="group relative w-full flex items-center justify-between gap-2 px-3 py-2.5 min-h-touch rounded-xl border border-tsure-border bg-white text-left text-tsure-primary shadow-tsure-chip focus:outline-none focus:ring-2 focus:ring-tsure-accent/50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             <span className="truncate text-sm">{selected.label}</span>
             <AppIcon
               icon={ChevronDown}

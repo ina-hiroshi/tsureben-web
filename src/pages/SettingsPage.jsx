@@ -1,33 +1,80 @@
 import { useEffect, useState } from 'react';
-import { updatePassword } from 'firebase/auth';
-import { auth } from '../firebase';
+import {
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword,
+} from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useTeacherStatus } from '../hooks/useTeacherStatus';
 import { getProfile, updateProfile } from '../services/firestore/userService';
+import SubjectCatalogPanel from '../components/settings/SubjectCatalogPanel';
 import PageLayout from '../components/ui/PageLayout';
 import Card from '../components/ui/Card';
-import Select from '../components/ui/Select';
+import FilterSelect from '../components/ui/FilterSelect';
 import Input from '../components/ui/Input';
 import Button from '../components/ui/Button';
 import SectionTitle from '../components/ui/SectionTitle';
+import SectionHelpButton from '../components/ui/SectionHelpButton';
+import Modal from '../components/ui/Modal';
 import { useUiFeedback } from '../contexts/UiFeedbackContext';
+import { SETTINGS_SECTION_HELP } from '../content/settingsSectionHelp';
+
+const SHARE_SCOPE_OPTIONS = [
+  { value: '学年のみ', label: '学年のみ' },
+  { value: '組のみ', label: '組のみ' },
+  { value: '連れ勉仲間のみ', label: '連れ勉仲間のみ' },
+];
+
+const MATE_SCOPE_OPTIONS = [
+  { value: '学内のみ', label: '学内のみ' },
+  { value: '学内外', label: '学内外' },
+];
 
 export default function SettingsPage() {
   const { email } = useAuth();
+  const { isTeacher, schoolId: teacherSchoolId } = useTeacherStatus();
   const { toast } = useUiFeedback();
+  const [profile, setProfile] = useState(null);
+  const [schoolName, setSchoolName] = useState('');
+  const [name, setName] = useState('');
   const [shareScope, setShareScope] = useState('学年のみ');
   const [mateScope, setMateScope] = useState('学内のみ');
+  const [subjectCatalog, setSubjectCatalog] = useState({});
   const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [savingName, setSavingName] = useState(false);
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [helpId, setHelpId] = useState(null);
+
+  const isPasswordUser =
+    auth.currentUser?.providerData?.some((p) => p.providerId === 'password') ?? false;
+  const canEditDisplayName = !isTeacher;
+  const canChangePassword = isPasswordUser && !isTeacher;
+  const activeHelp = helpId ? SETTINGS_SECTION_HELP[helpId] : null;
 
   useEffect(() => {
     if (!email) return;
-    getProfile(email).then((p) => {
+    getProfile(email).then(async (p) => {
       if (!p) return;
+      setProfile(p);
+      setName(p.name || '');
       setShareScope(p.shareScope || '学年のみ');
       setMateScope(p.mateScope || '学内のみ');
+      setSubjectCatalog(p.subjectCatalog || {});
       setMustChangePassword(p.mustChangePassword === true);
+      const schoolId = p.schoolId || teacherSchoolId;
+      if (schoolId) {
+        const schoolSnap = await getDoc(doc(db, 'schools', schoolId));
+        setSchoolName(schoolSnap.exists() ? schoolSnap.data()?.name || '' : '');
+      } else {
+        setSchoolName('');
+      }
     });
-  }, [email]);
+  }, [email, teacherSchoolId]);
 
   const saveShareScope = async (value) => {
     setShareScope(value);
@@ -41,55 +88,242 @@ export default function SettingsPage() {
     toast.success('保存しました');
   };
 
-  const handlePasswordChange = async () => {
-    if (!newPassword || newPassword.length < 6) {
-      toast.error('6文字以上のパスワードを入力してください');
+  const handleSaveName = async () => {
+    if (!canEditDisplayName) return;
+    const trimmed = name.trim();
+    if (!trimmed) {
+      toast.warning('名前を入力してください');
       return;
     }
-    await updatePassword(auth.currentUser, newPassword);
-    await updateProfile(email, { mustChangePassword: false });
-    setMustChangePassword(false);
-    setNewPassword('');
-    toast.success('パスワードを変更しました');
+    setSavingName(true);
+    try {
+      await updateProfile(email, { name: trimmed });
+      setName(trimmed);
+      toast.success('名前を保存しました');
+    } catch (err) {
+      toast.error(err.message || '保存に失敗しました');
+    } finally {
+      setSavingName(false);
+    }
   };
 
+  const handlePasswordChange = async () => {
+    if (!newPassword || newPassword.length < 6) {
+      toast.error('新しいパスワードは6文字以上にしてください');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('新しいパスワードが一致しません');
+      return;
+    }
+    if (!currentPassword) {
+      toast.error('現在のパスワードを入力してください');
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const credential = EmailAuthProvider.credential(email, currentPassword);
+      await reauthenticateWithCredential(auth.currentUser, credential);
+      await updatePassword(auth.currentUser, newPassword);
+      await updateProfile(email, { mustChangePassword: false });
+      setMustChangePassword(false);
+      toast.success('パスワードを変更しました');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        toast.error('現在のパスワードが正しくありません');
+      } else if (err.code === 'auth/requires-recent-login') {
+        toast.error('セキュリティのため、一度ログアウトして再度ログインしてください');
+      } else {
+        toast.error(err.message || 'パスワードの変更に失敗しました');
+      }
+    } finally {
+      setChangingPassword(false);
+    }
+  };
+
+  const profileDetails = [
+    profile?.name ? { label: '表示名', value: profile.name } : null,
+    { label: 'メール', value: email },
+    { label: '学校名', value: schoolName || '—' },
+    profile?.grade != null && profile?.class != null && profile?.number != null
+      ? {
+          label: '学年・組・番号',
+          value: `${profile.grade}年${profile.class}組 ${profile.number}番`,
+        }
+      : null,
+  ].filter(Boolean);
+
+  const passwordSectionTitle = mustChangePassword ? 'パスワード変更（必須）' : 'パスワード変更';
+
   return (
-    <PageLayout title="設定" contentWidth="narrow">
-      <div className="space-y-4 pb-8 md:mx-auto">
-        <Card>
-          <SectionTitle>公開範囲</SectionTitle>
-          <Select value={shareScope} onChange={(e) => saveShareScope(e.target.value)}>
-            <option value="学年のみ">学年のみ</option>
-            <option value="組のみ">組のみ</option>
-            <option value="連れ勉仲間のみ">連れ勉仲間のみ</option>
-          </Select>
-          <p className="text-xs text-tsure-muted mt-2">一緒に勉強中の表示範囲に使われます</p>
-        </Card>
-
-        <Card>
-          <SectionTitle>連れ勉の申請範囲</SectionTitle>
-          <Select value={mateScope} onChange={(e) => saveMateScope(e.target.value)}>
-            <option value="学内のみ">学内のみ</option>
-            <option value="学内外">学内外</option>
-          </Select>
-          <p className="text-xs text-tsure-muted mt-2">招待経由で申請を受け付ける相手の範囲</p>
-        </Card>
-
-        {mustChangePassword && (
-          <Card>
-            <SectionTitle>パスワード変更（必須）</SectionTitle>
-            <Input
-              type="password"
-              label="新しいパスワード"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-            />
-            <Button className="w-full mt-3" onClick={handlePasswordChange}>
-              パスワードを変更
-            </Button>
-          </Card>
+    <PageLayout title="設定" contentWidth="settings">
+      <div className="pb-8">
+        {mustChangePassword && canChangePassword && (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 mb-4">
+            パスワードの変更が必要です。下の「パスワード変更（必須）」から新しいパスワードを設定してください。
+          </div>
         )}
+
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:gap-6">
+          <div className="contents lg:flex lg:flex-col lg:gap-4 lg:w-[min(100%,360px)] lg:shrink-0">
+            <Card className="order-1 lg:order-none">
+              <SectionTitle
+                action={
+                  <SectionHelpButton
+                    ariaLabel="プロフィールの説明"
+                    onClick={() => setHelpId('profile')}
+                  />
+                }
+              >
+                プロフィール
+              </SectionTitle>
+              <dl className="space-y-2 mb-4">
+                {profileDetails.map(({ label, value }) => (
+                  <div key={label} className="text-sm">
+                    <dt className="text-tsure-muted">{label}</dt>
+                    <dd className="text-tsure-primary font-medium break-all">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              {canEditDisplayName ? (
+                <>
+                  <Input label="表示名" value={name} onChange={(e) => setName(e.target.value)} />
+                  <Button className="w-full mt-3 lg:w-auto" onClick={handleSaveName} disabled={savingName}>
+                    {savingName ? '保存中…' : '名前を保存'}
+                  </Button>
+                </>
+              ) : (
+                <p className="text-xs text-tsure-muted">
+                  教員・管理者の表示名は登録時の内容が使われます。
+                </p>
+              )}
+            </Card>
+
+            <Card className="order-2 lg:order-none">
+              <SectionTitle
+                action={
+                  <SectionHelpButton
+                    ariaLabel="公開範囲の説明"
+                    onClick={() => setHelpId('shareScope')}
+                  />
+                }
+              >
+                公開範囲
+              </SectionTitle>
+              <FilterSelect
+                value={shareScope}
+                onChange={saveShareScope}
+                options={SHARE_SCOPE_OPTIONS}
+                placeholder="学年のみ"
+              />
+              <p className="text-xs text-tsure-muted mt-2">一緒に勉強中の表示範囲に使われます</p>
+            </Card>
+
+            <Card className="order-3 lg:order-none">
+              <SectionTitle
+                action={
+                  <SectionHelpButton
+                    ariaLabel="連れ勉の申請範囲の説明"
+                    onClick={() => setHelpId('mateScope')}
+                  />
+                }
+              >
+                連れ勉の申請範囲
+              </SectionTitle>
+              <FilterSelect
+                value={mateScope}
+                onChange={saveMateScope}
+                options={MATE_SCOPE_OPTIONS}
+                placeholder="学内のみ"
+              />
+              <p className="text-xs text-tsure-muted mt-2">招待経由で申請を受け付ける相手の範囲</p>
+            </Card>
+
+            {canChangePassword && (
+              <Card className="order-5 lg:order-none">
+                <SectionTitle
+                  action={
+                    <SectionHelpButton
+                      ariaLabel="パスワード変更の説明"
+                      onClick={() => setHelpId('password')}
+                    />
+                  }
+                >
+                  {passwordSectionTitle}
+                </SectionTitle>
+                <div className="space-y-3">
+                  <Input
+                    type="password"
+                    label="現在のパスワード"
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    autoComplete="current-password"
+                  />
+                  <Input
+                    type="password"
+                    label="新しいパスワード"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    autoComplete="new-password"
+                  />
+                  <Input
+                    type="password"
+                    label="新しいパスワード（確認）"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    autoComplete="new-password"
+                  />
+                </div>
+                <Button
+                  className="w-full mt-3 lg:w-auto"
+                  onClick={handlePasswordChange}
+                  disabled={changingPassword}
+                >
+                  {changingPassword ? '変更中…' : 'パスワードを変更'}
+                </Button>
+              </Card>
+            )}
+          </div>
+
+          <Card className="order-4 lg:order-none lg:flex-1 lg:min-w-0 lg:self-start lg:sticky lg:top-0">
+            <SectionTitle
+              action={
+                <SectionHelpButton
+                  ariaLabel="学習内容の候補の説明"
+                  onClick={() => setHelpId('subjectCatalog')}
+                />
+              }
+            >
+              学習内容の候補
+            </SectionTitle>
+            <p className="text-xs text-tsure-muted mb-4">
+              学習計画・記録で使う科目と問題集の候補を管理します。過去の記録は変更されません。
+            </p>
+            <SubjectCatalogPanel
+              email={email}
+              catalog={subjectCatalog}
+              onCatalogChange={setSubjectCatalog}
+            />
+          </Card>
+        </div>
       </div>
+
+      <Modal
+        open={Boolean(activeHelp)}
+        onClose={() => setHelpId(null)}
+        title={activeHelp?.title || ''}
+      >
+        <p className="text-sm text-tsure-primary leading-relaxed whitespace-pre-line">
+          {activeHelp?.body}
+        </p>
+        <Button className="w-full mt-6" onClick={() => setHelpId(null)}>
+          閉じる
+        </Button>
+      </Modal>
     </PageLayout>
   );
 }

@@ -3,8 +3,7 @@ import Modal from './ui/Modal';
 import Input from './ui/Input';
 import Button from './ui/Button';
 import SuggestInput from './ui/SuggestInput';
-
-const SUBJECTS = ['国語', '数学', '英語', '理科', '社会', '情報', 'その他'];
+import { SUBJECTS } from '../constants/subjects';
 
 export default function StudyContentModal({
   open,

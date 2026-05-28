@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
+import { getProfile } from '../services/firestore/userService';
 import { db } from '../firebase';
 
 export default function ProtectedRoute({
@@ -11,8 +12,10 @@ export default function ProtectedRoute({
   requireSuperAdmin = false,
 }) {
   const { email, loading } = useAuth();
+  const location = useLocation();
   const [checking, setChecking] = useState(true);
   const [teacherSnap, setTeacherSnap] = useState(null);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
   const [error, setError] = useState(null);
 
   const needsTeacherCheck = requireTeacher || requireSchoolAdmin || requireSuperAdmin;
@@ -20,7 +23,7 @@ export default function ProtectedRoute({
   useEffect(() => {
     if (loading) return;
 
-    if (!email || !needsTeacherCheck) {
+    if (!email) {
       setChecking(false);
       return;
     }
@@ -29,14 +32,24 @@ export default function ProtectedRoute({
     const verify = async () => {
       setChecking(true);
       try {
-        const snap = await getDoc(doc(db, 'teachers', email));
+        const profilePromise = getProfile(email);
+        const teacherPromise = needsTeacherCheck
+          ? getDoc(doc(db, 'teachers', email))
+          : Promise.resolve(null);
+
+        const [profile, teacherDoc] = await Promise.all([profilePromise, teacherPromise]);
         if (!active) return;
-        setTeacherSnap(snap.exists() ? snap.data() : null);
+
+        setMustChangePassword(profile?.mustChangePassword === true);
+        if (needsTeacherCheck) {
+          setTeacherSnap(teacherDoc?.exists() ? teacherDoc.data() : null);
+        }
         setError(null);
       } catch (err) {
-        console.error('ProtectedRoute teacher check failed:', err);
+        console.error('ProtectedRoute check failed:', err);
         if (active) {
           setTeacherSnap(null);
+          setMustChangePassword(false);
           setError('failed');
         }
       } finally {
@@ -59,7 +72,7 @@ export default function ProtectedRoute({
     return true;
   }, [needsTeacherCheck, teacherSnap, role, requireSuperAdmin, requireSchoolAdmin]);
 
-  if (loading || (needsTeacherCheck && checking)) return null;
+  if (loading || checking) return null;
 
   if (!email) {
     return <Navigate to="/" replace />;
@@ -82,6 +95,10 @@ export default function ProtectedRoute({
         </div>
       </div>
     );
+  }
+
+  if (mustChangePassword && location.pathname !== '/settings') {
+    return <Navigate to="/settings" replace state={{ from: location.pathname }} />;
   }
 
   return children;
