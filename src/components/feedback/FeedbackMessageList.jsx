@@ -65,13 +65,7 @@ export default function FeedbackMessageList({
             key={message.id}
             className={`flex ${isTeacher ? 'justify-end' : 'justify-start'}`}
           >
-            <div
-              className={`max-w-[85%] rounded-2xl px-3 py-2.5 border ${
-                isTeacher
-                  ? 'bg-tsure-surface border-tsure-border text-tsure-primary'
-                  : 'bg-white/90 border-tsure-border text-tsure-primary'
-              }`}
-            >
+            <div className="max-w-[85%] rounded-2xl px-3 py-2.5 border bg-white border-tsure-border text-tsure-primary">
               <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 mb-1">
                 <span className="text-xs font-semibold">
                   {message.authorName || (isTeacher ? '教員' : '生徒')}

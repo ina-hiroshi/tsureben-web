@@ -8,6 +8,7 @@ export default function SuggestInput({
   placeholder,
   disabled = false,
   maxSuggestions = 8,
+  labelClassName = '',
 }) {
   const listId = useId();
   const wrapperRef = useRef(null);
@@ -64,7 +65,9 @@ export default function SuggestInput({
   return (
     <div ref={wrapperRef} className="relative">
       {label && (
-        <label className="block text-sm font-medium text-tsure-primary mb-1">{label}</label>
+        <label className={`block text-sm font-medium text-tsure-primary mb-1 ${labelClassName}`}>
+          {label}
+        </label>
       )}
       <input
         type="text"

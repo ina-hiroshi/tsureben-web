@@ -17,6 +17,7 @@ export async function startSession(email, profile, extra = {}) {
     schoolId: profile.schoolId ?? null,
     grade: profile.grade || '',
     class: profile.class || '',
+    number: profile.number || '',
     shareScope: profile.shareScope || '学年のみ',
     subject: extra.subject || '勉強中',
     topic: extra.topic || '',
@@ -53,6 +54,27 @@ export function subscribeMateSessions(myEmail, { mutualMates = [], hiddenMates =
     (err) => {
       console.error('subscribeMateSessions error:', err);
       callback(mergeDemoPresenceUsers([], myEmail));
+    }
+  );
+}
+
+export function subscribeSchoolActiveSessions(schoolId, callback) {
+  if (!schoolId) {
+    callback([]);
+    return () => {};
+  }
+
+  const q = query(collection(db, 'activeSessions'), where('schoolId', '==', schoolId));
+
+  return onSnapshot(
+    q,
+    (snap) => {
+      const users = snap.docs.map((d) => ({ email: d.id, ...d.data() }));
+      callback(mergeDemoPresenceUsers(users, null));
+    },
+    (err) => {
+      console.error('subscribeSchoolActiveSessions error:', err);
+      callback(mergeDemoPresenceUsers([], null));
     }
   );
 }

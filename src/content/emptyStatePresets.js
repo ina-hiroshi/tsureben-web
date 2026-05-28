@@ -66,6 +66,13 @@ export const PRESENCE_TIMER_EMPTY = {
   description: '連れ勉仲間がタイマーを使うと、ここに表示されます。',
 };
 
+export const TEACHER_PRESENCE_EMPTY = {
+  icon: Users,
+  title: '現在学習中の生徒はいません',
+  description: '生徒が学習タイマーを使うと、学校内のセッションがここに表示されます。',
+  variant: 'compact',
+};
+
 export const MATE_NO_MUTUAL = {
   icon: UserPlus,
   title: '連れ勉仲間がいません',

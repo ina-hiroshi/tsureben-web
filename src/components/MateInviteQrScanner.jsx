@@ -19,6 +19,22 @@ function cameraErrorMessage(err) {
   return 'カメラの起動に失敗しました。';
 }
 
+async function releaseScanner(instance, shouldStop) {
+  if (!instance) return;
+  if (shouldStop) {
+    try {
+      await instance.stop();
+    } catch {
+      // stop() は未起動時に同期 throw することがある
+    }
+  }
+  try {
+    await instance.clear();
+  } catch {
+    // clear 失敗は握りつぶす
+  }
+}
+
 export default function MateInviteQrScanner({ onSuccess, onClose }) {
   const { toast } = useUiFeedback();
   const scannerRef = useRef(null);
@@ -26,8 +42,17 @@ export default function MateInviteQrScanner({ onSuccess, onClose }) {
 
   useEffect(() => {
     let active = true;
+    let started = false;
+    let released = false;
     const scanner = new Html5Qrcode(SCANNER_ELEMENT_ID);
     scannerRef.current = scanner;
+
+    const releaseOnce = (shouldStop) => {
+      if (released) return Promise.resolve();
+      released = true;
+      if (shouldStop) started = false;
+      return releaseScanner(scanner, shouldStop);
+    };
 
     const handleScan = (decodedText) => {
       if (handledRef.current) return;
@@ -37,21 +62,21 @@ export default function MateInviteQrScanner({ onSuccess, onClose }) {
         return;
       }
       handledRef.current = true;
-      scanner
-        .stop()
-        .catch(() => {})
-        .finally(() => {
-          onSuccess(token);
-        });
+      releaseOnce(true).finally(() => {
+        onSuccess(token);
+      });
     };
 
-    scanner
+    const startPromise = scanner
       .start(
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 250 } },
         handleScan,
         () => {}
       )
+      .then(() => {
+        started = true;
+      })
       .catch((err) => {
         if (!active) return;
         toast.error(cameraErrorMessage(err));
@@ -60,13 +85,14 @@ export default function MateInviteQrScanner({ onSuccess, onClose }) {
 
     return () => {
       active = false;
-      const instance = scannerRef.current;
       scannerRef.current = null;
-      if (!instance) return;
-      instance
-        .stop()
-        .then(() => instance.clear())
-        .catch(() => instance.clear().catch(() => {}));
+      if (started) {
+        releaseOnce(true);
+        return;
+      }
+      startPromise.finally(() => {
+        releaseOnce(started);
+      });
     };
   }, [onSuccess, onClose, toast]);
 

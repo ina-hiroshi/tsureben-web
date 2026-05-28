@@ -84,6 +84,11 @@ function buildDemoStudents() {
 
 const DEMO_STUDENTS = buildDemoStudents();
 
+export function getDemoTeacherReviewStudents() {
+  if (!isDemoTeacherReviewEnabled()) return [];
+  return DEMO_STUDENTS;
+}
+
 const DEMO_THREADS_BY_STUDENT = Object.fromEntries(
   DEMO_STUDENTS.map((student, index) => {
     const threads = [];

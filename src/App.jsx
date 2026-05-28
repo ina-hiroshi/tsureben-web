@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { AuthProvider } from './contexts/AuthContext';
 import { UiFeedbackProvider } from './contexts/UiFeedbackContext';
@@ -16,6 +16,8 @@ import MateInvitePage from './pages/MateInvitePage';
 import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
 import TeacherStudentReviewPage from './pages/TeacherStudentReviewPage';
+import TeacherLivePresencePage from './pages/TeacherLivePresencePage';
+import TeacherRouteShell from './components/teacher/TeacherRouteShell';
 import StudentFeedbackPage from './pages/StudentFeedbackPage';
 import DemoSettingsAccessSync from './components/dev/DemoSettingsAccessSync';
 
@@ -84,10 +86,32 @@ function AppLayout() {
         }
       />
       <Route
+        path="/teacher"
+        element={
+          <ProtectedRoute requireTeacher>
+            <TeacherRouteShell>
+              <Navigate to="/teacher/live" replace />
+            </TeacherRouteShell>
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/teacher/live"
+        element={
+          <ProtectedRoute requireTeacher>
+            <TeacherRouteShell>
+              <TeacherLivePresencePage />
+            </TeacherRouteShell>
+          </ProtectedRoute>
+        }
+      />
+      <Route
         path="/teacher/students"
         element={
           <ProtectedRoute requireTeacher>
-            <TeacherStudentReviewPage />
+            <TeacherRouteShell>
+              <TeacherStudentReviewPage />
+            </TeacherRouteShell>
           </ProtectedRoute>
         }
       />

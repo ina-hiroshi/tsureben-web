@@ -26,6 +26,8 @@ export default function FeedbackComposer({
     }
   };
 
+  const canSubmit = !disabled && !submitting && !!body.trim();
+
   return (
     <form onSubmit={handleSubmit} className="space-y-2">
       <textarea
@@ -34,13 +36,14 @@ export default function FeedbackComposer({
         placeholder={placeholder}
         rows={3}
         disabled={disabled || submitting}
-        className="w-full rounded-xl border border-tsure-border bg-tsure-surface px-3 py-2 text-sm text-tsure-primary placeholder:text-tsure-muted resize-y min-h-[4.5rem] disabled:opacity-50"
+        className="w-full rounded-xl border border-tsure-border bg-white px-3 py-2 text-sm text-tsure-primary placeholder:text-tsure-muted resize-y min-h-[4.5rem] disabled:opacity-50"
       />
       <div className="flex justify-end">
         <Button
           type="submit"
           size="sm"
-          disabled={disabled || submitting || !body.trim()}
+          variant={canSubmit ? 'surface' : 'primary'}
+          disabled={!canSubmit}
           className="inline-flex items-center gap-1.5"
         >
           <AppIcon icon={Send} size="sm" />

@@ -1,5 +1,6 @@
 import DailySubjectPieChart from '../DailySubjectPieChart';
 import EmptyState from '../ui/EmptyState';
+import StudyPeriodComparisonSummary from '../studyPeriod/StudyPeriodComparisonSummary';
 import StudyPeriodStatsGrid from '../studyPeriod/StudyPeriodStatsGrid';
 import StudyPeriodActivityOverview from '../studyPeriod/StudyPeriodActivityOverview';
 import StudyPeriodSubjectTable from '../studyPeriod/StudyPeriodSubjectTable';
@@ -9,6 +10,8 @@ import { formatDuration } from '../../utils/studyPeriod';
 export default function StudyPeriodLogView({
   periodMode,
   aggregatedLogs,
+  plannedMinutes = 0,
+  planDailyOverview = [],
   dailyTotals,
   studyDayCount,
   periodDayCount,
@@ -26,10 +29,20 @@ export default function StudyPeriodLogView({
 
   const periodLabel = periodMode === 'week' ? '今週' : '今月';
   const footerNote =
-    periodMode === 'week' ? '選択した週の記録を表示しています' : '選択した月の記録を表示しています';
+    periodMode === 'week'
+      ? '選択した週の学習記録を振り返っています'
+      : '選択した月の学習記録を振り返っています';
+  const activityTitle =
+    periodMode === 'week' ? `${periodLabel}の学習記録（日別）` : `${periodLabel}の学習カレンダー`;
 
   return (
     <div className="space-y-5">
+      <StudyPeriodComparisonSummary
+        plannedMinutes={plannedMinutes}
+        actualMinutes={totalMinutes}
+        onDark={onDark}
+      />
+
       <StudyPeriodStatsGrid
         items={[
           { label: '期間合計', value: formatDuration(totalMinutes) },
@@ -44,8 +57,10 @@ export default function StudyPeriodLogView({
         periodMode={periodMode}
         valueKey="minutes"
         unitLabel="分"
-        title={`${periodLabel}の学習ヒートマップ`}
+        title={activityTitle}
         onDark={onDark}
+        contentVariant="log"
+        planDailyOverview={planDailyOverview}
       />
 
       <DailySubjectPieChart

@@ -34,6 +34,7 @@ export default function FeedbackThreadPanel({
   teacherName,
   mode = 'teacher',
   initialThreadId = null,
+  onDark = false,
 }) {
   const { email } = useAuth();
   const { toast, confirm } = useUiFeedback();
@@ -121,6 +122,12 @@ export default function FeedbackThreadPanel({
   }, [selectedThreadId, messages.length, isTeacher]);
 
   const selectedThread = threads.find((t) => t.id === selectedThreadId) || null;
+
+  const inactiveThreadBtnClass = onDark
+    ? 'bg-white/15 text-tsure-on-primary border-white/20 hover:bg-white/25'
+    : 'bg-white text-tsure-primary border-tsure-border hover:bg-tsure-surface-hover';
+  const activeThreadBtnClass =
+    'bg-tsure-primary text-tsure-on-primary border-tsure-primary';
 
   const handleSend = async (body) => {
     if (!studentEmail) return false;
@@ -250,8 +257,8 @@ export default function FeedbackThreadPanel({
             onClick={() => dailyThread && setSelectedThreadId(dailyThread.id)}
             className={`text-sm px-3 py-1.5 rounded-full border transition ${
               selectedThread?.scope === 'daily' && selectedThread?.dateKey === dateKey
-                ? 'bg-tsure-primary text-tsure-on-primary border-tsure-primary'
-                : 'bg-tsure-surface text-tsure-primary border-tsure-border hover:bg-tsure-surface-hover'
+                ? activeThreadBtnClass
+                : inactiveThreadBtnClass
             }`}
           >
             {dayjs(dateKey).format('M/D')} の学習
@@ -265,9 +272,7 @@ export default function FeedbackThreadPanel({
               type="button"
               onClick={() => setSelectedThreadId(thread.id)}
               className={`text-sm px-3 py-1.5 rounded-full border transition ${
-                selectedThreadId === thread.id
-                  ? 'bg-tsure-primary text-tsure-on-primary border-tsure-primary'
-                  : 'bg-tsure-surface text-tsure-primary border-tsure-border hover:bg-tsure-surface-hover'
+                selectedThreadId === thread.id ? activeThreadBtnClass : inactiveThreadBtnClass
               }`}
             >
               {formatThreadLabel(thread)}
@@ -287,9 +292,7 @@ export default function FeedbackThreadPanel({
               type="button"
               onClick={() => setSelectedThreadId(thread.id)}
               className={`text-sm px-3 py-1.5 rounded-full border transition ${
-                selectedThreadId === thread.id
-                  ? 'bg-tsure-primary text-tsure-on-primary border-tsure-primary'
-                  : 'bg-tsure-surface text-tsure-primary border-tsure-border hover:bg-tsure-surface-hover'
+                selectedThreadId === thread.id ? activeThreadBtnClass : inactiveThreadBtnClass
               }`}
             >
               {formatThreadLabel(thread)}
@@ -333,7 +336,13 @@ export default function FeedbackThreadPanel({
             onSubmit={handleSend}
           />
           <details className="text-sm">
-            <summary className="cursor-pointer text-tsure-muted hover:text-tsure-primary">
+            <summary
+              className={`cursor-pointer ${
+                onDark
+                  ? 'text-tsure-on-primary/70 hover:text-tsure-on-primary'
+                  : 'text-tsure-muted hover:text-tsure-primary'
+              }`}
+            >
               日付に関係ない全体フィードバックを新規作成
             </summary>
             <div className="mt-2">

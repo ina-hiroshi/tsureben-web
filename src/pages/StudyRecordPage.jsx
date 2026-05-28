@@ -211,6 +211,8 @@ export default function StudyRecordPage() {
           <StudyPeriodLogView
             periodMode={periodMode}
             aggregatedLogs={aggregatedLogs}
+            plannedMinutes={aggregatedPlans.totalPlannedMinutes}
+            planDailyOverview={planDailyOverview}
             dailyTotals={dailyTotals}
             studyDayCount={studyDayCount}
             periodDayCount={periodDayCount}

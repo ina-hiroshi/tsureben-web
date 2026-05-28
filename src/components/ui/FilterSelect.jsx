@@ -14,6 +14,9 @@ export default function FilterSelect({
   placeholder = 'すべて',
   className = '',
   disabled = false,
+  optionsClassName = '',
+  optionsModal = true,
+  labelClassName = '',
 }) {
   const selected =
     options.find((opt) => opt.value === value) ||
@@ -23,7 +26,9 @@ export default function FilterSelect({
     <Listbox value={value} onChange={onChange} disabled={disabled}>
       <div className={`block space-y-1 ${className}`}>
         {label && (
-          <Listbox.Label className="text-sm font-medium text-tsure-primary">{label}</Listbox.Label>
+          <Listbox.Label className={`text-sm font-medium text-tsure-primary ${labelClassName}`}>
+            {label}
+          </Listbox.Label>
         )}
         <div className="relative">
           <ListboxButton
@@ -39,8 +44,9 @@ export default function FilterSelect({
           </ListboxButton>
           <ListboxOptions
             anchor="bottom start"
+            modal={optionsModal}
             transition
-            className="z-[120] mt-1 max-h-60 w-[var(--button-width)] overflow-auto rounded-xl border border-tsure-border bg-white py-1 shadow-tsure-raised transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0 origin-top"
+            className={`z-[120] mt-1 max-h-60 w-[var(--button-width)] overflow-auto rounded-xl border border-tsure-border bg-white py-1 shadow-tsure-raised transition duration-100 ease-out data-[closed]:scale-95 data-[closed]:opacity-0 origin-top ${optionsClassName}`}
           >
             {options.map((opt) => (
               <ListboxOption

@@ -10,6 +10,7 @@ import StudyPeriodPlanView from './StudyPeriodPlanView';
 import StudyPeriodLogView from './StudyPeriodLogView';
 import FeedbackThreadPanel from './FeedbackThreadPanel';
 import AppIcon from '../ui/AppIcon';
+import Card from '../ui/Card';
 import LoadingOverlay from '../ui/LoadingOverlay';
 import {
   TEACHER_PLAN_READONLY_EMPTY,
@@ -51,35 +52,26 @@ export default function StudentReviewDetailPanel({
   const isPeriodView = periodMode !== 'day';
 
   if (!student) {
-    return (
-      <div className="flex items-center justify-center min-h-[12rem] lg:min-h-full py-12 text-center">
-        <p className="text-tsure-muted text-sm">左の一覧から生徒を選択してください</p>
-      </div>
-    );
+    return null;
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 min-w-0 rounded-lg border border-tsure-border bg-white px-3 py-2">
-        {showBackButton && (
+    <div className="flex flex-col gap-4 md:min-h-0 md:flex-1">
+      {showBackButton && (
+        <div className="md:hidden flex items-center gap-2 shrink-0">
           <button
             type="button"
             onClick={onBack}
-            className="lg:hidden shrink-0 min-w-9 min-h-9 flex items-center justify-center rounded-md border border-tsure-border bg-white text-tsure-primary hover:bg-tsure-surface-hover"
+            className="shrink-0 min-w-9 min-h-9 flex items-center justify-center rounded-xl border border-white/20 bg-white/10 text-tsure-on-primary hover:bg-white/15"
             aria-label="生徒一覧に戻る"
           >
             <AppIcon icon={ArrowLeft} size="sm" />
           </button>
-        )}
-        <div className="min-w-0 flex-1 flex items-center gap-2">
-          <h2 className="text-xl font-bold text-tsure-primary truncate leading-tight">
+          <p className="text-sm font-semibold text-tsure-on-primary truncate">
             {student.name || '—'}
-          </h2>
-          <span className="shrink-0 rounded-md bg-tsure-primary/10 px-2 py-0.5 text-xs font-semibold text-tsure-primary tabular-nums whitespace-nowrap">
-            {student.grade}年{student.class}組 {student.number}番
-          </span>
+          </p>
         </div>
-      </div>
+      )}
 
       <PeriodNav
         date={selectedDate}
@@ -88,91 +80,93 @@ export default function StudentReviewDetailPanel({
         onDateChange={setSelectedDate}
       />
 
-      <div>
-        <div
-          className="border-b border-tsure-border"
-          role="tablist"
-          aria-label="学習情報の表示切替"
-        >
-          <div className="flex flex-wrap gap-1">
-            {TABS.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={isActive}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`relative px-4 py-2.5 text-sm font-semibold transition -mb-px min-h-touch sm:min-h-0 ${
-                    isActive
-                      ? 'text-tsure-primary bg-tsure-surface border border-tsure-border border-b-tsure-surface rounded-t-lg z-[1]'
-                      : 'text-tsure-muted border border-transparent hover:text-tsure-primary hover:bg-white/60 rounded-t-lg'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
+      <div className="border-b border-white/10 shrink-0" role="tablist" aria-label="学習情報の表示切替">
+        <div className="flex flex-wrap gap-1">
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => setActiveTab(tab.id)}
+                className={`relative px-4 py-2.5 text-sm font-semibold transition -mb-px min-h-touch sm:min-h-0 rounded-t-lg ${
+                  isActive
+                    ? 'text-tsure-on-primary bg-white/15 border border-white/20 border-b-transparent z-[1]'
+                    : 'text-tsure-on-primary/60 border border-transparent hover:text-tsure-on-primary hover:bg-white/10'
+                }`}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
+      </div>
 
-        <div className="pt-4" role="tabpanel">
-          {loading && activeTab !== 'feedback' && <LoadingOverlay message="読み込み中…" />}
+      <div className="relative flex-1 min-h-0 pt-4 md:overflow-y-auto" role="tabpanel">
+        {loading && activeTab !== 'feedback' && <LoadingOverlay message="読み込み中…" />}
 
-          {activeTab === 'plan' && !isPeriodView && (
-            <PlanCardList
-              entries={plans}
-              readOnly
-              emptyState={TEACHER_PLAN_READONLY_EMPTY}
-            />
-          )}
+        {activeTab === 'plan' && !isPeriodView && (
+          <PlanCardList
+            entries={plans}
+            readOnly
+            emptyState={TEACHER_PLAN_READONLY_EMPTY}
+          />
+        )}
 
-          {activeTab === 'plan' && isPeriodView && (
-            <StudyPeriodPlanView
-              periodMode={periodMode}
-              aggregatedPlans={aggregatedPlans}
-              planDailyOverview={planDailyOverview}
-              emptyState={TEACHER_PLAN_READONLY_EMPTY}
-            />
-          )}
+        {activeTab === 'plan' && isPeriodView && (
+          <StudyPeriodPlanView
+            periodMode={periodMode}
+            aggregatedPlans={aggregatedPlans}
+            planDailyOverview={planDailyOverview}
+            emptyState={TEACHER_PLAN_READONLY_EMPTY}
+            onDark
+          />
+        )}
 
-          {activeTab === 'log' && !isPeriodView && (
-            <div className="space-y-4">
+        {activeTab === 'log' && !isPeriodView && (
+          <div className="space-y-4">
+            <Card>
               <DailySubjectPieChart
+                embedded
                 totalMinutes={dayLogs.totalMinutes}
                 bySubject={dayLogs.bySubject}
                 emptyState={TEACHER_LOG_READONLY_EMPTY}
               />
-              <StudyLogCardList
-                entries={dayLogs.entries}
-                readOnly
-                emptyState={TEACHER_LOG_READONLY_EMPTY}
-              />
-            </div>
-          )}
-
-          {activeTab === 'log' && isPeriodView && (
-            <StudyPeriodLogView
-              periodMode={periodMode}
-              aggregatedLogs={aggregatedLogs}
-              dailyTotals={dailyTotals}
-              studyDayCount={studyDayCount}
-              periodDayCount={periodDayCount}
+            </Card>
+            <StudyLogCardList
+              entries={dayLogs.entries}
+              readOnly
               emptyState={TEACHER_LOG_READONLY_EMPTY}
             />
-          )}
+          </div>
+        )}
 
-          {activeTab === 'feedback' && (
-            <FeedbackThreadPanel
-              student={student}
-              schoolId={schoolId}
-              dateKey={dateKey}
-              teacherName={teacherName}
-              mode="teacher"
-            />
-          )}
-        </div>
+        {activeTab === 'log' && isPeriodView && (
+          <StudyPeriodLogView
+            periodMode={periodMode}
+            aggregatedLogs={aggregatedLogs}
+            plannedMinutes={aggregatedPlans.totalPlannedMinutes}
+            planDailyOverview={planDailyOverview}
+            dailyTotals={dailyTotals}
+            studyDayCount={studyDayCount}
+            periodDayCount={periodDayCount}
+            emptyState={TEACHER_LOG_READONLY_EMPTY}
+            onDark
+          />
+        )}
+
+        {activeTab === 'feedback' && (
+          <FeedbackThreadPanel
+            student={student}
+            schoolId={schoolId}
+            dateKey={dateKey}
+            teacherName={teacherName}
+            mode="teacher"
+            onDark
+          />
+        )}
       </div>
     </div>
   );

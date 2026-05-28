@@ -10,13 +10,17 @@ export const SUBJECT_COLORS = {
   数学: 'border-blue-400 bg-blue-50',
   英語: 'border-purple-400 bg-purple-50',
   理科: 'border-green-400 bg-green-50',
-  社会: 'border-yellow-400 bg-yellow-50',
+  社会: 'border-amber-500 bg-amber-50',
   情報: 'border-indigo-400 bg-indigo-50',
   その他: 'border-gray-400 bg-gray-50',
 };
 
 export function subjectColorClass(subject) {
   return SUBJECT_COLORS[subject] || 'border-tsure-border bg-tsure-surface-hover';
+}
+
+export function subjectAccentBgClass(subject) {
+  return subjectColorClass(subject).split(' ')[0].replace('border-', 'bg-');
 }
 
 export function flattenDayPlans(dayData) {

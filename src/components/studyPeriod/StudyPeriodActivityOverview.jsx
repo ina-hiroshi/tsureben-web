@@ -108,6 +108,7 @@ function PlanDayOverviewCard({
   maxValue,
   showEntries = false,
   useHeatmap = false,
+  contentVariant = 'none',
   heading,
 }) {
   const value = item[valueKey] || 0;
@@ -134,6 +135,21 @@ function PlanDayOverviewCard({
           )}
         </div>
         <div className="flex-1 min-w-0">
+          {contentVariant === 'log' ? (
+            <>
+              <p className="text-base sm:text-lg font-extrabold text-tsure-primary tabular-nums leading-tight mb-2">
+                {formatActivityValue(value, valueKey, unitLabel)}
+              </p>
+              <div className="mt-2">
+                {showEntries && item.entries?.length > 0 ? (
+                  <LogDayEntries entries={item.entries} className="max-h-none" />
+                ) : value === 0 ? (
+                  <p className="text-xs text-tsure-muted">記録なし</p>
+                ) : null}
+              </div>
+            </>
+          ) : (
+            <>
           <div className="flex items-center justify-between gap-2 mb-2">
             <span className="text-sm font-semibold text-tsure-primary tabular-nums">
               {formatActivityValue(value, valueKey, unitLabel)}
@@ -159,12 +175,16 @@ function PlanDayOverviewCard({
           )}
           <div className="mt-2">
           {showEntries && item.entries?.length > 0 && (
-            <PlanDayEntries entries={item.entries} className="max-h-none" />
+              <PlanDayEntries entries={item.entries} className="max-h-none" />
           )}
           {!showEntries && value === 0 && (
-            <p className="text-xs text-tsure-muted">{useHeatmap ? '記録なし' : '計画なし'}</p>
+            <p className="text-xs text-tsure-muted">
+              {useHeatmap ? '記録なし' : contentVariant === 'plan' ? '計画なし' : '記録なし'}
+            </p>
           )}
           </div>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -238,6 +258,72 @@ function CompactPlanDayEntries({ entries = [] }) {
   );
 }
 
+function LogDayEntries({ entries = [], className = 'max-h-28' }) {
+  if (!entries.length) return null;
+
+  return (
+    <ul
+      className={`mt-2 w-full space-y-1.5 text-left overflow-y-auto overscroll-y-contain ${className}`}
+    >
+      {entries.map((entry) => {
+        const subjectLine = [entry.subject, entry.topic].filter(Boolean).join(' / ');
+        const detail = entry.content || entry.book || '';
+        const mins = entry.duration || 0;
+
+        return (
+          <li
+            key={entry.id}
+            className={`rounded-md border border-tsure-border bg-tsure-surface/70 px-1.5 py-1 border-l-[3px] ${subjectBorderColorClass(
+              entry.subject
+            )}`}
+          >
+            <p className="text-xs text-tsure-muted tabular-nums leading-tight">
+              {entry.startTime || '—'} · {formatDuration(mins)}
+            </p>
+            <p className="text-xs sm:text-sm font-semibold text-tsure-primary leading-snug">
+              {subjectLine || '—'}
+            </p>
+            {detail && (
+              <p className="text-xs text-tsure-muted leading-snug line-clamp-3 mt-0.5">{detail}</p>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function CompactLogDayEntries({ entries = [], limit }) {
+  if (!entries.length) return null;
+
+  const visibleEntries = limit ? entries.slice(0, limit) : entries;
+
+  return (
+    <ul className="mt-1 w-full space-y-0.5 text-left overflow-y-auto flex-1 min-h-0">
+      {visibleEntries.map((entry) => {
+        const subjectLine = [entry.subject, entry.topic].filter(Boolean).join(' / ');
+        const mins = entry.duration || 0;
+
+        return (
+          <li key={entry.id} className="flex items-start gap-1 min-w-0 leading-tight">
+            <span
+              className={`mt-[3px] w-1.5 h-1.5 rounded-full shrink-0 ${subjectBarColorClass(
+                entry.subject
+              )}`}
+              aria-hidden
+            />
+            <span className="text-[8px] sm:text-[9px] text-tsure-primary min-w-0 break-words">
+              <span className="tabular-nums text-tsure-muted">{entry.startTime || '—'}</span>{' '}
+              <span className="font-medium">{subjectLine || '—'}</span>{' '}
+              <span className="tabular-nums whitespace-nowrap">{formatDuration(mins)}</span>
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 function SubjectLegend({ subjects }) {
   if (!subjects.length) return null;
 
@@ -268,8 +354,61 @@ function isMobileViewport() {
   return typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches;
 }
 
-function MonthHeatmapCellContent({ dayNumber, value, valueKey, unitLabel, subjectEntries, maxValue }) {
+function formatAchievementRate(actualMinutes, plannedMinutes) {
+  if (!plannedMinutes) return null;
+  return Math.min(Math.round((actualMinutes / plannedMinutes) * 100), 999);
+}
+
+function MonthLogDesktopCellContent({ dayNumber, value, entries, plannedMinutes = 0 }) {
+  const achievementRate = formatAchievementRate(value, plannedMinutes);
+
+  return (
+    <>
+      <div className="flex items-start justify-between gap-1 shrink-0">
+        <span className="text-[11px] sm:text-xs font-bold tabular-nums leading-none">
+          {dayNumber}
+        </span>
+        {achievementRate !== null ? (
+          <span
+            className={`text-[9px] sm:text-[10px] font-bold tabular-nums leading-none ${
+              achievementRate >= 100 ? 'text-green-700' : 'text-tsure-accent'
+            }`}
+          >
+            達成 {achievementRate}%
+          </span>
+        ) : value > 0 ? (
+          <span className="text-[8px] sm:text-[9px] text-tsure-muted leading-none">計画なし</span>
+        ) : null}
+      </div>
+      {value > 0 ? (
+        <p className="text-sm sm:text-base font-extrabold text-tsure-primary tabular-nums leading-tight mt-1 shrink-0">
+          {formatDuration(value)}
+        </p>
+      ) : (
+        <p className="text-xs text-tsure-muted mt-1 shrink-0">記録なし</p>
+      )}
+      {plannedMinutes > 0 && (
+        <p className="text-[8px] sm:text-[9px] text-tsure-muted tabular-nums leading-none mt-0.5 shrink-0">
+          予定 {formatDuration(plannedMinutes)}
+        </p>
+      )}
+      <CompactLogDayEntries entries={entries} />
+    </>
+  );
+}
+
+function MonthHeatmapCellContent({
+  dayNumber,
+  value,
+  valueKey,
+  unitLabel,
+  subjectEntries,
+  maxValue,
+  plannedMinutes = 0,
+  showBars = true,
+}) {
   const barWidthPercent = relativeBarPercent(value, maxValue);
+  const achievementRate = formatAchievementRate(value, plannedMinutes);
 
   return (
     <>
@@ -278,42 +417,56 @@ function MonthHeatmapCellContent({ dayNumber, value, valueKey, unitLabel, subjec
       </span>
       {value > 0 && (
         <>
-          <span className="text-[9px] sm:text-[10px] tabular-nums mt-0.5 leading-none opacity-90">
+          <span className="text-[10px] sm:text-xs font-extrabold tabular-nums mt-0.5 leading-none">
             {valueKey === 'minutes' ? formatDuration(value) : `${value}${unitLabel}`}
           </span>
-          {subjectEntries.length > 0 ? (
-            <div
-              className="mt-1 flex h-1 rounded-full overflow-hidden bg-tsure-surface-hover"
-              style={{ width: `${barWidthPercent}%` }}
+          {achievementRate !== null && (
+            <span
+              className={`text-[8px] font-bold tabular-nums mt-0.5 leading-none ${
+                achievementRate >= 100 ? 'text-green-700' : 'text-tsure-accent'
+              }`}
             >
-              {subjectEntries
-                .sort((a, b) => b[1] - a[1])
-                .map(([subject, mins]) => (
-                  <div
-                    key={subject}
-                    className={subjectBarColorClass(subject)}
-                    style={{ flexGrow: mins, flexBasis: 0, minWidth: mins > 0 ? 2 : 0 }}
-                  />
-                ))}
-            </div>
-          ) : (
-            <div
-              className="mt-1 h-1 rounded-full bg-tsure-primary"
-              style={{ width: `${barWidthPercent}%` }}
-            />
+              達成 {achievementRate}%
+            </span>
           )}
+          {showBars &&
+            (subjectEntries.length > 0 ? (
+              <div
+                className="mt-1 flex h-1 rounded-full overflow-hidden bg-tsure-surface-hover"
+                style={{ width: `${barWidthPercent}%` }}
+              >
+                {subjectEntries
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([subject, mins]) => (
+                    <div
+                      key={subject}
+                      className={subjectBarColorClass(subject)}
+                      style={{ flexGrow: mins, flexBasis: 0, minWidth: mins > 0 ? 2 : 0 }}
+                    />
+                  ))}
+              </div>
+            ) : (
+              <div
+                className="mt-1 h-1 rounded-full bg-tsure-primary"
+                style={{ width: `${barWidthPercent}%` }}
+              />
+            ))}
         </>
       )}
     </>
   );
 }
 
-function monthCellClassName(value, maxValue, showPlanDetails, hasData) {
+function monthCellClassName(value, maxValue, showPlanDetails, showLogDetails, hasData) {
   const base =
     'aspect-square rounded-lg flex flex-col items-center justify-center text-center px-0.5 min-w-0';
   if (showPlanDetails) {
     if (!hasData) return `${base} bg-tsure-surface-hover text-tsure-muted`;
     return `${base} bg-white text-tsure-primary`;
+  }
+  if (showLogDetails) {
+    if (!hasData) return `${base} bg-tsure-surface-hover text-tsure-muted`;
+    return `${base} ${intensityClass(value, maxValue)}`;
   }
   return `${base} ${intensityClass(value, maxValue)}`;
 }
@@ -324,12 +477,15 @@ function MonthCalendarDayCell({
   unitLabel,
   maxValue,
   showPlanDetails,
+  showLogDetails,
+  plannedMinutes = 0,
   onSelectDay,
 }) {
   const value = cell[valueKey] || 0;
   const dayNumber = dayjs(cell.dateKey).date();
   const entries = cell.entries || [];
   const hasPlanEntries = showPlanDetails && entries.length > 0;
+  const hasLogEntries = showLogDetails && entries.length > 0;
   const subjectEntries = Object.entries(cell.bySubject || {}).filter(([, mins]) => mins > 0);
   const hasData = value > 0 || entries.length > 0;
   const title = formatActivityTitle(
@@ -340,7 +496,13 @@ function MonthCalendarDayCell({
     cell.bySubject
   );
 
-  const cellClassName = monthCellClassName(value, maxValue, showPlanDetails, hasData);
+  const cellClassName = monthCellClassName(
+    value,
+    maxValue,
+    showPlanDetails,
+    showLogDetails,
+    hasData
+  );
 
   const handleSelect = () => {
     if (!hasData || !isMobileViewport()) return;
@@ -374,6 +536,55 @@ function MonthCalendarDayCell({
             {dayNumber}
           </span>
           <CompactPlanDayEntries entries={entries} />
+        </span>
+      </button>
+    );
+  }
+
+  if (hasLogEntries || (showLogDetails && hasData)) {
+    return (
+      <button
+        type="button"
+        className={`aspect-square rounded-lg min-w-0 overflow-hidden text-left transition active:scale-[0.97] md:active:scale-100 ${
+          hasData ? 'cursor-pointer md:cursor-default' : 'cursor-default'
+        }`}
+        title={title}
+        aria-label={`${dayNumber}日の記録を表示`}
+        onClick={handleSelect}
+        disabled={!hasData}
+      >
+        <span
+          className={`md:hidden h-full w-full ${monthCellClassName(
+            value,
+            maxValue,
+            false,
+            false,
+            hasData
+          )}`}
+        >
+          <MonthHeatmapCellContent
+            dayNumber={dayNumber}
+            value={value}
+            valueKey={valueKey}
+            unitLabel={unitLabel}
+            subjectEntries={subjectEntries}
+            maxValue={maxValue}
+            plannedMinutes={plannedMinutes}
+            showBars={false}
+          />
+        </span>
+        <span
+          className={`hidden md:flex h-full w-full flex-col px-1 py-1 min-w-0 overflow-hidden ${intensityClass(
+            value,
+            maxValue
+          )}`}
+        >
+          <MonthLogDesktopCellContent
+            dayNumber={dayNumber}
+            value={value}
+            entries={entries}
+            plannedMinutes={plannedMinutes}
+          />
         </span>
       </button>
     );
@@ -414,8 +625,11 @@ function MonthCalendarDayCell({
   );
 }
 
-function WeekStrip({ items, valueKey, unitLabel, contentVariant = 'none' }) {
+function WeekStrip({ items, valueKey, unitLabel, contentVariant = 'none', planMinutesByDateKey = {} }) {
   const maxValue = Math.max(...items.map((item) => item[valueKey] || 0), 1);
+  const isPlan = contentVariant === 'plan';
+  const isLog = contentVariant === 'log';
+  const showRichCells = isPlan || isLog;
   const legendSubjects = useMemo(() => {
     const set = new Set();
     items.forEach((item) => {
@@ -438,8 +652,9 @@ function WeekStrip({ items, valueKey, unitLabel, contentVariant = 'none' }) {
             valueKey={valueKey}
             unitLabel={unitLabel}
             maxValue={maxValue}
-            showEntries={contentVariant === 'plan'}
-            useHeatmap={contentVariant !== 'plan'}
+            showEntries={showRichCells}
+            contentVariant={contentVariant}
+            useHeatmap={!showRichCells}
           />
         ))}
       </div>
@@ -450,13 +665,52 @@ function WeekStrip({ items, valueKey, unitLabel, contentVariant = 'none' }) {
           const hasSubjectBreakdown =
             item.bySubject && Object.values(item.bySubject).some((mins) => mins > 0);
 
+          if (isLog) {
+            const plannedMinutes = planMinutesByDateKey[item.dateKey] || 0;
+            const achievementRate = formatAchievementRate(value, plannedMinutes);
+
+            return (
+              <div
+                key={item.dateKey}
+                className="flex flex-col items-stretch rounded-xl border border-tsure-border bg-white px-1.5 py-2 min-w-0 md:min-h-[22rem]"
+              >
+                <div className="text-center">
+                  <span className="text-[10px] sm:text-xs text-tsure-muted">{item.weekday}</span>
+                  <span className="block text-xs sm:text-sm font-bold text-tsure-primary tabular-nums">
+                    {item.label}
+                  </span>
+                </div>
+                <div className="mt-2 text-center shrink-0">
+                  <p className="text-base sm:text-lg font-extrabold text-tsure-primary tabular-nums leading-tight">
+                    {formatActivityValue(value, valueKey, unitLabel)}
+                  </p>
+                  {achievementRate !== null ? (
+                    <p
+                      className={`text-[10px] sm:text-xs font-bold tabular-nums mt-0.5 ${
+                        achievementRate >= 100 ? 'text-green-700' : 'text-tsure-accent'
+                      }`}
+                    >
+                      達成 {achievementRate}%
+                    </p>
+                  ) : value > 0 ? (
+                    <p className="text-[10px] text-tsure-muted mt-0.5">計画なし</p>
+                  ) : null}
+                  {plannedMinutes > 0 && (
+                    <p className="text-[10px] text-tsure-muted tabular-nums mt-0.5">
+                      予定 {formatDuration(plannedMinutes)}
+                    </p>
+                  )}
+                </div>
+                <LogDayEntries entries={item.entries} className="max-h-60 flex-1 min-h-0 mt-2" />
+              </div>
+            );
+          }
+
           return (
             <div
               key={item.dateKey}
               className={`flex flex-col items-stretch rounded-xl border border-tsure-border px-1.5 py-2 min-w-0 ${
-                contentVariant === 'plan'
-                  ? 'bg-white md:min-h-[22rem]'
-                  : intensityClass(value, maxValue)
+                isPlan ? 'bg-white md:min-h-[22rem]' : intensityClass(value, maxValue)
               }`}
             >
               <div className="text-center">
@@ -491,33 +745,41 @@ function WeekStrip({ items, valueKey, unitLabel, contentVariant = 'none' }) {
               <span className="mt-1.5 text-[11px] sm:text-xs font-semibold text-tsure-primary tabular-nums text-center leading-tight shrink-0">
                 {formatActivityValue(value, valueKey, unitLabel)}
               </span>
-              {contentVariant === 'plan' && (
+              {isPlan && (
                 <PlanDayEntries entries={item.entries} className="max-h-60 flex-1 min-h-0" />
               )}
             </div>
           );
         })}
       </div>
-      <SubjectLegend subjects={legendSubjects} />
+      {(isPlan || isLog) && <SubjectLegend subjects={legendSubjects} />}
     </div>
   );
 }
 
-function MonthCalendar({ items, valueKey, unitLabel, contentVariant = 'none' }) {
+function MonthCalendar({ items, valueKey, unitLabel, contentVariant = 'none', planDailyOverview = [] }) {
   const [selectedDay, setSelectedDay] = useState(null);
   const overviewByDateKey = useMemo(
     () => Object.fromEntries(items.map((item) => [item.dateKey, item])),
     [items]
+  );
+  const planMinutesByDateKey = useMemo(
+    () =>
+      Object.fromEntries(
+        planDailyOverview.map((item) => [item.dateKey, item.minutes || 0])
+      ),
+    [planDailyOverview]
   );
   const dateKeys = items.map((item) => item.dateKey);
   const cells = buildMonthCalendarCells(dateKeys, overviewByDateKey);
   const maxValue = Math.max(...items.map((item) => item[valueKey] || 0), 1);
   const monthLabel = dateKeys.length ? dayjs(dateKeys[0]).format('YYYY年M月') : '';
   const showPlanDetails = contentVariant === 'plan';
+  const showLogDetails = contentVariant === 'log';
   const detailType = showPlanDetails ? 'plan' : 'log';
   const selectedItem = selectedDay ? overviewByDateKey[selectedDay] : null;
   const legendSubjects = useMemo(() => {
-    if (!showPlanDetails) return [];
+    if (!showPlanDetails && !showLogDetails) return [];
     const set = new Set();
     items.forEach((item) => {
       Object.entries(item.bySubject || {}).forEach(([subject, mins]) => {
@@ -527,7 +789,7 @@ function MonthCalendar({ items, valueKey, unitLabel, contentVariant = 'none' }) 
     return Object.keys(SUBJECT_BAR_COLORS).filter((subject) => set.has(subject)).concat(
       [...set].filter((subject) => !SUBJECT_BAR_COLORS[subject])
     );
-  }, [items, showPlanDetails]);
+  }, [items, showPlanDetails, showLogDetails]);
 
   return (
     <div>
@@ -555,6 +817,8 @@ function MonthCalendar({ items, valueKey, unitLabel, contentVariant = 'none' }) 
               unitLabel={unitLabel}
               maxValue={maxValue}
               showPlanDetails={showPlanDetails}
+              showLogDetails={showLogDetails}
+              plannedMinutes={planMinutesByDateKey[cell.dateKey] || 0}
               onSelectDay={(day) => setSelectedDay(day.dateKey)}
             />
           );
@@ -566,7 +830,17 @@ function MonthCalendar({ items, valueKey, unitLabel, contentVariant = 'none' }) 
       {showPlanDetails ? (
         <>
           <SubjectLegend subjects={legendSubjects} />
-          <p className="mt-2 text-xs text-tsure-muted text-center">{monthLabel}</p>
+          <p className="mt-2 text-xs text-tsure-muted text-center">{monthLabel} · 予定のある日は白背景</p>
+        </>
+      ) : showLogDetails ? (
+        <>
+          <SubjectLegend subjects={legendSubjects} />
+          <p className="mt-2 text-xs text-tsure-muted text-center hidden md:block">
+            {monthLabel} · 薄いほど多い · 各日の学習内容を表示
+          </p>
+          <p className="mt-2 text-xs text-tsure-muted text-center md:hidden">
+            {monthLabel} · 薄いほど多い
+          </p>
         </>
       ) : (
         <p className="mt-2 text-xs text-tsure-muted text-center">{monthLabel} · 薄いほど多い</p>
@@ -592,6 +866,7 @@ export default function StudyPeriodActivityOverview({
   title,
   onDark = false,
   contentVariant = 'none',
+  planDailyOverview = [],
 }) {
   if (!items.length) return null;
 
@@ -604,6 +879,9 @@ export default function StudyPeriodActivityOverview({
           valueKey={valueKey}
           unitLabel={unitLabel}
           contentVariant={contentVariant}
+          planMinutesByDateKey={Object.fromEntries(
+            planDailyOverview.map((item) => [item.dateKey, item.minutes || 0])
+          )}
         />
       ) : (
         <MonthCalendar
@@ -611,6 +889,7 @@ export default function StudyPeriodActivityOverview({
           valueKey={valueKey}
           unitLabel={unitLabel}
           contentVariant={contentVariant}
+          planDailyOverview={planDailyOverview}
         />
       )}
     </section>

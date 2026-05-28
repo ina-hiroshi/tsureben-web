@@ -16,6 +16,7 @@ export default function SchoolManagementPanel({
   onSelectSchool,
   showCreateForm = true,
   selectLabel = '操作対象の学校',
+  elevatedSelect = false,
 }) {
   const { isSuperAdmin } = useTeacherStatus();
   const { toast } = useUiFeedback();
@@ -81,6 +82,8 @@ export default function SchoolManagementPanel({
           ...schools.map((s) => ({ value: s.id, label: s.name })),
         ]}
         placeholder="選択してください"
+        optionsClassName={elevatedSelect ? 'z-[250]' : ''}
+        optionsModal={!elevatedSelect}
       />
 
       {showCreateForm && isSuperAdmin && (

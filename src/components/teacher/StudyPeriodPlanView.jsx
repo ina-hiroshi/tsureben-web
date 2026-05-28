@@ -20,6 +20,8 @@ export default function StudyPeriodPlanView({
   }
 
   const periodLabel = periodMode === 'week' ? '今週' : '今月';
+  const activityTitle =
+    periodMode === 'week' ? `${periodLabel}の週間予定` : `${periodLabel}の月間予定`;
 
   return (
     <div className="space-y-5">
@@ -42,7 +44,7 @@ export default function StudyPeriodPlanView({
         periodMode={periodMode}
         valueKey="minutes"
         unitLabel="分"
-        title={`${periodLabel}の計画カレンダー`}
+        title={activityTitle}
         onDark={onDark}
         contentVariant="plan"
       />
@@ -52,7 +54,7 @@ export default function StudyPeriodPlanView({
         totalValue={totalPlannedMinutes}
         valueLabel="予定時間"
         formatValue={formatDuration}
-        title="教科別の計画"
+        title="教科別の予定"
         showCount
         onDark={onDark}
       />
@@ -60,7 +62,7 @@ export default function StudyPeriodPlanView({
       <StudyPeriodEntryTable
         type="plan"
         entries={entries}
-        title="計画一覧（時系列）"
+        title="予定一覧（時系列）"
         onDark={onDark}
       />
     </div>
