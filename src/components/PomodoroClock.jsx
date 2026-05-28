@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function PomodoroClock({ elapsedMinutes = 0 }) {
+export default function PomodoroClock({ elapsedMinutes = 0, large = false }) {
   const radius = 120;
   const center = 140;
   const strokeWidth = 6;
@@ -28,9 +28,19 @@ export default function PomodoroClock({ elapsedMinutes = 0 }) {
   const mins = Math.floor(elapsedMinutes);
   const secs = Math.floor((elapsedMinutes % 1) * 60);
 
+  const boxClass = large
+    ? 'relative mx-auto aspect-square shrink-0 w-[min(90vw,320px)] md:w-[min(100%,480px)] md:max-w-[480px]'
+    : 'relative mx-auto aspect-square shrink-0 w-[min(90vw,320px)] max-w-[320px]';
+
+  const textClass = large
+    ? 'text-5xl sm:text-6xl md:text-7xl'
+    : 'text-5xl sm:text-6xl';
+
   return (
-    <div className="relative w-full max-w-[min(90vw,320px)] mx-auto aspect-square">
-      <p className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-5xl sm:text-6xl font-bold z-10 text-tsure-surface tabular-nums">
+    <div className={boxClass}>
+      <p
+        className={`absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 font-bold z-10 text-tsure-surface tabular-nums ${textClass}`}
+      >
         {String(mins).padStart(2, '0')}:{String(secs).padStart(2, '0')}
       </p>
       <svg width="100%" height="100%" viewBox={`0 0 ${center * 2} ${center * 2}`}>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import dayjs from 'dayjs';
 import { useAuth } from '../contexts/AuthContext';
 import { useTeacherStatus } from '../hooks/useTeacherStatus';
@@ -9,6 +10,7 @@ import { flattenDayPlans } from '../utils/planUtils';
 import PageLayout from '../components/ui/PageLayout';
 import SectionTitle from '../components/ui/SectionTitle';
 import Button from '../components/ui/Button';
+import Modal from '../components/ui/Modal';
 import StudyTimer from '../components/StudyTimer';
 import StudyPresenceGrid from '../components/StudyPresenceGrid';
 import { ChevronRight } from 'lucide-react';
@@ -21,7 +23,7 @@ export default function StudyTimerPage() {
   const [profile, setProfile] = useState(null);
   const [visibleUsers, setVisibleUsers] = useState([]);
   const [plans, setPlans] = useState([]);
-  const [showPlans, setShowPlans] = useState(true);
+  const [plansModalOpen, setPlansModalOpen] = useState(false);
 
   useEffect(() => {
     if (!email) return;
@@ -38,49 +40,54 @@ export default function StudyTimerPage() {
 
   return (
     <PageLayout title="学習タイマー">
-      <StudyTimer email={email} />
+      <div className="flex flex-col gap-4 pb-8 md:pb-8">
+        <section className="shrink-0">
+          <SectionTitle
+            onDark
+            action={
+              visibleUsers.length > 0 ? (
+                <span className="text-sm text-tsure-on-primary/60 tabular-nums">
+                  {visibleUsers.length}人
+                </span>
+              ) : null
+            }
+          >
+            一緒に勉強中
+          </SectionTitle>
+          <StudyPresenceGrid users={visibleUsers} emptyTitle="周りに勉強中の人はいません" />
+        </section>
 
-      <section className="mt-4">
-        <SectionTitle
-          onDark
-          action={
-            visibleUsers.length > 0 ? (
-              <span className="text-sm text-tsure-on-primary/60 tabular-nums">
-                {visibleUsers.length}人
-              </span>
-            ) : null
-          }
-        >
-          一緒に勉強中
-        </SectionTitle>
-        <StudyPresenceGrid users={visibleUsers} emptyTitle="周りに勉強中の人はいません" />
-      </section>
+        <section className="flex flex-col items-center gap-4 py-2 md:py-6">
+          <StudyTimer email={email} large />
+          <Button
+            type="button"
+            variant="secondary"
+            size="md"
+            className="inline-flex items-center gap-2"
+            onClick={() => setPlansModalOpen(true)}
+          >
+            今日の計画
+            <AppIcon icon={ChevronRight} size="sm" />
+          </Button>
+        </section>
+      </div>
 
-      <section className="mt-4">
-        <SectionTitle
-          onDark
-          action={
-            <button
-              type="button"
-              className="text-sm text-tsure-on-primary/70 hover:text-tsure-on-primary min-h-touch px-2"
-              onClick={() => setShowPlans((v) => !v)}
-            >
-              {showPlans ? '折りたたむ' : '展開'}
-            </button>
-          }
+      <Modal
+        open={plansModalOpen}
+        onClose={() => setPlansModalOpen(false)}
+        title="今日の計画"
+        size="wide"
+      >
+        <PlanCardList entries={plans} compact />
+        <Link
+          to="/studyplan"
+          onClick={() => setPlansModalOpen(false)}
+          className="mt-4 flex min-h-touch w-full items-center justify-center gap-1 text-sm font-semibold text-tsure-primary no-underline hover:opacity-80"
         >
-          今日の計画（参考）
-        </SectionTitle>
-        {showPlans && (
-          <>
-            <PlanCardList entries={plans} compact />
-            <Button to="/studyplan" variant="secondary" size="sm" className="w-full mt-3 inline-flex items-center justify-center gap-1">
-              計画を編集
-              <AppIcon icon={ChevronRight} size="sm" />
-            </Button>
-          </>
-        )}
-      </section>
+          計画を編集
+          <AppIcon icon={ChevronRight} size="sm" />
+        </Link>
+      </Modal>
     </PageLayout>
   );
 }

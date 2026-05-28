@@ -25,7 +25,7 @@ function findMatchingPlan(plans, startTime) {
   });
 }
 
-export default function StudyTimer({ email }) {
+export default function StudyTimer({ email, className = '', large = false }) {
   const [status, setStatus] = useState('idle');
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
   const [showModal, setShowModal] = useState(false);
@@ -122,10 +122,12 @@ export default function StudyTimer({ email }) {
   };
 
   return (
-    <div className="flex flex-col items-center gap-6 py-6">
-      <PomodoroClock elapsedMinutes={elapsedMinutes} />
+    <div
+      className={`flex flex-col items-center gap-6 py-6 w-full mx-auto ${large ? 'max-w-md md:max-w-xl md:gap-8' : 'max-w-md'} ${className}`}
+    >
+      <PomodoroClock elapsedMinutes={elapsedMinutes} large={large} />
 
-      <div className="flex flex-col gap-3 w-full max-w-xs">
+      <div className={`flex flex-col gap-3 w-full ${large ? 'max-w-xs md:max-w-md' : 'max-w-xs'}`}>
         {status === 'idle' && (
           <Button variant="accent" size="lg" className="w-full inline-flex items-center justify-center gap-2" onClick={handleStart}>
             <AppIcon icon={Play} size="md" className="fill-current" />

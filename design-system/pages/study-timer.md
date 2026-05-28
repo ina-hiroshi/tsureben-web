@@ -1,6 +1,6 @@
-# Study Timer — Mobile Layout
-1. AppHeader title: 学習タイマー
-2. PomodoroClock (70% width, centered)
-3. CTA buttons (start/pause/finish)
-4. StudyPresenceGrid card
-5. PlanCardList compact (collapsible)
+# Study Timer
+
+## Layout（共通）
+1. StudyPresenceGrid（一緒に勉強中・最上部）
+2. PomodoroClock + CTA（PC は大きめ）
+3. 「今日の計画」ボタン（secondary）→ Modal（`size="wide"`）で PlanCardList

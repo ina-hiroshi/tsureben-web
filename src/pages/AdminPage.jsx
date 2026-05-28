@@ -20,8 +20,8 @@ export default function AdminPage() {
   }, [teacherSchoolId, isSuperAdmin]);
 
   return (
-    <PageLayout title="管理">
-      <div className="space-y-4 pb-8 max-w-4xl">
+    <PageLayout title="管理" contentWidth="wide">
+      <div className="space-y-4 pb-8">
         <Card>
           <SectionTitle>学校管理</SectionTitle>
           <SchoolManagementPanel
