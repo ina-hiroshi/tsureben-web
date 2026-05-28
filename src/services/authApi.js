@@ -96,3 +96,11 @@ export const createSelfRegisteredStudent = (payload) =>
   call('createSelfRegisteredStudent', payload);
 
 export const acceptMateRequest = (payload) => call('acceptMateRequest', payload);
+
+export const createMateInvite = (payload) => call('createMateInvite', payload);
+
+export const getMateInvitePreview = (payload) => call('getMateInvitePreview', payload);
+
+export const redeemMateInvite = (payload) => call('redeemMateInvite', payload);
+
+export const cancelMateRequest = (payload) => call('cancelMateRequest', payload);

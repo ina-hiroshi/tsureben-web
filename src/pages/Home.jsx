@@ -14,11 +14,13 @@ import NavCard from '../components/ui/NavCard';
 import PlanCardList from '../components/PlanCardList';
 import StudyPresenceGrid from '../components/StudyPresenceGrid';
 import TodayStudySummary from '../components/TodayStudySummary';
+import MateList from '../components/MateList';
 import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { NAV_CARD_ICONS } from '../utils/navIcons';
 import { ChevronRight } from 'lucide-react';
 import AppIcon from '../components/ui/AppIcon';
 import { useUiFeedback } from '../contexts/UiFeedbackContext';
+import { isDemoMateEmail } from '../dev/demoMate';
 
 export default function Home() {
   const { email } = useAuth();
@@ -74,6 +76,10 @@ export default function Home() {
   }, [email, dateKey]);
 
   const handleAccept = async (fromEmail) => {
+    if (isDemoMateEmail(fromEmail)) {
+      toast.info('開発用の表示データです');
+      return;
+    }
     try {
       await acceptRequest(email, fromEmail);
       toast.success('連れ勉仲間になりました');
@@ -123,16 +129,14 @@ export default function Home() {
         {pendingReceived.length > 0 && (
           <Card>
             <SectionTitle>連れ勉の申請</SectionTitle>
-            <ul className="space-y-2">
-              {pendingReceived.map((u) => (
-                <li key={u.email} className="flex items-center justify-between gap-2">
-                  <span className="font-medium text-tsure-primary">{u.name || u.email}</span>
-                  <Button size="sm" onClick={() => handleAccept(u.email)}>
-                    承認
-                  </Button>
-                </li>
-              ))}
-            </ul>
+            <MateList
+              users={pendingReceived}
+              actions={(u) => (
+                <Button size="sm" onClick={() => handleAccept(u.email)}>
+                  承認
+                </Button>
+              )}
+            />
           </Card>
         )}
 

@@ -54,8 +54,8 @@ export default function SettingsPage() {
   };
 
   return (
-    <PageLayout title="設定">
-      <div className="space-y-4 pb-8">
+    <PageLayout title="設定" contentWidth="narrow">
+      <div className="space-y-4 pb-8 md:mx-auto">
         <Card>
           <SectionTitle>公開範囲</SectionTitle>
           <Select value={shareScope} onChange={(e) => saveShareScope(e.target.value)}>
@@ -72,7 +72,7 @@ export default function SettingsPage() {
             <option value="学内のみ">学内のみ</option>
             <option value="学内外">学内外</option>
           </Select>
-          <p className="text-xs text-tsure-muted mt-2">検索・申請できる相手の範囲</p>
+          <p className="text-xs text-tsure-muted mt-2">招待経由で申請を受け付ける相手の範囲</p>
         </Card>
 
         {mustChangePassword && (

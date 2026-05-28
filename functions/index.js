@@ -5,6 +5,10 @@ import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 import {
   acceptMateRequestHandler,
+  cancelMateRequestHandler,
+  createMateInviteHandler,
+  getMateInvitePreviewHandler,
+  redeemMateInviteHandler,
   bulkImportStudentsHandler,
   bulkImportTeachersHandler,
   createSchoolHandler,
@@ -112,6 +116,37 @@ export const acceptMateRequest = onCall(
   wrapCallable(async (request) => {
     const email = requireAuth(request);
     return acceptMateRequestHandler(email, request.data || {});
+  })
+);
+
+export const createMateInvite = onCall(
+  defaultCallableOptions,
+  wrapCallable(async (request) => {
+    const email = requireAuth(request);
+    return createMateInviteHandler(email, request.data || {});
+  })
+);
+
+export const getMateInvitePreview = onCall(
+  defaultCallableOptions,
+  wrapCallable(async (request) => {
+    return getMateInvitePreviewHandler(request.auth?.token?.email, request.data || {});
+  })
+);
+
+export const redeemMateInvite = onCall(
+  defaultCallableOptions,
+  wrapCallable(async (request) => {
+    const email = requireAuth(request);
+    return redeemMateInviteHandler(email, request.data || {});
+  })
+);
+
+export const cancelMateRequest = onCall(
+  defaultCallableOptions,
+  wrapCallable(async (request) => {
+    const email = requireAuth(request);
+    return cancelMateRequestHandler(email, request.data || {});
   })
 );
 

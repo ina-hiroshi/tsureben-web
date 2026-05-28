@@ -80,5 +80,9 @@ service cloud.firestore {
     match /verification_codes/{email} {
       allow read, write: if false;
     }
+
+    match /mateInvites/{tokenId} {
+      allow read, write: if false;
+    }
   }
 }

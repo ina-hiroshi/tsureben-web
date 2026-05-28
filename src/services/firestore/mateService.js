@@ -7,7 +7,8 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { getProfile } from './userService';
-import { canMateInteract } from '../../utils/mateScope';
+import { acceptMateRequest, cancelMateRequest, redeemMateInvite } from '../authApi';
+import { mergeDemoMateState } from '../../dev/demoMate';
 
 export async function getMateState(email) {
   const profile = await getProfile(email);
@@ -30,25 +31,16 @@ export async function getMateState(email) {
   };
 }
 
-export async function sendRequest(fromEmail, toEmail) {
-  const [me, target] = await Promise.all([getProfile(fromEmail), getProfile(toEmail)]);
-  if (!me || !target) throw new Error('ユーザーが見つかりません');
-  if (!canMateInteract(me, target)) throw new Error('申請できないユーザーです');
-  if ((me.mutualMates || []).includes(toEmail)) throw new Error('既に連れ勉仲間です');
-
-  await updateDoc(doc(db, 'users', fromEmail), { pendingSent: arrayUnion(toEmail) });
-  await updateDoc(doc(db, 'users', toEmail), { pendingReceived: arrayUnion(fromEmail) });
-}
-
-import { acceptMateRequest } from '../authApi';
-
 export async function acceptRequest(myEmail, fromEmail) {
   await acceptMateRequest({ fromEmail });
 }
 
 export async function cancelRequest(myEmail, toEmail) {
-  await updateDoc(doc(db, 'users', myEmail), { pendingSent: arrayRemove(toEmail) });
-  await updateDoc(doc(db, 'users', toEmail), { pendingReceived: arrayRemove(myEmail) });
+  await cancelMateRequest({ toEmail });
+}
+
+export async function submitMateInviteRequest(token) {
+  return redeemMateInvite({ token });
 }
 
 export async function hideUser(myEmail, targetEmail, isMutual) {
@@ -59,6 +51,31 @@ export async function hideUser(myEmail, targetEmail, isMutual) {
 export async function unhideUser(myEmail, targetEmail, isMutual) {
   const field = isMutual ? 'hiddenMates' : 'hiddenRequests';
   await updateDoc(doc(db, 'users', myEmail), { [field]: arrayRemove(targetEmail) });
+}
+
+async function attachSchoolNames(profiles) {
+  const schoolIds = [
+    ...new Set(Object.values(profiles).map((p) => p.schoolId).filter(Boolean)),
+  ];
+  const namesById = {};
+  await Promise.all(
+    schoolIds.map(async (id) => {
+      const snap = await getDoc(doc(db, 'schools', id));
+      namesById[id] = snap.exists() ? snap.data().name || '' : '';
+    })
+  );
+
+  const enriched = {};
+  for (const [email, profile] of Object.entries(profiles)) {
+    enriched[email] = {
+      ...profile,
+      schoolName:
+        profile.schoolName ||
+        (profile.schoolId ? namesById[profile.schoolId] : '') ||
+        '',
+    };
+  }
+  return enriched;
 }
 
 export async function loadMateProfiles(email) {
@@ -79,5 +96,7 @@ export async function loadMateProfiles(email) {
     })
   );
 
-  return { ...state, profiles };
+  const profilesWithSchools = await attachSchoolNames(profiles);
+  const merged = { ...state, profiles: profilesWithSchools };
+  return mergeDemoMateState(merged, email);
 }

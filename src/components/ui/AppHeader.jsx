@@ -1,21 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Timer, Settings, LogOut, Shield, Menu, X } from 'lucide-react';
+import { Settings, LogOut, Shield, Menu, X } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTeacherStatus } from '../../hooks/useTeacherStatus';
 import { getProfile } from '../../services/firestore/userService';
 import { logout } from '../../utils/authSession';
 import AppLogo from './AppLogo';
 import AppIcon from './AppIcon';
-
-const NAV_ITEMS = [
-  { to: '/home', label: 'ホーム' },
-  { to: '/pomodoro', label: '学習タイマー' },
-  { to: '/studyplan', label: '学習計画' },
-  { to: '/studyrecord', label: '学習記録' },
-  { to: '/turebenmate', label: '連れ勉' },
-  { to: '/settings', label: '設定' },
-];
+import { NAV_ITEMS } from '../../utils/navConfig';
 
 /** ダークヘッダー上で視認性の高いボタンスタイル */
 const HEADER_BTN = {
@@ -95,12 +87,12 @@ export default function AppHeader() {
   };
 
   return (
-    <header className="bg-tsure-bg/95 backdrop-blur sticky top-0 z-50 border-b border-white/10 mb-4 pt-[var(--safe-top)]">
+    <header className="md:hidden bg-tsure-bg/95 backdrop-blur sticky top-0 z-50 border-b border-white/10 mb-4 pt-[var(--safe-top)]">
       <div className="relative flex items-center justify-between px-4 py-3 min-h-touch max-w-7xl mx-auto">
-        {/* 左: メニュー */}
+        {/* 左: メニュー（モバイルのみ） */}
         <button
           type="button"
-          className="relative z-10 shrink-0 min-w-touch min-h-touch flex items-center justify-center rounded-lg hover:bg-white/10 text-tsure-on-primary"
+          className="relative z-10 shrink-0 min-w-touch min-h-touch flex items-center justify-center rounded-lg hover:bg-white/10 text-tsure-on-primary md:hidden"
           aria-label={open ? 'メニューを閉じる' : 'メニューを開く'}
           onClick={() => setOpen((v) => !v)}
         >
@@ -115,8 +107,8 @@ export default function AppHeader() {
           <AppLogo variant="header" theme="dark" />
         </Link>
 
-        {/* 右: ボタン群（デスクトップ） */}
-        <div className="relative z-10 ml-auto hidden sm:flex">
+        {/* 右: ボタン群（sm以上・md未満） */}
+        <div className="relative z-10 ml-auto hidden sm:flex md:hidden">
           <HeaderActionButtons
             name={name}
             isSchoolAdmin={isSchoolAdmin}
@@ -131,21 +123,8 @@ export default function AppHeader() {
       </div>
 
       {open && (
-        <nav className="absolute left-0 right-0 top-full bg-tsure-primary border-b border-tsure-border shadow-lg z-50">
+        <nav className="md:hidden absolute left-0 right-0 top-full bg-tsure-primary border-b border-tsure-border shadow-lg z-50">
           <ul className="py-2 max-w-7xl mx-auto">
-            <li className="px-4 py-2 sm:hidden">
-              <button
-                type="button"
-                onClick={() => {
-                  navigate('/pomodoro');
-                  setOpen(false);
-                }}
-                className="w-full flex justify-center items-center gap-2 px-4 py-3 bg-tsure-accent text-tsure-primary rounded-full min-h-touch font-semibold"
-              >
-                <AppIcon icon={Timer} size="md" />
-                学習タイマー
-              </button>
-            </li>
             {NAV_ITEMS.map((item) => (
               <li key={item.to}>
                 <Link
@@ -159,6 +138,19 @@ export default function AppHeader() {
                 </Link>
               </li>
             ))}
+            <li className="sm:hidden">
+              <button
+                type="button"
+                onClick={() => {
+                  handleLogout();
+                  setOpen(false);
+                }}
+                className="w-full flex items-center gap-2 px-4 py-3 min-h-touch text-tsure-on-primary hover:bg-white/10"
+              >
+                <AppIcon icon={LogOut} size="sm" />
+                ログアウト
+              </button>
+            </li>
           </ul>
         </nav>
       )}

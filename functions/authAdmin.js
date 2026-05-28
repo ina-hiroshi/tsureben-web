@@ -1,6 +1,8 @@
+import { randomUUID } from "crypto";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
 import { HttpsError } from "firebase-functions/v2/https";
+import { canMateInteract } from "./mateScope.js";
 
 function db() {
   return getFirestore();
@@ -136,7 +138,7 @@ export async function bulkImportStudentsHandler(callerEmail, { schoolId, rows })
 
       if (!alreadyRegistered) {
         const userSnap = await db().collection("users").doc(email).get();
-        if (userSnap.exists()) {
+        if (userSnap.exists) {
           alreadyRegistered = true;
         }
       }
@@ -208,7 +210,7 @@ export async function resetStudentPasswordHandler(callerEmail, { email, newPassw
   }
 
   const userSnap = await db().collection("users").doc(normalized).get();
-  if (!userSnap.exists()) {
+  if (!userSnap.exists) {
     throw new HttpsError("not-found", "生徒が見つかりません");
   }
 
@@ -241,7 +243,7 @@ export async function sendVerificationCodeHandler({ email }) {
   }
 
   const userSnap = await db().collection("users").doc(normalized).get();
-  if (userSnap.exists() && userSnap.data()?.registrationType === "school_provisioned") {
+  if (userSnap.exists && userSnap.data()?.registrationType === "school_provisioned") {
     throw new HttpsError(
       "failed-precondition",
       "学校登録済みのアカウントです。配布されたパスワードでログインしてください"
@@ -275,7 +277,7 @@ export async function verifyCodeHandler({ email, code }) {
   }
 
   const snap = await db().collection("verification_codes").doc(normalized).get();
-  if (!snap.exists()) {
+  if (!snap.exists) {
     throw new HttpsError("not-found", "認証コードが見つかりません");
   }
 
@@ -358,7 +360,7 @@ export async function createSelfRegisteredStudentHandler({ email, password, scho
   }
 
   const codeSnap = await db().collection("verification_codes").doc(normalized).get();
-  if (!codeSnap.exists() || !codeSnap.data()?.verified) {
+  if (!codeSnap.exists || !codeSnap.data()?.verified) {
     throw new HttpsError("failed-precondition", "メール認証が完了していません");
   }
 
@@ -412,7 +414,7 @@ export async function acceptMateRequestHandler(callerEmail, { fromEmail }) {
     const theirRef = dbRef.collection("users").doc(theirEmail);
     const [mySnap, theirSnap] = await Promise.all([tx.get(myRef), tx.get(theirRef)]);
 
-    if (!mySnap.exists() || !theirSnap.exists()) {
+    if (!mySnap.exists || !theirSnap.exists) {
       throw new HttpsError("not-found", "ユーザーが見つかりません");
     }
 
@@ -430,6 +432,186 @@ export async function acceptMateRequestHandler(callerEmail, { fromEmail }) {
     tx.update(theirRef, {
       pendingSent: FieldValue.arrayRemove(myEmail),
       mutualMates: FieldValue.arrayUnion(myEmail),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+
+  return { success: true };
+}
+
+const MATE_INVITE_TTL_MS = 30 * 60 * 1000;
+
+function getAppOrigin(origin) {
+  const trimmed = String(origin || process.env.APP_ORIGIN || "").trim();
+  if (trimmed) return trimmed.replace(/\/$/, "");
+  return "https://tsureben.web.app";
+}
+
+function buildInviteUrl(token, origin) {
+  return `${getAppOrigin(origin)}/mate-invite/${token}`;
+}
+
+function isInviteExpired(expiresAt) {
+  if (!expiresAt) return true;
+  const ms = expiresAt.toMillis ? expiresAt.toMillis() : new Date(expiresAt).getTime();
+  return Date.now() >= ms;
+}
+
+async function getInviteDoc(token) {
+  const normalized = String(token || "").trim();
+  if (!normalized) return null;
+  const snap = await db().collection("mateInvites").doc(normalized).get();
+  if (!snap.exists) return null;
+  return { id: snap.id, ...snap.data() };
+}
+
+async function getUserRecord(email) {
+  const snap = await db().collection("users").doc(normalizeEmail(email)).get();
+  if (!snap.exists) return null;
+  return { email: snap.id, ...snap.data() };
+}
+
+export async function createMateInviteHandler(callerEmail, { origin } = {}) {
+  const inviterEmail = normalizeEmail(callerEmail);
+  const inviter = await getUserRecord(inviterEmail);
+  if (!inviter) {
+    throw new HttpsError("not-found", "ユーザーが見つかりません");
+  }
+
+  const token = randomUUID();
+  const now = Date.now();
+  const expiresAt = Timestamp.fromMillis(now + MATE_INVITE_TTL_MS);
+
+  await db().collection("mateInvites").doc(token).set({
+    inviterEmail,
+    createdAt: FieldValue.serverTimestamp(),
+    expiresAt,
+  });
+
+  return {
+    token,
+    inviteUrl: buildInviteUrl(token, origin),
+    expiresAt: expiresAt.toMillis(),
+    inviterName: inviter.name || inviterEmail,
+  };
+}
+
+export async function getMateInvitePreviewHandler(_callerEmail, { token } = {}) {
+  const invite = await getInviteDoc(token);
+  if (!invite) {
+    return { invalid: true, expired: false };
+  }
+
+  const expired = isInviteExpired(invite.expiresAt);
+  const inviter = await getUserRecord(invite.inviterEmail);
+  if (!inviter) {
+    return { invalid: true, expired };
+  }
+
+  const expiresAtMs = invite.expiresAt.toMillis
+    ? invite.expiresAt.toMillis()
+    : new Date(invite.expiresAt).getTime();
+
+  return {
+    invalid: false,
+    expired,
+    inviterName: inviter.name || invite.inviterEmail,
+    inviterGrade: inviter.grade || null,
+    inviterClass: inviter.class || null,
+    expiresAt: expiresAtMs,
+  };
+}
+
+export async function redeemMateInviteHandler(callerEmail, { token } = {}) {
+  const inviteeEmail = normalizeEmail(callerEmail);
+  const invite = await getInviteDoc(token);
+  if (!invite) {
+    throw new HttpsError("not-found", "招待が見つかりません");
+  }
+  if (isInviteExpired(invite.expiresAt)) {
+    throw new HttpsError("failed-precondition", "招待の有効期限が切れています");
+  }
+
+  const inviterEmail = normalizeEmail(invite.inviterEmail);
+  if (inviterEmail === inviteeEmail) {
+    throw new HttpsError("invalid-argument", "自分自身には申請できません");
+  }
+
+  const dbRef = db();
+  let status = "pending_created";
+
+  await dbRef.runTransaction(async (tx) => {
+    const inviteeRef = dbRef.collection("users").doc(inviteeEmail);
+    const inviterRef = dbRef.collection("users").doc(inviterEmail);
+    const [inviteeSnap, inviterSnap] = await Promise.all([
+      tx.get(inviteeRef),
+      tx.get(inviterRef),
+    ]);
+
+    if (!inviteeSnap.exists || !inviterSnap.exists) {
+      throw new HttpsError("not-found", "ユーザーが見つかりません");
+    }
+
+    const invitee = { email: inviteeSnap.id, ...inviteeSnap.data() };
+    const inviter = { email: inviterSnap.id, ...inviterSnap.data() };
+
+    if (!canMateInteract(invitee, inviter)) {
+      throw new HttpsError("permission-denied", "申請できないユーザーです");
+    }
+
+    const mutualMates = invitee.mutualMates || [];
+    if (mutualMates.includes(inviterEmail)) {
+      status = "already_mates";
+      return;
+    }
+
+    const pendingSent = invitee.pendingSent || [];
+    if (pendingSent.includes(inviterEmail)) {
+      status = "already_pending";
+      return;
+    }
+
+    tx.update(inviteeRef, {
+      pendingSent: FieldValue.arrayUnion(inviterEmail),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    tx.update(inviterRef, {
+      pendingReceived: FieldValue.arrayUnion(inviteeEmail),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+  });
+
+  return { success: true, status };
+}
+
+export async function cancelMateRequestHandler(callerEmail, { toEmail } = {}) {
+  const myEmail = normalizeEmail(callerEmail);
+  const theirEmail = normalizeEmail(toEmail);
+  if (!theirEmail) {
+    throw new HttpsError("invalid-argument", "toEmail が必要です");
+  }
+
+  const dbRef = db();
+  await dbRef.runTransaction(async (tx) => {
+    const myRef = dbRef.collection("users").doc(myEmail);
+    const theirRef = dbRef.collection("users").doc(theirEmail);
+    const [mySnap, theirSnap] = await Promise.all([tx.get(myRef), tx.get(theirRef)]);
+
+    if (!mySnap.exists || !theirSnap.exists) {
+      throw new HttpsError("not-found", "ユーザーが見つかりません");
+    }
+
+    const pendingSent = mySnap.data().pendingSent || [];
+    if (!pendingSent.includes(theirEmail)) {
+      throw new HttpsError("failed-precondition", "取消できる申請がありません");
+    }
+
+    tx.update(myRef, {
+      pendingSent: FieldValue.arrayRemove(theirEmail),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    tx.update(theirRef, {
+      pendingReceived: FieldValue.arrayRemove(myEmail),
       updatedAt: FieldValue.serverTimestamp(),
     });
   });

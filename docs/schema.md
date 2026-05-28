@@ -38,3 +38,10 @@ Live study session for presence.
 ## teachers/{email}, schools/{id}, verification_codes/{email}
 
 Unchanged from prior design.
+
+## mateInvites/{tokenId}
+
+Time-limited mate invite tokens (Cloud Functions only).
+
+- `inviterEmail`
+- `createdAt`, `expiresAt` (30-minute TTL)

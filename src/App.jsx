@@ -12,6 +12,7 @@ import StudyPlanPage from './pages/StudyPlanPage';
 import StudyTimerPage from './pages/StudyTimerPage';
 import StudyRecordPage from './pages/StudyRecordPage';
 import TureBenMatePage from './pages/TureBenMatePage';
+import MateInvitePage from './pages/MateInvitePage';
 import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
 
@@ -20,6 +21,7 @@ function AppLayout() {
     <Routes>
       <Route path="/" element={<Login />} />
       <Route path="/oauth-callback" element={<OAuthCallback />} />
+      <Route path="/mate-invite/:token" element={<MateInvitePage />} />
       <Route
         path="/home"
         element={

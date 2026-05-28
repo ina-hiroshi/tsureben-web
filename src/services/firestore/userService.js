@@ -7,8 +7,6 @@ import {
   query,
   where,
   getDocs,
-  orderBy,
-  limit,
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { normalizeNameLower } from '../../utils/mateScope';
@@ -40,32 +38,6 @@ export async function setProfile(email, data, merge = true) {
 export async function getProfiles(emails) {
   const results = await Promise.all(emails.map((e) => getProfile(e)));
   return results.filter(Boolean);
-}
-
-export async function searchUsers({ queryText, schoolId, max = 10 }) {
-  const q = normalizeNameLower(queryText);
-  if (!q) return [];
-
-  let firestoreQuery;
-  if (schoolId) {
-    firestoreQuery = query(
-      collection(db, 'users'),
-      where('schoolId', '==', schoolId),
-      where('nameLower', '>=', q),
-      where('nameLower', '<=', q + '\uf8ff'),
-      limit(max)
-    );
-  } else {
-    firestoreQuery = query(
-      collection(db, 'users'),
-      where('nameLower', '>=', q),
-      where('nameLower', '<=', q + '\uf8ff'),
-      limit(max)
-    );
-  }
-
-  const snap = await getDocs(firestoreQuery);
-  return snap.docs.map((d) => ({ email: d.id, ...d.data() }));
 }
 
 export async function fetchStudentsByGradeClass(grade, classNum) {

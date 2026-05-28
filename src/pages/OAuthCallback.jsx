@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
 import { auth } from '../firebase';
 import { ensureUserDoc } from '../utils/ensureUserDoc';
+import { consumePostLoginReturnUrl } from '../utils/postLoginRedirect';
 import {
   exchangeCodeForIdToken,
   readStoredOAuthHash,
@@ -83,7 +84,9 @@ export default function OAuthCallback() {
         const result = await signInWithCredential(auth, credential);
         await ensureUserDoc(result.user);
 
-        const returnUrl = localStorage.getItem('oauthReturnUrl') || '/home';
+        const returnUrl = consumePostLoginReturnUrl(
+          localStorage.getItem('oauthReturnUrl') || '/home'
+        );
         completeOAuthLogin(returnUrl);
       } catch (err) {
         console.error('OAuth callback error:', err);

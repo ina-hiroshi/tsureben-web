@@ -32,6 +32,7 @@ import {
   getExternalLoginUrl,
 } from '../services/googleOAuth';
 import { ensureUserDoc } from '../utils/ensureUserDoc';
+import { consumePostLoginReturnUrl, peekPostLoginReturnUrl } from '../utils/postLoginRedirect';
 
 const IOS_CLIENT_ID =
   '77789669140-inaoihtj3lg3q0sqbfb0cjqmoduu1oes.apps.googleusercontent.com';
@@ -61,7 +62,7 @@ export default function Login() {
 
   useEffect(() => {
     if (!loading && email) {
-      navigate('/home', { replace: true });
+      navigate(consumePostLoginReturnUrl('/home'), { replace: true });
     }
   }, [email, loading, navigate]);
 
@@ -85,7 +86,7 @@ export default function Login() {
 
   const finishLogin = async (user) => {
     await ensureUserDoc(user);
-    navigate('/home');
+    navigate(consumePostLoginReturnUrl('/home'));
   };
 
   const handleTeacherLogin = async () => {
@@ -121,7 +122,7 @@ export default function Login() {
         await setPersistence(auth, browserLocalPersistence);
 
         if (isLocalhost()) {
-          localStorage.setItem('oauthReturnUrl', '/home');
+          localStorage.setItem('oauthReturnUrl', peekPostLoginReturnUrl() || '/home');
           const redirectUri = getLocalhostRedirectUri();
           setRedirecting(true);
           // timetable-frontend 同等: localhost は Implicit Flow（secret 不要）
