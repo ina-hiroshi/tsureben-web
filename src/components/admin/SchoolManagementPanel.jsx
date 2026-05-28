@@ -11,7 +11,12 @@ import { useUiFeedback } from '../../contexts/UiFeedbackContext';
 import LoadingOverlay from '../ui/LoadingOverlay';
 import FilterSelect from '../ui/FilterSelect';
 
-export default function SchoolManagementPanel({ selectedSchoolId, onSelectSchool }) {
+export default function SchoolManagementPanel({
+  selectedSchoolId,
+  onSelectSchool,
+  showCreateForm = true,
+  selectLabel = '操作対象の学校',
+}) {
   const { isSuperAdmin } = useTeacherStatus();
   const { toast } = useUiFeedback();
   const [schools, setSchools] = useState([]);
@@ -68,7 +73,7 @@ export default function SchoolManagementPanel({ selectedSchoolId, onSelectSchool
     <div className="space-y-4">
       <LoadingOverlay open={loading} label="学校を登録しています..." />
       <FilterSelect
-        label="操作対象の学校"
+        label={selectLabel}
         value={selectedSchoolId}
         onChange={onSelectSchool}
         options={[
@@ -78,7 +83,7 @@ export default function SchoolManagementPanel({ selectedSchoolId, onSelectSchool
         placeholder="選択してください"
       />
 
-      {isSuperAdmin && (
+      {showCreateForm && isSuperAdmin && (
         <form onSubmit={handleCreateSchool} className="border-t pt-4 space-y-3">
           <h3 className="font-semibold text-[#5a3e28]">新規学校作成（super_admin）</h3>
           <input

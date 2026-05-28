@@ -1,4 +1,5 @@
 import Card from './ui/Card';
+import EmptyState from './ui/EmptyState';
 import { subjectColorClass } from '../utils/planUtils';
 import EntryDetails from './StudyEntryDetails';
 import StudyEntryCardActions from './StudyEntryCardActions';
@@ -20,22 +21,30 @@ function planDurationMinutes(start, end) {
 export default function PlanCardList({
   entries = [],
   compact = false,
+  readOnly = false,
   onEdit,
   onDelete,
-  emptyMessage = '予定はありません',
+  emptyState,
+  emptyAction,
 }) {
   if (!entries.length) {
-    return <p className="text-sm text-tsure-muted text-center py-6">{emptyMessage}</p>;
+    return <EmptyState {...emptyState} action={emptyAction} />;
   }
+
+  const showActions = !readOnly;
 
   return (
     <ul className={compact ? 'space-y-2' : 'space-y-3'}>
       {entries.map((entry) => (
         <li key={entry.id}>
           <Card className="relative !p-3 sm:!p-4">
-            <StudyEntryCardActions entry={entry} onEdit={onEdit} onDelete={onDelete} />
+            <StudyEntryCardActions
+              entry={entry}
+              onEdit={showActions ? onEdit : undefined}
+              onDelete={showActions ? onDelete : undefined}
+            />
             <div
-              className={`border-l-4 pl-2.5 sm:pl-3 pr-1 sm:pr-24 ${subjectColorClass(entry.subject).split(' ')[0]}`}
+              className={`border-l-4 pl-2.5 sm:pl-3 ${showActions ? 'pr-1 sm:pr-24' : 'pr-1'} ${subjectColorClass(entry.subject).split(' ')[0]}`}
             >
               <EntryDetails
                 entry={entry}

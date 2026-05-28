@@ -1,15 +1,12 @@
 import MateListItem from './MateListItem';
+import EmptyState from './ui/EmptyState';
 
 /**
  * 連れ勉ユーザー一覧（アプリ共通のカード型グリッド）
  */
-export default function MateList({
-  users,
-  actions,
-  emptyMessage = 'なし',
-}) {
+export default function MateList({ users, actions, emptyState, emptyAction }) {
   if (!users.length) {
-    return <p className="text-sm text-tsure-muted py-4 text-center">{emptyMessage}</p>;
+    return <EmptyState {...emptyState} action={emptyAction} />;
   }
 
   return (

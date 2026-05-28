@@ -40,6 +40,49 @@
         { "fieldPath": "grade", "order": "ASCENDING" },
         { "fieldPath": "class", "order": "ASCENDING" }
       ]
+    },
+    {
+      "collectionGroup": "feedbackThreads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "studentEmail", "order": "ASCENDING" },
+        { "fieldPath": "lastMessageAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "feedbackThreads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "studentEmail", "order": "ASCENDING" },
+        { "fieldPath": "unreadByStudent", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "feedbackThreads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "studentEmail", "order": "ASCENDING" },
+        { "fieldPath": "scope", "order": "ASCENDING" },
+        { "fieldPath": "lastMessageAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "feedbackThreads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "studentEmail", "order": "ASCENDING" },
+        { "fieldPath": "scope", "order": "ASCENDING" },
+        { "fieldPath": "dateKey", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "feedbackThreads",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "studentEmail", "order": "ASCENDING" },
+        { "fieldPath": "dateKey", "order": "ASCENDING" },
+        { "fieldPath": "lastMessageAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

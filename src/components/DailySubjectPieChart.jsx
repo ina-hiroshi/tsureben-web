@@ -1,7 +1,9 @@
 import { useMemo } from 'react';
 import { BookOpen } from 'lucide-react';
 import SectionTitle from './ui/SectionTitle';
+import EmptyState from './ui/EmptyState';
 import AppIcon from './ui/AppIcon';
+import { DAILY_SUBJECT_EMPTY } from '../content/emptyStatePresets';
 
 const SUBJECT_COLORS = {
   国語: 'bg-pink-400',
@@ -24,7 +26,15 @@ function formatDuration(totalMinutes) {
   return `${m}分`;
 }
 
-export default function DailySubjectPieChart({ totalMinutes = 0, bySubject = {} }) {
+export default function DailySubjectPieChart({
+  totalMinutes = 0,
+  bySubject = {},
+  emptyState = DAILY_SUBJECT_EMPTY,
+  emptyAction,
+  footerNote = '選択した日の記録を表示しています',
+  onDark = false,
+  embedded = false,
+}) {
   const subjects = useMemo(
     () =>
       Object.entries(bySubject)
@@ -34,10 +44,13 @@ export default function DailySubjectPieChart({ totalMinutes = 0, bySubject = {} 
   );
 
   if (!subjects.length || totalMinutes <= 0) {
+    const emptyBody = <EmptyState {...emptyState} action={emptyAction} />;
     return (
       <div>
-        <SectionTitle>教科別の学習時間</SectionTitle>
-        <p className="text-sm text-tsure-muted text-center py-6">この日の学習記録はありません</p>
+        <SectionTitle onDark={onDark}>教科別の学習時間</SectionTitle>
+        {embedded ? emptyBody : (
+          <div className="rounded-xl border border-tsure-border bg-tsure-surface p-4">{emptyBody}</div>
+        )}
       </div>
     );
   }
@@ -45,10 +58,8 @@ export default function DailySubjectPieChart({ totalMinutes = 0, bySubject = {} 
   const hours = Math.floor(totalMinutes / 60);
   const mins = totalMinutes % 60;
 
-  return (
-    <div className="w-full">
-      <SectionTitle>教科別の学習時間</SectionTitle>
-
+  const chartBody = (
+    <>
       <div className="flex items-end justify-center gap-1 tabular-nums text-tsure-primary mb-4">
         {hours > 0 && (
           <>
@@ -102,8 +113,17 @@ export default function DailySubjectPieChart({ totalMinutes = 0, bySubject = {} 
 
       <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-tsure-muted">
         <AppIcon icon={BookOpen} size="sm" />
-        選択した日の記録を表示しています
+        {footerNote}
       </p>
+    </>
+  );
+
+  return (
+    <div className="w-full">
+      <SectionTitle onDark={onDark}>教科別の学習時間</SectionTitle>
+      {embedded ? chartBody : (
+        <div className="rounded-xl border border-tsure-border bg-tsure-surface p-4">{chartBody}</div>
+      )}
     </div>
   );
 }

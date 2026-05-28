@@ -7,7 +7,7 @@ import { getProfile } from '../../services/firestore/userService';
 import { logout } from '../../utils/authSession';
 import AppLogo from './AppLogo';
 import AppIcon from './AppIcon';
-import { NAV_ITEMS } from '../../utils/navConfig';
+import { NAV_ITEMS, TEACHER_NAV_ITEM, STUDENT_FEEDBACK_NAV_ITEM } from '../../utils/navConfig';
 
 /** ダークヘッダー上で視認性の高いボタンスタイル */
 const HEADER_BTN = {
@@ -68,7 +68,7 @@ export default function AppHeader() {
   const [open, setOpen] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const { email, userName } = useAuth();
-  const { isSchoolAdmin } = useTeacherStatus();
+  const { isSchoolAdmin, isTeacher } = useTeacherStatus();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -80,6 +80,10 @@ export default function AppHeader() {
   }, [email]);
 
   const name = displayName || userName || '';
+
+  const extraNavItems = isTeacher
+    ? [TEACHER_NAV_ITEM]
+    : [STUDENT_FEEDBACK_NAV_ITEM];
 
   const handleLogout = async () => {
     await logout();
@@ -126,6 +130,19 @@ export default function AppHeader() {
         <nav className="md:hidden absolute left-0 right-0 top-full bg-tsure-primary border-b border-tsure-border shadow-lg z-50">
           <ul className="py-2 max-w-7xl mx-auto">
             {NAV_ITEMS.map((item) => (
+              <li key={item.to}>
+                <Link
+                  to={item.to}
+                  className={`block px-4 py-3 min-h-touch text-tsure-on-primary hover:bg-white/10 ${
+                    location.pathname === item.to ? 'bg-white/10 font-bold' : ''
+                  }`}
+                  onClick={() => setOpen(false)}
+                >
+                  {item.label}
+                </Link>
+              </li>
+            ))}
+            {extraNavItems.map((item) => (
               <li key={item.to}>
                 <Link
                   to={item.to}

@@ -2,6 +2,7 @@ import SchoolManagementPanel from '../components/admin/SchoolManagementPanel';
 import BulkRegistrationPanel from '../components/admin/BulkRegistrationPanel';
 import StudentManagementPanel from '../components/admin/StudentManagementPanel';
 import UiFeedbackPreviewPanel from '../components/admin/UiFeedbackPreviewPanel';
+import DemoDataPanel from '../components/admin/DemoDataPanel';
 import { useTeacherStatus } from '../hooks/useTeacherStatus';
 import PageLayout from '../components/ui/PageLayout';
 import Card from '../components/ui/Card';
@@ -43,6 +44,12 @@ export default function AdminPage() {
             refreshKey={studentsRefreshKey}
           />
         </Card>
+        {isSuperAdmin && import.meta.env.DEV && (
+          <Card>
+            <SectionTitle>デモデータ</SectionTitle>
+            <DemoDataPanel />
+          </Card>
+        )}
         <Card>
           <SectionTitle>UI プレビュー</SectionTitle>
           <UiFeedbackPreviewPanel />

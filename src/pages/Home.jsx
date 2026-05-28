@@ -1,8 +1,11 @@
 import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
+import { MessageSquare } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useTeacherStatus } from '../hooks/useTeacherStatus';
 import { getDayPlans } from '../services/firestore/planService';
 import { getDayLogs } from '../services/firestore/logService';
+import { subscribeUnreadCountForStudent } from '../services/firestore/feedbackService';
 import { loadMateProfiles, acceptRequest } from '../services/firestore/mateService';
 import { subscribeMateSessions } from '../services/firestore/presenceService';
 import { flattenDayPlans } from '../utils/planUtils';
@@ -21,17 +24,23 @@ import { ChevronRight } from 'lucide-react';
 import AppIcon from '../components/ui/AppIcon';
 import { useUiFeedback } from '../contexts/UiFeedbackContext';
 import { isDemoMateEmail } from '../dev/demoMate';
+import { shouldUseDemoStudyData, getDemoStudyDayData } from '../dev/demoStudyData';
+import { useDemoSettingsRevision } from '../hooks/useDemoSettings';
+import { HOME_PLAN_EMPTY } from '../content/emptyStatePresets';
 
 export default function Home() {
   const { email } = useAuth();
+  const { isTeacher, loading: teacherLoading } = useTeacherStatus();
   const { toast } = useUiFeedback();
   const [loading, setLoading] = useState(true);
   const [plans, setPlans] = useState([]);
   const [todayLog, setTodayLog] = useState({ totalMinutes: 0, entries: [] });
   const [activeMates, setActiveMates] = useState([]);
   const [pendingReceived, setPendingReceived] = useState([]);
+  const [unreadFeedbackCount, setUnreadFeedbackCount] = useState(0);
 
   const dateKey = dayjs().format('YYYY-MM-DD');
+  const demoRevision = useDemoSettingsRevision();
 
   useEffect(() => {
     if (!email) return;
@@ -41,8 +50,12 @@ export default function Home() {
       setLoading(true);
       try {
         const [dayPlans, dayLogs, mateState] = await Promise.all([
-          getDayPlans(email, dateKey),
-          getDayLogs(email, dateKey),
+          shouldUseDemoStudyData(email)
+            ? Promise.resolve({ entries: getDemoStudyDayData(email, dateKey).plans })
+            : getDayPlans(email, dateKey),
+          shouldUseDemoStudyData(email)
+            ? Promise.resolve(getDemoStudyDayData(email, dateKey).dayLogs)
+            : getDayLogs(email, dateKey),
           loadMateProfiles(email),
         ]);
 
@@ -73,7 +86,17 @@ export default function Home() {
 
     load();
     return () => unsub();
-  }, [email, dateKey]);
+  }, [email, dateKey, demoRevision, toast]);
+
+  useEffect(() => {
+    if (!email || teacherLoading || isTeacher) {
+      setUnreadFeedbackCount(0);
+      return undefined;
+    }
+    return subscribeUnreadCountForStudent(email, setUnreadFeedbackCount, (err) => {
+      console.error('unread feedback subscribe error:', err);
+    });
+  }, [email, isTeacher, teacherLoading]);
 
   const handleAccept = async (fromEmail) => {
     if (isDemoMateEmail(fromEmail)) {
@@ -114,7 +137,14 @@ export default function Home() {
           >
             今、一緒に勉強中
           </SectionTitle>
-          <StudyPresenceGrid users={activeMates} />
+          <StudyPresenceGrid
+            users={activeMates}
+            emptyAction={
+              <Button to="/turebenmate" variant="white" size="sm">
+                連れ勉仲間を招待
+              </Button>
+            }
+          />
         </section>
 
         <Button
@@ -140,6 +170,27 @@ export default function Home() {
           </Card>
         )}
 
+        {!isTeacher && unreadFeedbackCount > 0 && (
+          <Card className="border-tsure-accent/40">
+            <SectionTitle
+              action={
+                <span className="text-sm font-bold text-tsure-accent tabular-nums">
+                  {unreadFeedbackCount}件
+                </span>
+              }
+            >
+              先生からのコメント
+            </SectionTitle>
+            <p className="text-sm text-tsure-primary mb-3">
+              未読のコメントがあります。内容を確認して返信できます。
+            </p>
+            <Button to="/feedback" variant="secondary" size="sm" className="inline-flex items-center gap-2">
+              <AppIcon icon={MessageSquare} size="sm" />
+              コメントを確認する
+            </Button>
+          </Card>
+        )}
+
         <div className="grid grid-cols-5 gap-2 w-full md:hidden">
           <NavCard to="/pomodoro" icon={NAV_CARD_ICONS.timer} label="タイマー" />
           <NavCard to="/studyplan" icon={NAV_CARD_ICONS.plan} label="計画" />
@@ -152,6 +203,11 @@ export default function Home() {
           <TodayStudySummary
             totalMinutes={todayLog.totalMinutes}
             entries={todayLog.entries}
+            emptyAction={
+              <Button to="/pomodoro" variant="secondary" size="sm">
+                学習タイマーを開く
+              </Button>
+            }
           />
 
           <section>
@@ -166,7 +222,15 @@ export default function Home() {
             >
               今日の計画
             </SectionTitle>
-            <PlanCardList entries={plans} />
+            <PlanCardList
+              entries={plans}
+              emptyState={HOME_PLAN_EMPTY}
+              emptyAction={
+                <Button to="/studyplan" variant="white" size="sm">
+                  計画を追加する
+                </Button>
+              }
+            />
           </section>
         </div>
       </div>

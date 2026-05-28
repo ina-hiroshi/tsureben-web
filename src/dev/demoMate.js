@@ -1,6 +1,8 @@
-/** 開発サーバー（import.meta.env.DEV）でのみ有効。VITE_DEMO_MATE=false で無効化 */
-export const isDemoMateEnabled =
-  import.meta.env.DEV && import.meta.env.VITE_DEMO_MATE !== 'false';
+import { isDemoFeatureEnabled } from './demoSettings';
+
+export function isDemoMateEnabled() {
+  return isDemoFeatureEnabled('mate');
+}
 
 export const DEMO_MATE_EMAIL_PREFIX = 'demo-mate-';
 
@@ -173,7 +175,7 @@ function appendDemoEmails(targetList, demos, myEmail) {
  * @param {string} myEmail
  */
 export function mergeDemoMateState(state, myEmail) {
-  if (!isDemoMateEnabled || !myEmail) return state;
+  if (!isDemoMateEnabled() || !myEmail) return state;
 
   return {
     ...state,

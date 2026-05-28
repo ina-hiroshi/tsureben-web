@@ -18,6 +18,7 @@ import SectionTitle from '../components/ui/SectionTitle';
 import SectionHelpButton from '../components/ui/SectionHelpButton';
 import { useUiFeedback } from '../contexts/UiFeedbackContext';
 import { isDemoMateEmail } from '../dev/demoMate';
+import { useDemoSettingsRevision } from '../hooks/useDemoSettings';
 import { MATE_SECTION_HELP } from '../content/mateSectionHelp';
 import MateList from '../components/MateList';
 import MateMutualFilters from '../components/MateMutualFilters';
@@ -28,6 +29,15 @@ import {
   filterMateUsers,
   hasActiveMateFilters,
 } from '../utils/filterMateUsers';
+import {
+  INVITE_QR_EXPIRED,
+  MATE_FILTER_NO_MATCH,
+  MATE_HIDDEN_EMPTY,
+  MATE_NO_MUTUAL,
+  MATE_PENDING_RECEIVED_EMPTY,
+  MATE_PENDING_SENT_EMPTY,
+} from '../content/emptyStatePresets';
+import EmptyState from '../components/ui/EmptyState';
 
 function formatRemaining(ms) {
   if (ms <= 0) return '0:00';
@@ -53,6 +63,7 @@ export default function TureBenMatePage() {
   const [filterClass, setFilterClass] = useState('');
   const [mutualFiltersOpen, setMutualFiltersOpen] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const demoRevision = useDemoSettingsRevision();
 
   const activeHelp = helpId ? MATE_SECTION_HELP[helpId] : null;
 
@@ -82,7 +93,7 @@ export default function TureBenMatePage() {
 
   useEffect(() => {
     if (email) reload();
-  }, [email, reload]);
+  }, [email, reload, demoRevision]);
 
   useEffect(() => {
     if (!invite?.expiresAt) return undefined;
@@ -156,6 +167,12 @@ export default function TureBenMatePage() {
     [mutual, mutualFilters]
   );
 
+  const mutualEmptyState = useMemo(() => {
+    if (mutual.length === 0) return MATE_NO_MUTUAL;
+    if (hasActiveMateFilters(mutualFilters)) return MATE_FILTER_NO_MATCH;
+    return MATE_NO_MUTUAL;
+  }, [mutual.length, mutualFilters]);
+
   const clearMutualFilters = () => {
     setMateSearchQuery('');
     setFilterSchool('');
@@ -202,7 +219,14 @@ export default function TureBenMatePage() {
             <div className="flex flex-col items-center gap-3">
               <div className="rounded-xl bg-white p-4">
                 {inviteExpired ? (
-                  <p className="text-sm text-tsure-muted px-6 py-8 text-center">QRコードの有効期限が切れました</p>
+                  <EmptyState
+                    {...INVITE_QR_EXPIRED}
+                    action={
+                      <Button onClick={handleCreateInvite} disabled={inviteLoading} size="sm">
+                        {inviteLoading ? '更新中...' : '新しい招待を発行'}
+                      </Button>
+                    }
+                  />
                 ) : (
                   <QRCodeSVG value={invite.inviteUrl} size={200} />
                 )}
@@ -320,7 +344,18 @@ export default function TureBenMatePage() {
 
         <MateList
           users={filteredMutual}
-          emptyMessage="条件に一致する仲間がいません"
+          emptyState={mutualEmptyState}
+          emptyAction={
+            mutual.length === 0 ? (
+              <Button onClick={handleCreateInvite} disabled={inviteLoading} size="sm">
+                招待を表示
+              </Button>
+            ) : hasActiveMateFilters(mutualFilters) ? (
+              <Button variant="secondary" onClick={clearMutualFilters} size="sm">
+                絞り込みをクリア
+              </Button>
+            ) : null
+          }
           actions={(u) => (
             <Button
               size="sm"
@@ -346,6 +381,7 @@ export default function TureBenMatePage() {
         </SectionTitle>
         <MateList
           users={pendingReceived}
+          emptyState={MATE_PENDING_RECEIVED_EMPTY}
           actions={(u) => (
             <>
               <Button size="sm" onClick={() => runMateAction(u.email, () => acceptRequest(email, u.email))}>
@@ -376,6 +412,7 @@ export default function TureBenMatePage() {
         </SectionTitle>
         <MateList
           users={pendingSent}
+          emptyState={MATE_PENDING_SENT_EMPTY}
           actions={(u) => (
             <Button size="sm" variant="secondary" onClick={() => runMateAction(u.email, () => cancelRequest(email, u.email))}>
               取消
@@ -403,6 +440,7 @@ export default function TureBenMatePage() {
             </SectionTitle>
             <MateList
               users={hiddenMates}
+              emptyState={MATE_HIDDEN_EMPTY}
               actions={(u) => (
                 <Button size="sm" onClick={() => runMateAction(u.email, () => unhideUser(email, u.email, true))}>
                   一覧に戻す
@@ -423,6 +461,7 @@ export default function TureBenMatePage() {
             </SectionTitle>
             <MateList
               users={hiddenRequests}
+              emptyState={MATE_HIDDEN_EMPTY}
               actions={(u) => (
                 <Button size="sm" onClick={() => runMateAction(u.email, () => unhideUser(email, u.email, false))}>
                   一覧に戻す

@@ -23,7 +23,7 @@ export default function DateNav({ date, onPrevious, onNext }) {
           aria-label={`${d.format('M月D日')} ${DAY_LABELS[d.day()]}曜日`}
         >
           {d.format('M月D日')}
-          （{DAY_LABELS[d.day()]}）
+          ({DAY_LABELS[d.day()]})
         </span>
         <button type="button" className={DATE_NAV_BTN} onClick={onNext} aria-label="次の日">
           次の日

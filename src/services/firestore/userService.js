@@ -10,6 +10,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { normalizeNameLower } from '../../utils/mateScope';
+import { compareNatural } from '../../utils/adminStudents';
 
 export async function getProfile(email) {
   if (!email) return null;
@@ -62,7 +63,15 @@ export async function fetchStudentsForSchool(schoolId) {
       where('role', '==', 'student')
     )
   );
-  return snap.docs.map((d) => ({ email: d.id, ...d.data() }));
+  return snap.docs
+    .map((d) => ({ email: d.id, ...d.data() }))
+    .sort((a, b) => {
+      const byGrade = compareNatural(a.grade, b.grade);
+      if (byGrade !== 0) return byGrade;
+      const byClass = compareNatural(a.class, b.class);
+      if (byClass !== 0) return byClass;
+      return compareNatural(a.number, b.number);
+    });
 }
 
 function cloneSubjectCatalog(catalog = {}) {

@@ -15,10 +15,15 @@ import TureBenMatePage from './pages/TureBenMatePage';
 import MateInvitePage from './pages/MateInvitePage';
 import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
+import TeacherStudentReviewPage from './pages/TeacherStudentReviewPage';
+import StudentFeedbackPage from './pages/StudentFeedbackPage';
+import DemoSettingsAccessSync from './components/dev/DemoSettingsAccessSync';
 
 function AppLayout() {
   return (
-    <Routes>
+    <>
+      <DemoSettingsAccessSync />
+      <Routes>
       <Route path="/" element={<Login />} />
       <Route path="/oauth-callback" element={<OAuthCallback />} />
       <Route path="/mate-invite/:token" element={<MateInvitePage />} />
@@ -78,7 +83,24 @@ function AppLayout() {
           </ProtectedRoute>
         }
       />
+      <Route
+        path="/teacher/students"
+        element={
+          <ProtectedRoute requireTeacher>
+            <TeacherStudentReviewPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/feedback"
+        element={
+          <ProtectedRoute>
+            <StudentFeedbackPage />
+          </ProtectedRoute>
+        }
+      />
     </Routes>
+    </>
   );
 }
 

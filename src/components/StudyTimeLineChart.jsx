@@ -12,13 +12,17 @@ import {
 } from 'recharts';
 import dayjs from 'dayjs';
 import { getDayRange } from '../services/firestore/logService';
+import { shouldUseDemoStudyData, getDemoStudyRangeData } from '../dev/demoStudyData';
+import { useDemoSettingsRevision } from '../hooks/useDemoSettings';
 import Button from './ui/Button';
+import EmptyState from './ui/EmptyState';
 import SectionTitle from './ui/SectionTitle';
+import { STUDY_TIMELINE_EMPTY } from '../content/emptyStatePresets';
 
 const DAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'];
 const MODE_DAYS = { weekly: 7, monthly: 30, sixty: 60 };
 const CHART_ACCENT = '#ffa726';
-const CHART_BAR = '#c4b5a0';
+const CHART_BAR = '#5a3e28';
 const CHART_GRID = '#c4b5a0';
 const CHART_TEXT = '#5a3e28';
 const CHART_AVG = '#8f735a';
@@ -38,6 +42,35 @@ function formatYAxisMinutes(value) {
   return `${value}分`;
 }
 
+function computeAverageMinutes(chartData, includeZeroDays) {
+  if (!chartData.length) return 0;
+
+  const total = chartData.reduce((sum, d) => sum + d.minutes, 0);
+  const divisor = includeZeroDays
+    ? chartData.length
+    : chartData.filter((d) => d.minutes > 0).length;
+
+  if (!divisor) return 0;
+  return Math.round(total / divisor);
+}
+
+function buildChartDataFromRange(range, days, today = dayjs()) {
+  const result = [];
+  for (let i = days - 1; i >= 0; i -= 1) {
+    const d = today.subtract(i, 'day');
+    const key = d.format('YYYY-MM-DD');
+    const minutes = range[key]?.totalMinutes || 0;
+    result.push({
+      dateKey: key,
+      label: d.format('M/D'),
+      weekday: DAY_LABELS[d.day()],
+      minutes,
+      isToday: i === 0,
+    });
+  }
+  return result;
+}
+
 function ChartTooltip({ active, payload }) {
   if (!active || !payload?.length) return null;
   const { label, minutes, weekday } = payload[0].payload;
@@ -51,9 +84,16 @@ function ChartTooltip({ active, payload }) {
   );
 }
 
-export default function StudyTimeLineChart({ email, refreshKey = 0 }) {
+export default function StudyTimeLineChart({
+  email,
+  refreshKey = 0,
+  emptyState = STUDY_TIMELINE_EMPTY,
+  emptyAction,
+}) {
   const [chartData, setChartData] = useState([]);
   const [mode, setMode] = useState('weekly');
+  const [includeZeroDaysInAverage, setIncludeZeroDaysInAverage] = useState(true);
+  const demoRevision = useDemoSettingsRevision();
 
   useEffect(() => {
     if (!email) return;
@@ -63,33 +103,25 @@ export default function StudyTimeLineChart({ email, refreshKey = 0 }) {
     const start = today.subtract(days - 1, 'day').format('YYYY-MM-DD');
     const end = today.format('YYYY-MM-DD');
 
-    getDayRange(email, start, end).then((range) => {
-      const result = [];
-      for (let i = days - 1; i >= 0; i--) {
-        const d = today.subtract(i, 'day');
-        const key = d.format('YYYY-MM-DD');
-        const minutes = range[key]?.totalMinutes || 0;
-        result.push({
-          dateKey: key,
-          label: d.format('M/D'),
-          weekday: DAY_LABELS[d.day()],
-          minutes,
-          isToday: i === 0,
-        });
-      }
-      setChartData(result);
-    });
-  }, [email, mode, refreshKey]);
+    async function load() {
+      const range = shouldUseDemoStudyData(email)
+        ? getDemoStudyRangeData(email, start, end).logsByDay
+        : await getDayRange(email, start, end);
+      setChartData(buildChartDataFromRange(range, days, today));
+    }
+
+    load();
+  }, [email, mode, refreshKey, demoRevision]);
 
   const { totalMinutes, averageMinutes, hasData } = useMemo(() => {
     const total = chartData.reduce((sum, d) => sum + d.minutes, 0);
-    const avg = chartData.length ? Math.round(total / chartData.length) : 0;
+    const avg = computeAverageMinutes(chartData, includeZeroDaysInAverage);
     return {
       totalMinutes: total,
       averageMinutes: avg,
       hasData: total > 0,
     };
-  }, [chartData]);
+  }, [chartData, includeZeroDaysInAverage]);
 
   const xInterval =
     mode === 'weekly' ? 0 : Math.max(0, Math.floor(chartData.length / (mode === 'sixty' ? 8 : 6)) - 1);
@@ -102,21 +134,21 @@ export default function StudyTimeLineChart({ email, refreshKey = 0 }) {
           <div className="flex gap-1.5">
             <Button
               size="sm"
-              variant={mode === 'weekly' ? 'primary' : 'secondary'}
+              variant={mode === 'weekly' ? 'primary' : 'white'}
               onClick={() => setMode('weekly')}
             >
               7日
             </Button>
             <Button
               size="sm"
-              variant={mode === 'monthly' ? 'primary' : 'secondary'}
+              variant={mode === 'monthly' ? 'primary' : 'white'}
               onClick={() => setMode('monthly')}
             >
               30日
             </Button>
             <Button
               size="sm"
-              variant={mode === 'sixty' ? 'primary' : 'secondary'}
+              variant={mode === 'sixty' ? 'primary' : 'white'}
               onClick={() => setMode('sixty')}
             >
               60日
@@ -128,13 +160,13 @@ export default function StudyTimeLineChart({ email, refreshKey = 0 }) {
       </SectionTitle>
 
       <div className="mb-4 grid grid-cols-2 gap-3">
-        <div className="rounded-xl border border-tsure-border bg-tsure-surface-hover/60 px-3 py-2">
+        <div className="rounded-xl border border-tsure-border bg-white px-3 py-2">
           <p className="text-xs text-tsure-muted mb-0.5">期間合計</p>
           <p className="text-base font-bold text-tsure-primary tabular-nums">
             {formatDuration(totalMinutes)}
           </p>
         </div>
-        <div className="rounded-xl border border-tsure-border bg-tsure-surface-hover/60 px-3 py-2">
+        <div className="rounded-xl border border-tsure-border bg-white px-3 py-2">
           <p className="text-xs text-tsure-muted mb-0.5">1日あたり平均</p>
           <p className="text-base font-bold text-tsure-primary tabular-nums">
             {formatDuration(averageMinutes)}
@@ -142,10 +174,18 @@ export default function StudyTimeLineChart({ email, refreshKey = 0 }) {
         </div>
       </div>
 
+      <label className="mb-4 flex items-center gap-2.5 cursor-pointer select-none min-h-touch">
+        <input
+          type="checkbox"
+          checked={includeZeroDaysInAverage}
+          onChange={(event) => setIncludeZeroDaysInAverage(event.target.checked)}
+          className="h-4 w-4 shrink-0 rounded border-tsure-border text-tsure-primary accent-tsure-accent focus:ring-2 focus:ring-tsure-accent/50"
+        />
+        <span className="text-sm text-tsure-primary">平均に学習時間0分の日を含める</span>
+      </label>
+
       {!hasData ? (
-        <p className="text-sm text-tsure-muted text-center py-10">
-          この期間の学習記録がありません
-        </p>
+        <EmptyState {...emptyState} action={emptyAction} />
       ) : (
         <>
           <ResponsiveContainer width="100%" height={mode === 'weekly' ? 200 : 220}>
@@ -200,7 +240,8 @@ export default function StudyTimeLineChart({ email, refreshKey = 0 }) {
           </ResponsiveContainer>
           <p className="mt-2 text-center text-xs text-tsure-muted">
             <span className="inline-block w-2.5 h-2.5 rounded-sm bg-tsure-accent align-middle mr-1" />
-            オレンジが今日 · 点線は期間の1日平均
+            オレンジが今日 · 点線は
+            {includeZeroDaysInAverage ? '期間の1日平均' : '学習した日の1日平均'}
           </p>
         </>
       )}

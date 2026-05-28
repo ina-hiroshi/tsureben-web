@@ -1,6 +1,8 @@
 import Card from './ui/Card';
+import EmptyState from './ui/EmptyState';
 import { Clock } from 'lucide-react';
 import AppIcon from './ui/AppIcon';
+import { TODAY_SUMMARY_EMPTY } from '../content/emptyStatePresets';
 
 const SUBJECT_COLORS = {
   国語: 'bg-pink-400',
@@ -34,7 +36,12 @@ function aggregateByTopic(entries = []) {
     .sort((a, b) => b.minutes - a.minutes);
 }
 
-export default function TodayStudySummary({ totalMinutes = 0, entries = [] }) {
+export default function TodayStudySummary({
+  totalMinutes = 0,
+  entries = [],
+  emptyState = TODAY_SUMMARY_EMPTY,
+  emptyAction,
+}) {
   const topics = aggregateByTopic(entries);
 
   const hours = Math.floor(totalMinutes / 60);
@@ -89,9 +96,7 @@ export default function TodayStudySummary({ totalMinutes = 0, entries = [] }) {
             </ul>
           </>
         ) : (
-          <p className="text-center text-sm text-tsure-muted py-1">
-            学習タイマーで記録すると、科目別の内訳が表示されます
-          </p>
+          <EmptyState {...emptyState} action={emptyAction} />
         )}
       </div>
     </Card>

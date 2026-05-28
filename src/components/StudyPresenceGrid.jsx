@@ -1,4 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react';
+import EmptyState from './ui/EmptyState';
+import { PRESENCE_EMPTY } from '../content/emptyStatePresets';
 
 /** 1周あたりの横移動速度（px/s）。人数が変わっても見た目の速さを一定にする */
 const SCROLL_PX_PER_SECOND = 24;
@@ -64,11 +66,13 @@ function PresenceScrollTrack({ users }) {
   );
 }
 
-export default function StudyPresenceGrid({ users = [], emptyTitle = '今は誰も勉強していません' }) {
+export default function StudyPresenceGrid({
+  users = [],
+  emptyState = PRESENCE_EMPTY,
+  emptyAction,
+}) {
   if (!users.length) {
-    return (
-      <p className="text-sm text-tsure-on-primary/60 text-center py-4">{emptyTitle}</p>
-    );
+    return <EmptyState {...emptyState} action={emptyAction} />;
   }
 
   const shouldScroll = users.length >= 3;

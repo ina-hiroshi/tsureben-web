@@ -1,6 +1,8 @@
-/** 開発サーバー（import.meta.env.DEV）でのみ有効。VITE_DEMO_PRESENCE=false で無効化 */
-export const isDemoPresenceEnabled =
-  import.meta.env.DEV && import.meta.env.VITE_DEMO_PRESENCE !== 'false';
+import { isDemoFeatureEnabled } from './demoSettings';
+
+export function isDemoPresenceEnabled() {
+  return isDemoFeatureEnabled('presence');
+}
 
 export const DEMO_PRESENCE_USERS = [
   {
@@ -92,7 +94,7 @@ export function getDemoPresenceUsers() {
 }
 
 export function mergeDemoPresenceUsers(realUsers, myEmail) {
-  if (!isDemoPresenceEnabled) return realUsers;
+  if (!isDemoPresenceEnabled()) return realUsers;
   const realEmails = new Set(realUsers.map((u) => u.email));
   const demos = getDemoPresenceUsers().filter(
     (u) => u.email !== myEmail && !realEmails.has(u.email)

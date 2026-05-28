@@ -16,6 +16,9 @@ import StudyPresenceGrid from '../components/StudyPresenceGrid';
 import { ChevronRight } from 'lucide-react';
 import AppIcon from '../components/ui/AppIcon';
 import PlanCardList from '../components/PlanCardList';
+import { HOME_PLAN_EMPTY, PRESENCE_TIMER_EMPTY } from '../content/emptyStatePresets';
+import { useDemoSettingsRevision } from '../hooks/useDemoSettings';
+import { shouldUseDemoStudyData, getDemoStudyDayData } from '../dev/demoStudyData';
 
 export default function StudyTimerPage() {
   const { email } = useAuth();
@@ -24,19 +27,23 @@ export default function StudyTimerPage() {
   const [visibleUsers, setVisibleUsers] = useState([]);
   const [plans, setPlans] = useState([]);
   const [plansModalOpen, setPlansModalOpen] = useState(false);
+  const demoRevision = useDemoSettingsRevision();
 
   useEffect(() => {
     if (!email) return;
     getProfile(email).then(setProfile);
-    getDayPlans(email, dayjs().format('YYYY-MM-DD')).then((d) =>
-      setPlans(flattenDayPlans(d))
-    );
-  }, [email]);
+    const dateKey = dayjs().format('YYYY-MM-DD');
+    if (shouldUseDemoStudyData(email)) {
+      setPlans(getDemoStudyDayData(email, dateKey).plans);
+      return;
+    }
+    getDayPlans(email, dateKey).then((d) => setPlans(flattenDayPlans(d)));
+  }, [email, demoRevision]);
 
   useEffect(() => {
     if (!profile) return;
     return subscribeVisibleSessions(profile, isTeacher, teacherSchoolId, setVisibleUsers);
-  }, [profile, isTeacher, teacherSchoolId]);
+  }, [profile, isTeacher, teacherSchoolId, demoRevision]);
 
   return (
     <PageLayout title="学習タイマー">
@@ -54,14 +61,22 @@ export default function StudyTimerPage() {
           >
             一緒に勉強中
           </SectionTitle>
-          <StudyPresenceGrid users={visibleUsers} emptyTitle="周りに勉強中の人はいません" />
+          <StudyPresenceGrid
+            users={visibleUsers}
+            emptyState={PRESENCE_TIMER_EMPTY}
+            emptyAction={
+              <Button to="/turebenmate" variant="white" size="sm">
+                連れ勉仲間を招待
+              </Button>
+            }
+          />
         </section>
 
         <section className="flex flex-col items-center gap-4 py-2 md:py-6">
           <StudyTimer email={email} large />
           <Button
             type="button"
-            variant="secondary"
+            variant="surface"
             size="md"
             className="inline-flex items-center gap-2"
             onClick={() => setPlansModalOpen(true)}
@@ -78,7 +93,16 @@ export default function StudyTimerPage() {
         title="今日の計画"
         size="wide"
       >
-        <PlanCardList entries={plans} compact />
+        <PlanCardList
+          entries={plans}
+          compact
+          emptyState={HOME_PLAN_EMPTY}
+          emptyAction={
+            <Button to="/studyplan" onClick={() => setPlansModalOpen(false)} size="sm">
+              計画を追加する
+            </Button>
+          }
+        />
         <Link
           to="/studyplan"
           onClick={() => setPlansModalOpen(false)}

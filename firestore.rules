@@ -31,13 +31,26 @@ service cloud.firestore {
       return isTeacher() && teacherRole() == 'super_admin';
     }
 
+    function teacherSchoolId() {
+      let fromTeacher = teacherDoc().data.get('schoolId', null);
+      return fromTeacher != null
+        ? fromTeacher
+        : get(/databases/$(database)/documents/users/$(userEmail())).data.get('schoolId', null);
+    }
+
+    function studentSchoolId(studentEmail) {
+      return get(/databases/$(database)/documents/users/$(studentEmail)).data.schoolId;
+    }
+
     function sameSchoolAsTarget(targetEmail) {
       return isTeacher()
-        && get(/databases/$(database)/documents/users/$(targetEmail)).data.schoolId == teacherDoc().data.schoolId;
+        && exists(/databases/$(database)/documents/users/$(targetEmail))
+        && studentSchoolId(targetEmail) == teacherSchoolId();
     }
 
     function canAccessUserData(targetEmail) {
       return userEmail() == targetEmail
+        || (isSuperAdmin() && exists(/databases/$(database)/documents/users/$(targetEmail)))
         || (isTeacher() && sameSchoolAsTarget(targetEmail))
         || (isTeacher() && !exists(/databases/$(database)/documents/users/$(targetEmail)));
     }
@@ -83,6 +96,53 @@ service cloud.firestore {
 
     match /mateInvites/{tokenId} {
       allow read, write: if false;
+    }
+
+    function feedbackThreadData(threadId) {
+      return get(/databases/$(database)/documents/feedbackThreads/$(threadId)).data;
+    }
+
+    function canReadFeedbackThreadData(data) {
+      return userEmail() == data.studentEmail
+        || isSuperAdmin()
+        || (isTeacher() && sameSchoolAsTarget(data.studentEmail));
+    }
+
+    function canReadFeedbackThread(threadId) {
+      return canReadFeedbackThreadData(feedbackThreadData(threadId));
+    }
+
+    match /feedbackThreads/{threadId} {
+      allow read: if isAuthenticated() && canReadFeedbackThreadData(resource.data);
+      allow create: if isTeacher()
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.studentEmail))
+        && request.resource.data.schoolId == studentSchoolId(request.resource.data.studentEmail)
+        && (isSuperAdmin() || sameSchoolAsTarget(request.resource.data.studentEmail));
+      allow update: if isAuthenticated() && canReadFeedbackThreadData(resource.data);
+
+      match /messages/{messageId} {
+        allow read: if isAuthenticated() && canReadFeedbackThread(threadId);
+        allow create: if isAuthenticated()
+          && canReadFeedbackThread(threadId)
+          && (
+            (isTeacher() && request.resource.data.authorRole == 'teacher')
+            || (userEmail() == feedbackThreadData(threadId).studentEmail
+              && request.resource.data.authorRole == 'student')
+          );
+        allow update: if isAuthenticated()
+          && canReadFeedbackThread(threadId)
+          && resource.data.authorEmail == userEmail()
+          && request.resource.data.authorEmail == resource.data.authorEmail
+          && request.resource.data.authorRole == resource.data.authorRole
+          && request.resource.data.authorName == resource.data.authorName
+          && request.resource.data.createdAt == resource.data.createdAt
+          && request.resource.data.body is string
+          && request.resource.data.body.size() > 0
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['body', 'updatedAt']);
+        allow delete: if isAuthenticated()
+          && canReadFeedbackThread(threadId)
+          && resource.data.authorEmail == userEmail();
+      }
     }
   }
 }

@@ -5,6 +5,9 @@ const VARIANTS = {
   // ログアウト（dark 上の bg-white/15）と同系。カード（surface）上は primary の半透明
   secondary:
     'bg-tsure-primary/15 text-tsure-primary border border-tsure-primary/35 shadow-tsure-chip hover:bg-tsure-primary/25 active:bg-tsure-primary/30',
+  surface: 'bg-tsure-surface text-tsure-primary border border-tsure-border shadow-tsure-button',
+  white:
+    'bg-white text-tsure-primary border border-tsure-border shadow-tsure-chip hover:bg-tsure-surface-hover/50 active:bg-tsure-surface-hover/70',
   accent: 'bg-tsure-accent text-tsure-primary shadow-tsure-button',
   ghost: 'bg-transparent text-tsure-on-primary',
   danger: 'bg-red-700 text-white shadow-tsure-button',

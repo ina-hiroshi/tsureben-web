@@ -3,6 +3,7 @@ export const COLLECTIONS = {
   teachers: 'teachers',
   schools: 'schools',
   activeSessions: 'activeSessions',
+  feedbackThreads: 'feedbackThreads',
 };
 
 export function userDoc(email) {
@@ -23,4 +24,12 @@ export function activeSessionDoc(email) {
 
 export function teacherDoc(email) {
   return ['teachers', email];
+}
+
+export function feedbackThreadDoc(threadId) {
+  return ['feedbackThreads', threadId];
+}
+
+export function feedbackMessageDoc(threadId, messageId) {
+  return ['feedbackThreads', threadId, 'messages', messageId];
 }

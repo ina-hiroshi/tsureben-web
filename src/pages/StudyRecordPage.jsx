@@ -2,30 +2,33 @@ import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import { useAuth } from '../contexts/AuthContext';
 import {
-  getDayLogs,
   addEntry,
   updateEntry,
   deleteEntry,
   updateSubjectCatalog,
 } from '../services/firestore/logService';
 import { getProfile } from '../services/firestore/userService';
+import { useStudentPeriodData } from '../hooks/useStudentPeriodData';
 import PageLayout from '../components/ui/PageLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
-import DateNav from '../components/ui/DateNav';
+import PeriodNav from '../components/ui/PeriodNav';
 import StudyLogCardList from '../components/StudyLogCardList';
 import StudyContentModal from '../components/StudyContentModal';
 import DailySubjectPieChart from '../components/DailySubjectPieChart';
 import StudyTimeLineChart from '../components/StudyTimeLineChart';
+import StudyPeriodLogView from '../components/teacher/StudyPeriodLogView';
+import LoadingOverlay from '../components/ui/LoadingOverlay';
 import { Plus } from 'lucide-react';
 import AppIcon from '../components/ui/AppIcon';
 import { useUiFeedback } from '../contexts/UiFeedbackContext';
+import { STUDY_LOG_EMPTY } from '../content/emptyStatePresets';
 
 export default function StudyRecordPage() {
   const { email } = useAuth();
   const { confirm, toast } = useUiFeedback();
   const [selectedDate, setSelectedDate] = useState(dayjs());
-  const [dayLogs, setDayLogs] = useState({ entries: [], totalMinutes: 0, bySubject: {} });
+  const [periodMode, setPeriodMode] = useState('day');
   const [logsRefreshKey, setLogsRefreshKey] = useState(0);
   const [subjectCatalog, setSubjectCatalog] = useState({});
   const [editEntry, setEditEntry] = useState(null);
@@ -34,24 +37,35 @@ export default function StudyRecordPage() {
 
   const dateKey = selectedDate.format('YYYY-MM-DD');
   const isFutureDate = selectedDate.isAfter(dayjs(), 'day');
+  const isPeriodView = periodMode !== 'day';
 
-  const reload = async () => {
-    const [logs, profile] = await Promise.all([
-      getDayLogs(email, dateKey),
-      getProfile(email),
-    ]);
-    setDayLogs({
-      entries: logs.entries || [],
-      totalMinutes: logs.totalMinutes || 0,
-      bySubject: logs.bySubject || {},
-    });
-    setLogsRefreshKey((k) => k + 1);
-    setSubjectCatalog(profile?.subjectCatalog || {});
-  };
+  const {
+    loading,
+    dayLogs,
+    aggregatedLogs,
+    aggregatedPlans,
+    planDailyOverview,
+    dailyTotals,
+    studyDayCount,
+    startDate,
+    endDate,
+    reload,
+  } = useStudentPeriodData(email, selectedDate, periodMode);
+
+  const periodDayCount = dayjs(endDate).diff(dayjs(startDate), 'day') + 1;
 
   useEffect(() => {
-    if (email) reload();
-  }, [email, dateKey]);
+    if (!email) return;
+    getProfile(email).then((profile) => {
+      setSubjectCatalog(profile?.subjectCatalog || {});
+    });
+  }, [email]);
+
+  useEffect(() => {
+    if (!loading && !isPeriodView) {
+      setLogsRefreshKey((k) => k + 1);
+    }
+  }, [loading, isPeriodView, dayLogs.totalMinutes]);
 
   const closeModal = () => {
     setModalOpen(false);
@@ -108,7 +122,6 @@ export default function StudyRecordPage() {
       toast.success('記録を更新しました');
       closeModal();
       reload();
-      return;
     }
   };
 
@@ -125,78 +138,98 @@ export default function StudyRecordPage() {
     reload();
   };
 
+  const timerButton = (
+    <Button to="/pomodoro" variant="secondary" size="sm">
+      学習タイマーを開く
+    </Button>
+  );
+
   return (
     <PageLayout title="学習記録">
       <div className="space-y-4 pb-8">
-        <DateNav
+        <PeriodNav
           date={selectedDate}
-          onPrevious={() => setSelectedDate((d) => d.subtract(1, 'day'))}
-          onNext={() => setSelectedDate((d) => d.add(1, 'day'))}
+          mode={periodMode}
+          onModeChange={setPeriodMode}
+          onDateChange={setSelectedDate}
         />
 
-        <div className="space-y-4 shrink-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
-          <Card>
-            <DailySubjectPieChart
-              totalMinutes={dayLogs.totalMinutes}
-              bySubject={dayLogs.bySubject}
-              emptyAction={
-                <Button to="/pomodoro" variant="secondary" size="sm">
-                  学習タイマーを開く
-                </Button>
-              }
-            />
-          </Card>
-          <Card>
-            <StudyTimeLineChart
-              email={email}
-              refreshKey={logsRefreshKey}
-              emptyAction={
-                <Button to="/pomodoro" variant="secondary" size="sm">
-                  学習タイマーを開く
-                </Button>
-              }
-            />
-          </Card>
-        </div>
+        {loading && <LoadingOverlay message="読み込み中…" />}
 
-        <section>
-          <div className="flex justify-end mb-3 shrink-0">
-            <Button
-              className="inline-flex items-center gap-2"
-              onClick={handleAddManual}
-              disabled={isFutureDate}
-            >
-              <AppIcon icon={Plus} size="sm" />
-              計測漏れを追加
-            </Button>
-          </div>
-          <StudyLogCardList
-            entries={dayLogs.entries}
-            onEdit={handleEdit}
-            onDelete={handleDelete}
-            emptyAction={
-              <Button
-                className="inline-flex items-center gap-2"
-                onClick={handleAddManual}
-                disabled={isFutureDate}
-                size="sm"
-              >
-                <AppIcon icon={Plus} size="sm" />
-                計測漏れを追加
-              </Button>
-            }
+        {!loading && !isPeriodView && (
+          <>
+            <div className="space-y-4 shrink-0 lg:grid lg:grid-cols-2 lg:gap-4 lg:space-y-0">
+              <Card>
+                <DailySubjectPieChart
+                  embedded
+                  totalMinutes={dayLogs.totalMinutes}
+                  bySubject={dayLogs.bySubject}
+                  emptyAction={timerButton}
+                />
+              </Card>
+              <Card>
+                <StudyTimeLineChart
+                  email={email}
+                  refreshKey={logsRefreshKey}
+                  emptyAction={timerButton}
+                />
+              </Card>
+            </div>
+
+            <section>
+              <div className="flex justify-end mb-3 shrink-0">
+                <Button
+                  className="inline-flex items-center gap-2"
+                  onClick={handleAddManual}
+                  disabled={isFutureDate}
+                >
+                  <AppIcon icon={Plus} size="sm" />
+                  計測漏れを追加
+                </Button>
+              </div>
+              <StudyLogCardList
+                entries={dayLogs.entries}
+                onEdit={handleEdit}
+                onDelete={handleDelete}
+                emptyAction={
+                  <Button
+                    className="inline-flex items-center gap-2"
+                    onClick={handleAddManual}
+                    disabled={isFutureDate}
+                    size="sm"
+                  >
+                    <AppIcon icon={Plus} size="sm" />
+                    計測漏れを追加
+                  </Button>
+                }
+              />
+            </section>
+          </>
+        )}
+
+        {!loading && isPeriodView && (
+          <StudyPeriodLogView
+            periodMode={periodMode}
+            aggregatedLogs={aggregatedLogs}
+            dailyTotals={dailyTotals}
+            studyDayCount={studyDayCount}
+            periodDayCount={periodDayCount}
+            emptyState={STUDY_LOG_EMPTY}
+            onDark
           />
-        </section>
+        )}
       </div>
 
-      <StudyContentModal
-        open={modalOpen}
-        mode={modalMode || 'edit'}
-        initial={editEntry || {}}
-        subjectCatalog={subjectCatalog}
-        onSave={handleModalSave}
-        onClose={closeModal}
-      />
+      {!isPeriodView && (
+        <StudyContentModal
+          open={modalOpen}
+          mode={modalMode || 'edit'}
+          initial={editEntry || {}}
+          subjectCatalog={subjectCatalog}
+          onSave={handleModalSave}
+          onClose={closeModal}
+        />
+      )}
     </PageLayout>
   );
 }

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { getProfile } from '../services/firestore/userService';
 
 export function useTeacherStatus() {
   const { email, loading: authLoading } = useAuth();
@@ -29,9 +30,15 @@ export function useTeacherStatus() {
         if (!active) return;
         if (snap.exists()) {
           const data = snap.data();
+          let resolvedSchoolId = data.schoolId || null;
+          if (!resolvedSchoolId) {
+            const profile = await getProfile(email);
+            if (!active) return;
+            resolvedSchoolId = profile?.schoolId || null;
+          }
           setIsTeacher(true);
           setTeacherRole(data.role || 'teacher');
-          setSchoolId(data.schoolId || null);
+          setSchoolId(resolvedSchoolId);
         } else {
           setIsTeacher(false);
           setTeacherRole(null);

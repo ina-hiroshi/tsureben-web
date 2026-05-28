@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useTeacherStatus } from '../../hooks/useTeacherStatus';
 import { getProfile } from '../../services/firestore/userService';
 import { logout } from '../../utils/authSession';
-import { NAV_ITEMS } from '../../utils/navConfig';
+import { NAV_ITEMS, TEACHER_NAV_ITEM, STUDENT_FEEDBACK_NAV_ITEM } from '../../utils/navConfig';
 import AppLogo from './AppLogo';
 import AppIcon from './AppIcon';
 
@@ -21,7 +21,7 @@ const SIDEBAR_BTN = {
 export default function AppSidebar() {
   const [displayName, setDisplayName] = useState('');
   const { email, userName } = useAuth();
-  const { isSchoolAdmin } = useTeacherStatus();
+  const { isSchoolAdmin, isTeacher } = useTeacherStatus();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -41,6 +41,10 @@ export default function AppSidebar() {
 
   const isActive = (path) => location.pathname === path;
 
+  const extraNavItems = isTeacher
+    ? [TEACHER_NAV_ITEM]
+    : [STUDENT_FEEDBACK_NAV_ITEM];
+
   return (
     <aside className="hidden md:flex flex-col shrink-0 w-60 sticky top-0 self-start h-dvh bg-tsure-primary border-r border-tsure-border pt-[var(--safe-top)]">
       <div className="px-4 h-[var(--app-subheader-height)] flex items-center border-b border-white/10">
@@ -52,6 +56,20 @@ export default function AppSidebar() {
       <nav className="flex-1 px-2 py-3 overflow-y-auto" aria-label="メインナビゲーション">
         <ul className="space-y-1.5">
           {NAV_ITEMS.map((item) => (
+            <li key={item.to}>
+              <Link
+                to={item.to}
+                aria-current={isActive(item.to) ? 'page' : undefined}
+                className={`flex items-center gap-3.5 px-3 py-3 min-h-touch rounded-lg text-tsure-on-primary no-underline transition ${
+                  isActive(item.to) ? 'bg-white/10 font-bold' : 'hover:bg-white/10'
+                }`}
+              >
+                <AppIcon icon={item.icon} size="lg" />
+                <span className="text-base">{item.label}</span>
+              </Link>
+            </li>
+          ))}
+          {extraNavItems.map((item) => (
             <li key={item.to}>
               <Link
                 to={item.to}
