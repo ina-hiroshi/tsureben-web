@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import PasswordInput from '../components/ui/PasswordInput';
 import AppLogo from '../components/ui/AppLogo';
+import FullScreenLoader from '../components/ui/FullScreenLoader';
 import { Capacitor } from '@capacitor/core';
 import {
   GoogleAuthProvider,
@@ -14,6 +15,7 @@ import {
   setPersistence,
   browserLocalPersistence,
   signInWithEmailAndPassword,
+  signInWithCustomToken,
 } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -21,6 +23,7 @@ import {
   sendVerificationCode,
   verifyCode,
   createSelfRegisteredStudent,
+  resetPasswordWithCode,
 } from '../services/authApi';
 import {
   shouldUseGoogleRedirect,
@@ -41,6 +44,23 @@ const IOS_CLIENT_ID =
 const WEB_CLIENT_ID =
   '77789669140-61nhedsb0v3i2qsthnsq0pm7nba0ahkr.apps.googleusercontent.com';
 
+function formatStudentAuthError(err, fallback) {
+  if (err?.code === 'auth/operation-not-allowed') {
+    return 'メール／パスワードでのログインが有効になっていません。Firebase Console の Authentication → ログイン方法 で「メール/パスワード」を有効にしてください。';
+  }
+  if (err?.code === 'auth/user-not-found' || err?.code === 'auth/invalid-credential') {
+    return 'メールアドレスまたはパスワードが正しくありません';
+  }
+  return err?.message || fallback;
+}
+
+async function signInStudent({ customToken, email, password }) {
+  if (customToken) {
+    return signInWithCustomToken(auth, customToken);
+  }
+  return signInWithEmailAndPassword(auth, email, password);
+}
+
 export default function Login() {
   const navigate = useNavigate();
   const { email, loading } = useAuth();
@@ -50,10 +70,14 @@ export default function Login() {
   const [studentEmail, setStudentEmail] = useState('');
   const [studentPassword, setStudentPassword] = useState('');
   const [isRegisterMode, setIsRegisterMode] = useState(false);
+  const [isResetMode, setIsResetMode] = useState(false);
   const [confirmPassword, setConfirmPassword] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [showVerificationStep, setShowVerificationStep] = useState(false);
   const [pendingRegister, setPendingRegister] = useState(null);
+  const [pendingReset, setPendingReset] = useState(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetConfirm, setResetConfirm] = useState('');
   const [redirecting, setRedirecting] = useState(false);
 
   useEffect(() => {
@@ -69,6 +93,11 @@ export default function Login() {
   }, [email, loading, navigate]);
 
   useEffect(() => {
+    // リダイレクトログインは Web のみ。ネイティブ(WKWebView)では
+    // GoogleAuth ネイティブプラグイン + signInWithCredential を使うため不要で、
+    // initializeAuth に redirect resolver を渡していないと
+    // getRedirectResult は auth/argument-error を投げる。
+    if (Capacitor.isNativePlatform()) return;
     let active = true;
     getRedirectResult(auth)
       .then(async (result) => {
@@ -105,6 +134,14 @@ export default function Login() {
           throw new Error(
             'GoogleAuth プラグインが読み込まれていません。cap sync を再実行してください。'
           );
+        }
+        // 念のため初期化（未初期化だとネイティブで googleSignIn が nil となり
+        // signIn 時にクラッシュするため）。冪等なので毎回呼んで問題ない。
+        if (GoogleAuth.initialize) {
+          await GoogleAuth.initialize({
+            scopes: ['profile', 'email'],
+            grantOfflineAccess: true,
+          });
         }
         const googleUser = await GoogleAuth.signIn({
           clientId: IOS_CLIENT_ID,
@@ -172,22 +209,31 @@ export default function Login() {
     setError(null);
     setSubmitting(true);
     try {
-      const result = await signInWithEmailAndPassword(
-        auth,
-        studentEmail.trim(),
-        studentPassword
-      );
+      const result = await signInStudent({
+        email: studentEmail.trim(),
+        password: studentPassword,
+      });
       await finishLogin(result.user);
     } catch (err) {
       console.error('Student login error:', err);
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/invalid-credential') {
-        setError('メールアドレスまたはパスワードが正しくありません');
-      } else {
-        setError(err.message || 'ログインに失敗しました');
-      }
+      setError(formatStudentAuthError(err, 'ログインに失敗しました'));
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const switchMode = (mode) => {
+    setError(null);
+    setShowVerificationStep(false);
+    setVerificationCode('');
+    setStudentPassword('');
+    setConfirmPassword('');
+    setResetPassword('');
+    setResetConfirm('');
+    setPendingRegister(null);
+    setPendingReset(null);
+    setIsRegisterMode(mode === 'register');
+    setIsResetMode(mode === 'reset');
   };
 
   const handleSendVerificationCode = async (e) => {
@@ -203,11 +249,60 @@ export default function Login() {
     }
     setSubmitting(true);
     try {
-      await sendVerificationCode({ email: studentEmail.trim() });
+      await sendVerificationCode({ email: studentEmail.trim(), purpose: 'register' });
       setPendingRegister({ email: studentEmail.trim(), password: studentPassword });
       setShowVerificationStep(true);
     } catch (err) {
       setError(err.message || '認証コードの送信に失敗しました');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSendResetCode = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSubmitting(true);
+    try {
+      await sendVerificationCode({ email: studentEmail.trim(), purpose: 'reset' });
+      setPendingReset({ email: studentEmail.trim() });
+      setShowVerificationStep(true);
+    } catch (err) {
+      setError(err.message || '認証コードの送信に失敗しました');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleVerifyAndReset = async (e) => {
+    e.preventDefault();
+    if (!pendingReset) return;
+    setError(null);
+    if (resetPassword !== resetConfirm) {
+      setError('パスワードが一致しません');
+      return;
+    }
+    if (resetPassword.length < 6) {
+      setError('パスワードは6文字以上にしてください');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      const code = verificationCode.trim();
+      await verifyCode({ email: pendingReset.email, code });
+      const resetResult = await resetPasswordWithCode({
+        email: pendingReset.email,
+        code,
+        newPassword: resetPassword,
+      });
+      const result = await signInStudent({
+        customToken: resetResult?.customToken,
+        email: pendingReset.email,
+        password: resetPassword,
+      });
+      await finishLogin(result.user);
+    } catch (err) {
+      setError(formatStudentAuthError(err, 'パスワードの再設定に失敗しました'));
     } finally {
       setSubmitting(false);
     }
@@ -223,24 +318,24 @@ export default function Login() {
         email: pendingRegister.email,
         code: verificationCode.trim(),
       });
-      await createSelfRegisteredStudent({
+      const registerResult = await createSelfRegisteredStudent({
         email: pendingRegister.email,
         password: pendingRegister.password,
       });
-      const result = await signInWithEmailAndPassword(
-        auth,
-        pendingRegister.email,
-        pendingRegister.password
-      );
+      const result = await signInStudent({
+        customToken: registerResult?.customToken,
+        email: pendingRegister.email,
+        password: pendingRegister.password,
+      });
       await finishLogin(result.user);
     } catch (err) {
-      setError(err.message || '登録に失敗しました');
+      setError(formatStudentAuthError(err, '登録に失敗しました'));
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) return null;
+  if (loading) return <FullScreenLoader label="起動しています…" />;
 
   return (
     <div
@@ -255,7 +350,13 @@ export default function Login() {
 
           {!showVerificationStep && (
             <form
-              onSubmit={isRegisterMode ? handleSendVerificationCode : handleStudentLogin}
+              onSubmit={
+                isResetMode
+                  ? handleSendResetCode
+                  : isRegisterMode
+                    ? handleSendVerificationCode
+                    : handleStudentLogin
+              }
               className="space-y-4"
             >
               <div>
@@ -271,17 +372,19 @@ export default function Login() {
                   autoComplete="email"
                 />
               </div>
-              <div>
-                <label className="block text-sm font-semibold text-[#5a3e28] mb-1">
-                  パスワード
-                </label>
-                <PasswordInput
-                  required
-                  value={studentPassword}
-                  onChange={(e) => setStudentPassword(e.target.value)}
-                  autoComplete={isRegisterMode ? 'new-password' : 'current-password'}
-                />
-              </div>
+              {!isResetMode && (
+                <div>
+                  <label className="block text-sm font-semibold text-[#5a3e28] mb-1">
+                    パスワード
+                  </label>
+                  <PasswordInput
+                    required
+                    value={studentPassword}
+                    onChange={(e) => setStudentPassword(e.target.value)}
+                    autoComplete={isRegisterMode ? 'new-password' : 'current-password'}
+                  />
+                </div>
+              )}
               {isRegisterMode && (
                 <div>
                   <label className="block text-sm font-semibold text-[#5a3e28] mb-1">
@@ -295,40 +398,64 @@ export default function Login() {
                   />
                 </div>
               )}
-              {!isRegisterMode && (
+              {!isRegisterMode && !isResetMode && (
                 <p className="text-xs text-gray-500">
                   学校から配布されたアカウントは認証コードなしでログインできます
                 </p>
               )}
               {isRegisterMode && (
                 <p className="text-xs text-gray-500">
-                  自己登録の場合はメールに認証コードが送信されます
+                  自己登録の場合はメールに認証コードが送信されます。アカウント削除はログイン後、設定画面から行えます。
+                </p>
+              )}
+              {isResetMode && (
+                <p className="text-xs text-gray-500">
+                  登録済みのメールアドレスに認証コードを送信します
                 </p>
               )}
               <Button type="submit" disabled={submitting} className="w-full">
                 {submitting
                   ? '処理中...'
-                  : isRegisterMode
+                  : isRegisterMode || isResetMode
                     ? '認証コードを送信'
                     : 'ログイン'}
               </Button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsRegisterMode(!isRegisterMode);
-                  setError(null);
-                }}
-                className="w-full text-sm text-tsure-primary underline min-h-touch"
-              >
-                {isRegisterMode ? 'ログインに戻る' : '新規登録（認証コード必要）'}
-              </button>
+              {isRegisterMode || isResetMode ? (
+                <button
+                  type="button"
+                  onClick={() => switchMode('login')}
+                  className="w-full text-sm text-tsure-primary underline min-h-touch"
+                >
+                  ログインに戻る
+                </button>
+              ) : (
+                <div className="space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => switchMode('register')}
+                    className="w-full text-sm text-tsure-primary underline min-h-touch"
+                  >
+                    新規登録（認証コード必要）
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => switchMode('reset')}
+                    className="w-full text-sm text-tsure-primary underline min-h-touch"
+                  >
+                    パスワードを忘れた方はこちら
+                  </button>
+                </div>
+              )}
             </form>
           )}
 
           {showVerificationStep && (
-            <form onSubmit={handleVerifyAndRegister} className="space-y-4">
+            <form
+              onSubmit={isResetMode ? handleVerifyAndReset : handleVerifyAndRegister}
+              className="space-y-4"
+            >
               <p className="text-sm text-[#5a3e28]">
-                {pendingRegister?.email} に送信された6桁の認証コードを入力してください
+                {(isResetMode ? pendingReset?.email : pendingRegister?.email)} に送信された6桁の認証コードを入力してください
               </p>
               <input
                 type="text"
@@ -340,8 +467,38 @@ export default function Login() {
                 className="w-full border rounded px-3 py-2 text-center tracking-widest"
                 placeholder="000000"
               />
+              {isResetMode && (
+                <>
+                  <div>
+                    <label className="block text-sm font-semibold text-[#5a3e28] mb-1">
+                      新しいパスワード
+                    </label>
+                    <PasswordInput
+                      required
+                      value={resetPassword}
+                      onChange={(e) => setResetPassword(e.target.value)}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-[#5a3e28] mb-1">
+                      新しいパスワード（確認）
+                    </label>
+                    <PasswordInput
+                      required
+                      value={resetConfirm}
+                      onChange={(e) => setResetConfirm(e.target.value)}
+                      autoComplete="new-password"
+                    />
+                  </div>
+                </>
+              )}
               <Button type="submit" disabled={submitting} className="w-full">
-                {submitting ? '登録中...' : '登録を完了'}
+                {submitting
+                  ? '処理中...'
+                  : isResetMode
+                    ? 'パスワードを再設定'
+                    : '登録を完了'}
               </Button>
               <button
                 type="button"
@@ -376,6 +533,12 @@ export default function Login() {
                 : '教員専用ログインはこちら'}
           </button>
         </div>
+
+        <p className="text-center text-xs text-tsure-on-primary/80">
+          <Link to="/privacy" className="underline hover:text-white">
+            プライバシーポリシー
+          </Link>
+        </p>
       </div>
     </div>
   );

@@ -1,14 +1,22 @@
 import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   EmailAuthProvider,
   reauthenticateWithCredential,
   updatePassword,
+  updateProfile as updateAuthProfile,
 } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useTeacherStatus } from '../hooks/useTeacherStatus';
 import { getProfile, updateProfile } from '../services/firestore/userService';
+import { deleteSelfRegisteredAccount } from '../services/authApi';
+import { logout } from '../utils/authSession';
+import {
+  canDeleteSelfRegisteredAccount,
+  canEditSelfRegisteredDisplayName,
+} from '../utils/accountDeletion';
 import SubjectCatalogPanel from '../components/settings/SubjectCatalogPanel';
 import PageLayout from '../components/ui/PageLayout';
 import Card from '../components/ui/Card';
@@ -32,10 +40,13 @@ const MATE_SCOPE_OPTIONS = [
   { value: '学内外', label: '学内外' },
 ];
 
+const DELETE_CONFIRM_PHRASE = '削除する';
+
 export default function SettingsPage() {
+  const navigate = useNavigate();
   const { email } = useAuth();
   const { isTeacher, schoolId: teacherSchoolId } = useTeacherStatus();
-  const { toast } = useUiFeedback();
+  const { toast, confirm } = useUiFeedback();
   const [profile, setProfile] = useState(null);
   const [schoolName, setSchoolName] = useState('');
   const [name, setName] = useState('');
@@ -49,11 +60,19 @@ export default function SettingsPage() {
   const [savingName, setSavingName] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [helpId, setHelpId] = useState(null);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [deleteConfirmEmail, setDeleteConfirmEmail] = useState('');
+  const [deleteConfirmPhrase, setDeleteConfirmPhrase] = useState('');
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   const isPasswordUser =
     auth.currentUser?.providerData?.some((p) => p.providerId === 'password') ?? false;
-  const canEditDisplayName = !isTeacher;
+  const canEditDisplayName = !isTeacher && canEditSelfRegisteredDisplayName(profile);
   const canChangePassword = isPasswordUser && !isTeacher;
+  const canDeleteAccount = !isTeacher && canDeleteSelfRegisteredAccount(profile);
+  const isSchoolProvisionedStudent =
+    !isTeacher && profile && !canDeleteSelfRegisteredAccount(profile);
   const activeHelp = helpId ? SETTINGS_SECTION_HELP[helpId] : null;
 
   useEffect(() => {
@@ -89,7 +108,7 @@ export default function SettingsPage() {
   };
 
   const handleSaveName = async () => {
-    if (!canEditDisplayName) return;
+    if (!canEditDisplayName || !canEditSelfRegisteredDisplayName(profile)) return;
     const trimmed = name.trim();
     if (!trimmed) {
       toast.warning('名前を入力してください');
@@ -98,7 +117,15 @@ export default function SettingsPage() {
     setSavingName(true);
     try {
       await updateProfile(email, { name: trimmed });
+      if (auth.currentUser) {
+        try {
+          await updateAuthProfile(auth.currentUser, { displayName: trimmed });
+        } catch (authErr) {
+          console.warn('Auth displayName update failed:', authErr);
+        }
+      }
       setName(trimmed);
+      setProfile((prev) => (prev ? { ...prev, name: trimmed } : prev));
       toast.success('名前を保存しました');
     } catch (err) {
       toast.error(err.message || '保存に失敗しました');
@@ -142,6 +169,61 @@ export default function SettingsPage() {
       }
     } finally {
       setChangingPassword(false);
+    }
+  };
+
+  const resetDeleteModal = () => {
+    setDeleteModalOpen(false);
+    setDeleteConfirmEmail('');
+    setDeleteConfirmPhrase('');
+    setDeletePassword('');
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!email || !canDeleteAccount) return;
+    const normalizedInput = deleteConfirmEmail.trim().toLowerCase();
+    if (normalizedInput !== email.trim().toLowerCase()) {
+      toast.error('確認用メールアドレスが一致しません');
+      return;
+    }
+    if (deleteConfirmPhrase.trim() !== DELETE_CONFIRM_PHRASE) {
+      toast.error(`「${DELETE_CONFIRM_PHRASE}」と入力してください`);
+      return;
+    }
+    if (!deletePassword) {
+      toast.error('パスワードを入力してください');
+      return;
+    }
+
+    const ok = await confirm({
+      title: 'アカウントを完全に削除',
+      message:
+        'プロフィール・学習計画・記録・連れ勉・フィードバックなど、すべてのデータが削除され、元に戻せません。\n本当に削除しますか？',
+      confirmText: '削除する',
+      cancelText: 'キャンセル',
+      tone: 'danger',
+    });
+    if (!ok) return;
+
+    setDeletingAccount(true);
+    try {
+      const credential = EmailAuthProvider.credential(email, deletePassword);
+      await reauthenticateWithCredential(auth.currentUser, credential);
+      await deleteSelfRegisteredAccount();
+      resetDeleteModal();
+      await logout();
+      toast.success('アカウントを削除しました');
+      navigate('/', { replace: true });
+    } catch (err) {
+      if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+        toast.error('パスワードが正しくありません');
+      } else if (err.code === 'auth/requires-recent-login') {
+        toast.error('セキュリティのため、一度ログアウトして再度ログインしてください');
+      } else {
+        toast.error(err.message || 'アカウントの削除に失敗しました');
+      }
+    } finally {
+      setDeletingAccount(false);
     }
   };
 
@@ -198,7 +280,9 @@ export default function SettingsPage() {
                 </>
               ) : (
                 <p className="text-xs text-tsure-muted">
-                  教員・管理者の表示名は登録時の内容が使われます。
+                  {isTeacher
+                    ? '教員・管理者の表示名は登録時の内容が使われます。'
+                    : '学校配布アカウントの表示名は変更できません。変更が必要な場合は学校管理者にお問い合わせください。'}
                 </p>
               )}
             </Card>
@@ -289,6 +373,37 @@ export default function SettingsPage() {
             )}
           </div>
 
+          {(canDeleteAccount || isSchoolProvisionedStudent) && (
+            <Card className="order-6 lg:order-none border-red-200">
+              <SectionTitle
+                action={
+                  canDeleteAccount ? (
+                    <SectionHelpButton
+                      ariaLabel="アカウント削除の説明"
+                      onClick={() => setHelpId('deleteAccount')}
+                    />
+                  ) : null
+                }
+              >
+                アカウント削除
+              </SectionTitle>
+              {canDeleteAccount ? (
+                <>
+                  <p className="text-sm text-tsure-primary leading-relaxed mb-3">
+                    自己登録アカウントを削除すると、プロフィール・学習計画・記録・連れ勉・フィードバックなどがすべて削除され、取り消せません。
+                  </p>
+                  <Button variant="danger" className="w-full" onClick={() => setDeleteModalOpen(true)}>
+                    アカウントを削除
+                  </Button>
+                </>
+              ) : (
+                <p className="text-sm text-tsure-muted leading-relaxed">
+                  学校から配布されたアカウントは、アプリから削除できません。削除が必要な場合は学校管理者にお問い合わせください。
+                </p>
+              )}
+            </Card>
+          )}
+
           <Card className="order-4 lg:order-none lg:flex-1 lg:min-w-0 lg:self-start lg:sticky lg:top-0">
             <SectionTitle
               action={
@@ -310,6 +425,12 @@ export default function SettingsPage() {
             />
           </Card>
         </div>
+
+        <p className="text-center text-xs text-tsure-muted mt-8 pb-2">
+          <Link to="/privacy" className="underline hover:text-tsure-primary">
+            プライバシーポリシー
+          </Link>
+        </p>
       </div>
 
       <Modal
@@ -323,6 +444,51 @@ export default function SettingsPage() {
         <Button className="w-full mt-6" onClick={() => setHelpId(null)}>
           閉じる
         </Button>
+      </Modal>
+
+      <Modal
+        open={deleteModalOpen}
+        onClose={resetDeleteModal}
+        title="アカウントを削除"
+      >
+        <p className="text-sm text-tsure-primary leading-relaxed mb-4">
+          削除される内容: プロフィール、学習計画・記録、連れ勉のつながり、教員とのフィードバック、勉強中の表示、ログイン情報など。
+        </p>
+        <div className="space-y-3">
+          <Input
+            label="確認のためメールアドレスを入力"
+            type="email"
+            value={deleteConfirmEmail}
+            onChange={(e) => setDeleteConfirmEmail(e.target.value)}
+            autoComplete="email"
+          />
+          <Input
+            label={`確認のため「${DELETE_CONFIRM_PHRASE}」と入力`}
+            value={deleteConfirmPhrase}
+            onChange={(e) => setDeleteConfirmPhrase(e.target.value)}
+            autoComplete="off"
+          />
+          <Input
+            type="password"
+            label="パスワード（本人確認）"
+            value={deletePassword}
+            onChange={(e) => setDeletePassword(e.target.value)}
+            autoComplete="current-password"
+          />
+        </div>
+        <div className="flex flex-col gap-2 mt-6">
+          <Button
+            variant="danger"
+            className="w-full"
+            onClick={handleDeleteAccount}
+            disabled={deletingAccount}
+          >
+            {deletingAccount ? '削除中…' : 'アカウントを完全に削除'}
+          </Button>
+          <Button variant="secondary" className="w-full" onClick={resetDeleteModal}>
+            キャンセル
+          </Button>
+        </div>
       </Modal>
     </PageLayout>
   );

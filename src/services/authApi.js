@@ -95,6 +95,9 @@ export const verifyCode = (payload) => call('verifyCode', payload);
 export const createSelfRegisteredStudent = (payload) =>
   call('createSelfRegisteredStudent', payload);
 
+export const resetPasswordWithCode = (payload) =>
+  call('resetPasswordWithCode', payload);
+
 export const acceptMateRequest = (payload) => call('acceptMateRequest', payload);
 
 export const createMateInvite = (payload) => call('createMateInvite', payload);
@@ -104,3 +107,5 @@ export const getMateInvitePreview = (payload) => call('getMateInvitePreview', pa
 export const redeemMateInvite = (payload) => call('redeemMateInvite', payload);
 
 export const cancelMateRequest = (payload) => call('cancelMateRequest', payload);
+
+export const deleteSelfRegisteredAccount = () => call('deleteSelfRegisteredAccount', {});

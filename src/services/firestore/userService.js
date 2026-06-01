@@ -3,37 +3,78 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  serverTimestamp,
   collection,
   query,
   where,
   getDocs,
 } from 'firebase/firestore';
 import { db } from '../../firebase';
+import { normalizeEmail } from '../../utils/normalizeEmail';
 import { normalizeNameLower } from '../../utils/mateScope';
 import { compareNatural } from '../../utils/adminStudents';
 
+function userDocRef(email) {
+  const id = normalizeEmail(email);
+  if (!id) return null;
+  return doc(db, 'users', id);
+}
+
 export async function getProfile(email) {
-  if (!email) return null;
-  const snap = await getDoc(doc(db, 'users', email));
+  const ref = userDocRef(email);
+  if (!ref) return null;
+  const snap = await getDoc(ref);
   if (!snap.exists()) return null;
   return { email: snap.id, ...snap.data() };
 }
 
+function formatProfileUpdateError(err) {
+  if (err?.code === 'permission-denied') {
+    return new Error(
+      'プロフィールを保存する権限がありません。再ログインしても改善しない場合はお問い合わせください。'
+    );
+  }
+  if (err?.code === 'not-found') {
+    return new Error(
+      'プロフィールが見つかりません。一度ログアウトして再度ログインしてください。'
+    );
+  }
+  return err;
+}
+
 export async function updateProfile(email, patch) {
-  const ref = doc(db, 'users', email);
-  const data = { ...patch };
+  const ref = userDocRef(email);
+  if (!ref) {
+    throw new Error('ログインが必要です');
+  }
+  const snap = await getDoc(ref);
+  if (!snap.exists()) {
+    throw new Error('プロフィールが見つかりません。一度ログアウトして再度ログインしてください。');
+  }
+
+  const data = { ...patch, updatedAt: serverTimestamp() };
   if (patch.name !== undefined) {
     data.nameLower = normalizeNameLower(patch.name);
   }
-  await updateDoc(ref, data);
+  for (const key of Object.keys(data)) {
+    if (data[key] === undefined) delete data[key];
+  }
+
+  try {
+    await updateDoc(ref, data);
+  } catch (err) {
+    throw formatProfileUpdateError(err);
+  }
 }
 
 export async function setProfile(email, data, merge = true) {
+  const ref = userDocRef(email);
+  if (!ref) throw new Error('ログインが必要です');
   const payload = { ...data };
   if (data.name !== undefined) {
     payload.nameLower = normalizeNameLower(data.name);
   }
-  await setDoc(doc(db, 'users', email), payload, { merge });
+  await setDoc(ref, payload, { merge });
 }
 
 export async function getProfiles(emails) {

@@ -35,7 +35,11 @@ export default function Modal({
         role="dialog"
         aria-modal="true"
         className={`${panelClass} shadow-tsure-raised overflow-hidden`}
-        style={{ paddingBottom: 'var(--safe-bottom)' }}
+        style={{
+          paddingBottom: 'var(--safe-bottom)',
+          // フルスクリーン表示時はノッチ/ステータスバーと重ならないよう上部にも安全領域を確保
+          ...(fullScreenMobile ? { paddingTop: 'var(--safe-top)' } : null),
+        }}
       >
         <div className="h-1 bg-tsure-primary shrink-0" />
         <div className="flex items-center justify-between px-4 py-3 border-b border-tsure-border shrink-0">

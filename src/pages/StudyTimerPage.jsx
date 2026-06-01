@@ -73,7 +73,7 @@ export default function StudyTimerPage() {
         </section>
 
         <section className="flex flex-col items-center gap-4 py-2 md:py-6">
-          <StudyTimer email={email} large />
+          <StudyTimer large />
           <Button
             type="button"
             variant="surface"

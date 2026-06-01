@@ -3,6 +3,7 @@ import { getAuth } from "firebase-admin/auth";
 import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
 import { HttpsError } from "firebase-functions/v2/https";
 import { canMateInteract } from "./mateScope.js";
+import { sendVerificationEmail } from "./email.js";
 
 function db() {
   return getFirestore();
@@ -228,26 +229,45 @@ function generateCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
 }
 
-export async function sendVerificationCodeHandler({ email }) {
+export async function sendVerificationCodeHandler({ email, purpose = "register" }) {
   const normalized = normalizeEmail(email);
   if (!normalized || !normalized.includes("@")) {
     throw new HttpsError("invalid-argument", "有効なメールアドレスを入力してください");
   }
+  const mode = purpose === "reset" ? "reset" : "register";
 
   const auth = getAuth();
+  let authUserExists = false;
   try {
     await auth.getUserByEmail(normalized);
-    throw new HttpsError("already-exists", "このメールアドレスは既に登録されています");
+    authUserExists = true;
   } catch (err) {
     if (err.code !== "auth/user-not-found") throw err;
   }
 
   const userSnap = await db().collection("users").doc(normalized).get();
-  if (userSnap.exists && userSnap.data()?.registrationType === "school_provisioned") {
-    throw new HttpsError(
-      "failed-precondition",
-      "学校登録済みのアカウントです。配布されたパスワードでログインしてください"
-    );
+  const registrationType = userSnap.exists ? userSnap.data()?.registrationType : null;
+
+  if (mode === "register") {
+    if (authUserExists) {
+      throw new HttpsError("already-exists", "このメールアドレスは既に登録されています");
+    }
+    if (registrationType === "school_provisioned") {
+      throw new HttpsError(
+        "failed-precondition",
+        "学校登録済みのアカウントです。配布されたパスワードでログインしてください"
+      );
+    }
+  } else {
+    if (!authUserExists) {
+      throw new HttpsError("not-found", "このメールアドレスは登録されていません");
+    }
+    if (registrationType === "school_provisioned") {
+      throw new HttpsError(
+        "failed-precondition",
+        "学校配布アカウントのパスワードは学校管理者にお問い合わせください"
+      );
+    }
   }
 
   const code = generateCode();
@@ -256,12 +276,14 @@ export async function sendVerificationCodeHandler({ email }) {
   await db().collection("verification_codes").doc(normalized).set({
     code,
     expiresAt,
+    purpose: mode,
     verified: false,
     createdAt: FieldValue.serverTimestamp(),
   });
 
-  // 開発・初期運用: コードをレスポンスに含める（本番ではメール送信に差し替え）
-  console.log(`Verification code for ${normalized}: ${code}`);
+  await sendVerificationEmail({ to: normalized, code, purpose: mode });
+
+  console.log(`Verification code for ${normalized} (${mode}): ${code}`);
   return {
     success: true,
     message: "認証コードを送信しました",
@@ -398,7 +420,48 @@ export async function createSelfRegisteredStudentHandler({ email, password, scho
 
   await codeSnap.ref.delete();
 
-  return { success: true, uid: userRecord.uid };
+  const customToken = await auth.createCustomToken(userRecord.uid);
+  return { success: true, uid: userRecord.uid, customToken };
+}
+
+export async function resetPasswordWithCodeHandler({ email, code, newPassword }) {
+  const normalized = normalizeEmail(email);
+  const inputCode = String(code || "").trim();
+  if (!normalized || !inputCode) {
+    throw new HttpsError("invalid-argument", "email と code が必要です");
+  }
+  if (!newPassword || newPassword.length < 6) {
+    throw new HttpsError("invalid-argument", "新しいパスワードは6文字以上にしてください");
+  }
+
+  const snap = await db().collection("verification_codes").doc(normalized).get();
+  if (!snap.exists) {
+    throw new HttpsError("not-found", "認証コードが見つかりません");
+  }
+  const data = snap.data();
+  if (data.purpose !== "reset" || !data.verified) {
+    throw new HttpsError("failed-precondition", "メール認証が完了していません");
+  }
+  if (data.code !== inputCode) {
+    throw new HttpsError("invalid-argument", "認証コードが正しくありません");
+  }
+
+  const auth = getAuth();
+  let userRecord;
+  try {
+    userRecord = await auth.getUserByEmail(normalized);
+  } catch (err) {
+    if (err.code === "auth/user-not-found") {
+      throw new HttpsError("not-found", "このメールアドレスは登録されていません");
+    }
+    throw err;
+  }
+
+  await auth.updateUser(userRecord.uid, { password: newPassword });
+  await snap.ref.delete();
+
+  const customToken = await auth.createCustomToken(userRecord.uid);
+  return { success: true, customToken };
 }
 
 export async function acceptMateRequestHandler(callerEmail, { fromEmail }) {
@@ -615,6 +678,154 @@ export async function cancelMateRequestHandler(callerEmail, { toEmail } = {}) {
       updatedAt: FieldValue.serverTimestamp(),
     });
   });
+
+  return { success: true };
+}
+
+const MATE_REFERENCE_FIELDS = [
+  "mutualMates",
+  "pendingSent",
+  "pendingReceived",
+  "hiddenMates",
+  "hiddenRequests",
+];
+
+const SCHOOL_PROVISIONED_DELETE_MESSAGE =
+  "学校配布アカウントは学校管理者にお問い合わせください";
+
+function looksLikeSchoolProvisioned(userData) {
+  if (!userData) return false;
+  if (userData.registrationType === "school_provisioned") return true;
+  if (userData.registrationType === "self_registered") return false;
+  if (userData.mustChangePassword === true) return true;
+  if (
+    userData.grade != null &&
+    userData.class != null &&
+    userData.number != null
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function canDeleteSelfRegisteredAccount(userData) {
+  if (!userData) return false;
+  if (userData.registrationType === "school_provisioned") return false;
+  if (userData.registrationType === "self_registered") return true;
+  return !looksLikeSchoolProvisioned(userData);
+}
+
+async function batchArrayRemoveFromQuery(dbRef, collectionName, field, email) {
+  const snap = await dbRef
+    .collection(collectionName)
+    .where(field, "array-contains", email)
+    .get();
+  if (snap.empty) return;
+
+  let batch = dbRef.batch();
+  let ops = 0;
+  for (const docSnap of snap.docs) {
+    batch.update(docSnap.ref, {
+      [field]: FieldValue.arrayRemove(email),
+      updatedAt: FieldValue.serverTimestamp(),
+    });
+    ops += 1;
+    if (ops >= 400) {
+      await batch.commit();
+      batch = dbRef.batch();
+      ops = 0;
+    }
+  }
+  if (ops > 0) await batch.commit();
+}
+
+async function deleteUserScopedData(dbRef, email) {
+  const threadsSnap = await dbRef
+    .collection("feedbackThreads")
+    .where("studentEmail", "==", email)
+    .get();
+  for (const threadDoc of threadsSnap.docs) {
+    await dbRef.recursiveDelete(threadDoc.ref);
+  }
+
+  await dbRef.recursiveDelete(dbRef.collection("plans").doc(email));
+  await dbRef.recursiveDelete(dbRef.collection("logs").doc(email));
+
+  const sessionRef = dbRef.collection("activeSessions").doc(email);
+  const sessionSnap = await sessionRef.get();
+  if (sessionSnap.exists) {
+    await sessionRef.delete();
+  }
+
+  for (const field of MATE_REFERENCE_FIELDS) {
+    await batchArrayRemoveFromQuery(dbRef, "users", field, email);
+  }
+
+  await batchArrayRemoveFromQuery(dbRef, "activeSessions", "mateEmails", email);
+
+  const invitesSnap = await dbRef
+    .collection("mateInvites")
+    .where("inviterEmail", "==", email)
+    .get();
+  if (!invitesSnap.empty) {
+    let batch = dbRef.batch();
+    let ops = 0;
+    for (const inviteDoc of invitesSnap.docs) {
+      batch.delete(inviteDoc.ref);
+      ops += 1;
+      if (ops >= 400) {
+        await batch.commit();
+        batch = dbRef.batch();
+        ops = 0;
+      }
+    }
+    if (ops > 0) await batch.commit();
+  }
+
+  const codeRef = dbRef.collection("verification_codes").doc(email);
+  const codeSnap = await codeRef.get();
+  if (codeSnap.exists) {
+    await codeRef.delete();
+  }
+
+  await dbRef.collection("users").doc(email).delete();
+}
+
+export async function deleteSelfRegisteredAccountHandler(callerEmail) {
+  const email = normalizeEmail(callerEmail);
+  if (!email) {
+    throw new HttpsError("invalid-argument", "メールアドレスが必要です");
+  }
+
+  const teacher = await getTeacherRecord(email);
+  if (teacher) {
+    throw new HttpsError(
+      "permission-denied",
+      "教員・管理者アカウントはこの機能では削除できません"
+    );
+  }
+
+  const userSnap = await db().collection("users").doc(email).get();
+  if (!userSnap.exists) {
+    throw new HttpsError("not-found", "ユーザーが見つかりません");
+  }
+
+  const userData = userSnap.data();
+  if (!canDeleteSelfRegisteredAccount(userData)) {
+    throw new HttpsError("failed-precondition", SCHOOL_PROVISIONED_DELETE_MESSAGE);
+  }
+
+  const dbRef = db();
+  const auth = getAuth();
+
+  await deleteUserScopedData(dbRef, email);
+
+  try {
+    const userRecord = await auth.getUserByEmail(email);
+    await auth.deleteUser(userRecord.uid);
+  } catch (err) {
+    if (err.code !== "auth/user-not-found") throw err;
+  }
 
   return { success: true };
 }

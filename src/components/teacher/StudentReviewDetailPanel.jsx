@@ -56,6 +56,14 @@ export default function StudentReviewDetailPanel({
     return null;
   }
 
+  const studentMeta = [
+    student.grade != null && student.grade !== '' ? `${student.grade}年` : null,
+    student.class != null && student.class !== '' ? `${student.class}組` : null,
+    student.number != null && student.number !== '' ? `${student.number}番` : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
+
   return (
     <div className="flex flex-col gap-4 md:min-h-0 md:flex-1">
       {showBackButton && (
@@ -82,7 +90,19 @@ export default function StudentReviewDetailPanel({
       />
 
       <div className="border-b border-white/10 shrink-0" role="tablist" aria-label="学習情報の表示切替">
-        <div className="flex flex-wrap items-center gap-1">
+        <div className="relative flex items-center gap-1">
+          <div
+            className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-baseline gap-2 max-w-[50%] px-2 pointer-events-none"
+            aria-hidden="true"
+          >
+            <span className="text-xl font-extrabold text-tsure-on-primary truncate">
+              {student.name || student.email}
+            </span>
+            {studentMeta && (
+              <span className="text-sm text-tsure-on-primary/60 shrink-0">{studentMeta}</span>
+            )}
+          </div>
+
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -107,7 +127,7 @@ export default function StudentReviewDetailPanel({
             type="button"
             onClick={() => setFeedbackOpen(true)}
             aria-pressed={feedbackOpen}
-            className={`ml-auto inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-lg border transition min-h-touch sm:min-h-0 ${
+            className={`ml-auto shrink-0 inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-lg border transition min-h-touch sm:min-h-0 ${
               feedbackOpen
                 ? 'bg-white/20 border-white/30 text-tsure-on-primary'
                 : 'bg-white/10 border-white/20 text-tsure-on-primary/80 hover:bg-white/15 hover:text-tsure-on-primary'

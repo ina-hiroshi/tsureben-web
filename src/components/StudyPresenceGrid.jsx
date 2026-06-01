@@ -7,6 +7,7 @@ import { PRESENCE_EMPTY } from '../content/emptyStatePresets';
 const SCROLL_PX_PER_SECOND = 24;
 
 function formatSubjectTopic(user) {
+  if (user.isPaused) return '休憩中';
   const parts = [user.subject, user.topic].filter(Boolean);
   return parts.length > 0 ? parts.join(' / ') : '勉強中';
 }

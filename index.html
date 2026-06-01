@@ -8,6 +8,40 @@
   <link rel="apple-touch-icon" href="/logo192.png" />
   <link rel="manifest" href="/manifest.json" />
   <title>TsureBen</title>
+  <style>
+    /* 起動スプラッシュ（バンドル読込〜React マウントまでの間に表示） */
+    /* ネイティブ LaunchScreen（#4b4039）と同色にして起動を継ぎ目なく見せる */
+    #boot-splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      background: #4b4039;
+      color: #ede3d2;
+      font-family: system-ui, sans-serif;
+      z-index: 0;
+    }
+    #boot-splash .tb-logo {
+      font-family: 'Dancing Script', cursive;
+      font-size: 44px;
+      font-weight: 700;
+      line-height: 1;
+    }
+    #boot-splash .tb-spinner {
+      width: 32px;
+      height: 32px;
+      border: 3px solid rgba(237, 227, 210, 0.25);
+      border-top-color: #ede3d2;
+      border-radius: 50%;
+      animation: tb-spin 0.8s linear infinite;
+    }
+    @keyframes tb-spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
 </head>
 <body>
   <script>
@@ -19,7 +53,30 @@
       }
     })();
   </script>
-  <div id="root"></div>
+  <div id="root">
+    <div id="boot-splash">
+      <div class="tb-logo">TsureBen</div>
+      <div class="tb-spinner"></div>
+    </div>
+  </div>
+  <script>
+    // 診断用ロガーのみ（DOM は操作しない）。
+    // 重要: 起動時には捕捉済み/CORS で "Script error." に秘匿される非致命的な
+    // error イベントが発火することがある。以前はこれに反応して #root を
+    // エラー画面で上書きしていたが、正常にマウントした React アプリまで
+    // 破壊してしまうため撤廃した。
+    // 真の起動失敗は main.jsx の try/catch と ErrorBoundary が処理する。
+    (function () {
+      window.addEventListener('error', function (e) {
+        var d = (e && e.error && (e.error.stack || e.error.message)) || (e && e.message) || 'error';
+        console.error('[boot] window error:', d);
+      });
+      window.addEventListener('unhandledrejection', function (e) {
+        var r = e && e.reason;
+        console.error('[boot] unhandledrejection:', (r && (r.stack || r.message)) || String(r));
+      });
+    })();
+  </script>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 </html>

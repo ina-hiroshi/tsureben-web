@@ -20,6 +20,14 @@ export function computeElapsedMinutes(startTime) {
   return Math.max(0, dayjs().diff(start, 'minute'));
 }
 
+export function computeSessionElapsedMinutes(user) {
+  if (!user) return 0;
+  if (user.isPaused && typeof user.pausedElapsedMinutes === 'number') {
+    return Math.max(0, Math.floor(user.pausedElapsedMinutes));
+  }
+  return computeElapsedMinutes(user.startTime);
+}
+
 export function formatElapsedDuration(totalMinutes) {
   const minutes = Math.max(0, Math.floor(totalMinutes));
   const hours = Math.floor(minutes / 60);
@@ -36,16 +44,27 @@ export function formatStudentMeta(user) {
   return parts.join(' ');
 }
 
-export function useSessionElapsedMinutes(startTime, intervalMs = 15000) {
-  const [elapsedMinutes, setElapsedMinutes] = useState(() => computeElapsedMinutes(startTime));
+export function useSessionElapsedMinutes(user, intervalMs = 15000) {
+  const sessionUser = typeof user === 'string' ? { startTime: user } : user;
+  const [elapsedMinutes, setElapsedMinutes] = useState(() =>
+    computeSessionElapsedMinutes(sessionUser)
+  );
 
   useEffect(() => {
-    setElapsedMinutes(computeElapsedMinutes(startTime));
+    setElapsedMinutes(computeSessionElapsedMinutes(sessionUser));
+    if (sessionUser?.isPaused) {
+      return undefined;
+    }
     const id = setInterval(() => {
-      setElapsedMinutes(computeElapsedMinutes(startTime));
+      setElapsedMinutes(computeSessionElapsedMinutes(sessionUser));
     }, intervalMs);
     return () => clearInterval(id);
-  }, [startTime, intervalMs]);
+  }, [
+    sessionUser?.startTime,
+    sessionUser?.isPaused,
+    sessionUser?.pausedElapsedMinutes,
+    intervalMs,
+  ]);
 
   return elapsedMinutes;
 }

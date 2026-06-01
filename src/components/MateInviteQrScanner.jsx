@@ -40,6 +40,15 @@ export default function MateInviteQrScanner({ onSuccess, onClose }) {
   const scannerRef = useRef(null);
   const handledRef = useRef(false);
 
+  // 最新のコールバックを ref で保持し、初期化エフェクトの依存から外す。
+  // これにより親の再レンダリングでスキャナーが再起動（ちらつき）しなくなる。
+  const onSuccessRef = useRef(onSuccess);
+  const onCloseRef = useRef(onClose);
+  const toastRef = useRef(toast);
+  onSuccessRef.current = onSuccess;
+  onCloseRef.current = onClose;
+  toastRef.current = toast;
+
   useEffect(() => {
     let active = true;
     let started = false;
@@ -58,12 +67,12 @@ export default function MateInviteQrScanner({ onSuccess, onClose }) {
       if (handledRef.current) return;
       const token = parseMateInviteToken(decodedText);
       if (!token) {
-        toast.error('招待QRではありません');
+        toastRef.current.error('招待QRではありません');
         return;
       }
       handledRef.current = true;
       releaseOnce(true).finally(() => {
-        onSuccess(token);
+        onSuccessRef.current(token);
       });
     };
 
@@ -79,8 +88,8 @@ export default function MateInviteQrScanner({ onSuccess, onClose }) {
       })
       .catch((err) => {
         if (!active) return;
-        toast.error(cameraErrorMessage(err));
-        onClose?.();
+        toastRef.current.error(cameraErrorMessage(err));
+        onCloseRef.current?.();
       });
 
     return () => {
@@ -94,7 +103,8 @@ export default function MateInviteQrScanner({ onSuccess, onClose }) {
         releaseOnce(started);
       });
     };
-  }, [onSuccess, onClose, toast]);
+    // マウント時に一度だけ初期化する（コールバックは ref 経由で最新を参照）
+  }, []);
 
   return (
     <div className="flex flex-col items-center gap-4">

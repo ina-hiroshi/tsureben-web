@@ -1,5 +1,6 @@
 import AppHeader from './AppHeader';
 import AppSidebar from './AppSidebar';
+import StudyTimerMiniBar from '../StudyTimerMiniBar';
 
 /** モバイルは中央寄せ max-w-2xl、md+ はサイドバー横の残り幅いっぱい */
 const MAIN_WIDTH = {
@@ -23,8 +24,11 @@ export default function PageLayout({
     >
       {showNav && <AppSidebar />}
       <div className="flex-1 flex flex-col min-w-0">
-        {showNav && <AppHeader />}
-        <main
+      {showNav && <AppHeader />}
+      <div className="shrink-0">
+        {showNav && <StudyTimerMiniBar />}
+      </div>
+      <main
           className={`flex-1 w-full px-4 md:px-6 lg:px-8 pt-1 md:pt-0 pb-4 ${mainWidthClass}`}
         >
           {children}

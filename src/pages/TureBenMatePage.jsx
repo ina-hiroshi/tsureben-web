@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Capacitor } from '@capacitor/core';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../contexts/AuthContext';
 import {
@@ -111,7 +112,11 @@ export default function TureBenMatePage() {
   const handleCreateInvite = async () => {
     setInviteLoading(true);
     try {
-      const data = await createMateInvite({ origin: window.location.origin });
+      // ネイティブ(capacitor://localhost)では共有先で開けないため、本番Webオリジンで招待URLを発行する
+      const inviteOrigin = Capacitor.isNativePlatform()
+        ? 'https://tsureben.web.app'
+        : window.location.origin;
+      const data = await createMateInvite({ origin: inviteOrigin });
       const inviteUrl =
         data.inviteUrl || `${window.location.origin}/mate-invite/${data.token}`;
       setInvite({ ...data, inviteUrl });

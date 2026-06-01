@@ -13,13 +13,19 @@ import {
   bulkImportTeachersHandler,
   createSchoolHandler,
   createSelfRegisteredStudentHandler,
+  deleteSelfRegisteredAccountHandler,
   migrateLegacyDataHandler,
   resetStudentPasswordHandler,
+  resetPasswordWithCodeHandler,
   sendVerificationCodeHandler,
   verifyCodeHandler,
 } from "./authAdmin.js";
 import { exchangeOAuthCode } from "./oauthExchange.js";
-import { defaultCallableOptions, bulkCallableOptions } from "./callableConfig.js";
+import {
+  defaultCallableOptions,
+  bulkCallableOptions,
+  sendVerificationCallableOptions,
+} from "./callableConfig.js";
 
 setGlobalOptions({ region: "asia-northeast1" });
 
@@ -83,7 +89,7 @@ export const adminResetStudentPassword = onCall(
 );
 
 export const sendVerificationCode = onCall(
-  defaultCallableOptions,
+  sendVerificationCallableOptions,
   wrapCallable(async (request) => {
     return sendVerificationCodeHandler(request.data || {});
   })
@@ -100,6 +106,13 @@ export const createSelfRegisteredStudent = onCall(
   defaultCallableOptions,
   wrapCallable(async (request) => {
     return createSelfRegisteredStudentHandler(request.data || {});
+  })
+);
+
+export const resetPasswordWithCode = onCall(
+  defaultCallableOptions,
+  wrapCallable(async (request) => {
+    return resetPasswordWithCodeHandler(request.data || {});
   })
 );
 
@@ -147,6 +160,14 @@ export const cancelMateRequest = onCall(
   wrapCallable(async (request) => {
     const email = requireAuth(request);
     return cancelMateRequestHandler(email, request.data || {});
+  })
+);
+
+export const deleteSelfRegisteredAccount = onCall(
+  bulkCallableOptions,
+  wrapCallable(async (request) => {
+    const email = requireAuth(request);
+    return deleteSelfRegisteredAccountHandler(email);
   })
 );
 

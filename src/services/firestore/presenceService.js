@@ -24,8 +24,32 @@ export async function startSession(email, profile, extra = {}) {
     book: extra.book || '',
     content: extra.content || '',
     startTime: extra.startTime,
+    isPaused: extra.isPaused === true,
+    pausedElapsedMinutes: null,
     mateEmails,
   });
+}
+
+export async function pauseSession(email, elapsedMinutes) {
+  await setDoc(
+    doc(db, 'activeSessions', email),
+    {
+      isPaused: true,
+      pausedElapsedMinutes: Math.max(0, elapsedMinutes),
+    },
+    { merge: true }
+  );
+}
+
+export async function resumeSession(email) {
+  await setDoc(
+    doc(db, 'activeSessions', email),
+    {
+      isPaused: false,
+      pausedElapsedMinutes: null,
+    },
+    { merge: true }
+  );
 }
 
 export async function endSession(email) {

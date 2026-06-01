@@ -11,7 +11,11 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // 認証初期化がネイティブ環境などでハングしても画面が固まらないよう、
+    // 一定時間で loading を解除するセーフティタイマー。
+    const safety = setTimeout(() => setLoading(false), 8000);
     const unsubscribe = onAuthStateChanged(auth, (user) => {
+      clearTimeout(safety);
       if (user) {
         const name =
           (typeof user.displayName === 'string' && user.displayName.trim()) ||
@@ -33,12 +37,18 @@ export function AuthProvider({ children }) {
       }
       setLoading(false);
     });
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(safety);
+      unsubscribe();
+    };
   }, []);
 
+  // 公開ルート（ログイン画面など）は認証初期化を待たずに描画する。
+  // 保護ページは ProtectedRoute 側で loading を見て制御するため、
+  // ここで全体を隠すと初期化ハング時に「背景のみ」になってしまう。
   return (
     <AuthContext.Provider value={{ email, uid, userName, loading }}>
-      {!loading && children}
+      {children}
     </AuthContext.Provider>
   );
 }

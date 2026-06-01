@@ -62,12 +62,19 @@ if ! xcodebuild -showsdks 2>/dev/null | grep -qi "iphoneos"; then
   exit 1
 fi
 
-echo "==> 1/4 Web ビルド & Capacitor 同期"
+echo "==> 1/5 アプリアイコン同期 (public/logo.png)"
+if [[ -x "$ROOT_DIR/ios/scripts/sync-app-icon.sh" ]]; then
+  "$ROOT_DIR/ios/scripts/sync-app-icon.sh"
+else
+  echo "WARN: ios/scripts/sync-app-icon.sh がありません。AppIcon を手動確認してください。" >&2
+fi
+
+echo "==> 2/5 Web ビルド & Capacitor 同期"
 cd "$ROOT_DIR"
 npm run build
 npx cap sync ios
 
-echo "==> 2/4 アーカイブ作成 (build $BUILD_NUMBER)"
+echo "==> 3/5 アーカイブ作成 (build $BUILD_NUMBER)"
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 VERSION_OVERRIDE=(CURRENT_PROJECT_VERSION="$BUILD_NUMBER")
@@ -81,14 +88,14 @@ xcodebuild -workspace "$IOS_DIR/App.xcworkspace" \
   "${VERSION_OVERRIDE[@]}" \
   archive
 
-echo "==> 3/4 IPA 書き出し"
+echo "==> 4/5 IPA 書き出し"
 xcodebuild -exportArchive \
   -archivePath "$ARCHIVE_PATH" \
   -exportOptionsPlist "$EXPORT_OPTIONS" \
   -exportPath "$EXPORT_PATH" \
   "${AUTH_ARGS[@]}"
 
-echo "==> 4/4 App Store Connect へアップロード"
+echo "==> 5/5 App Store Connect へアップロード"
 IPA_PATH="$(ls "$EXPORT_PATH"/*.ipa | head -n1)"
 xcrun altool --upload-app \
   --type ios \

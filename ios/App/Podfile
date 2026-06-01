@@ -8,6 +8,21 @@ use_frameworks!
 # Requires CocoaPods 1.6 or newer
 install! 'cocoapods', :disable_input_output_paths => true
 
+def patch_google_auth_podspec_for_privacy_manifests!
+  podspec = File.expand_path(
+    '../../node_modules/@codetrix-studio/capacitor-google-auth/CodetrixStudioCapacitorGoogleAuth.podspec',
+    __dir__
+  )
+  return unless File.exist?(podspec)
+
+  contents = File.read(podspec)
+  patched = contents.gsub(
+    "s.dependency 'GoogleSignIn', '~> 6.2.4'",
+    "s.dependency 'GoogleSignIn', '~> 7.1'"
+  )
+  File.write(podspec, patched) if patched != contents
+end
+
 def capacitor_pods
   pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
   pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
@@ -17,7 +32,12 @@ end
 
 target 'App' do
   capacitor_pods
-  # Add your Pods here
+  # ITMS-91061: privacy manifests in GoogleSignIn 7.1+, GTMAppAuth 4.1+, GTMSessionFetcher 3.3+
+  pod 'GoogleSignIn', '~> 7.1'
+end
+
+pre_install do |_installer|
+  patch_google_auth_podspec_for_privacy_manifests!
 end
 
 post_install do |installer|

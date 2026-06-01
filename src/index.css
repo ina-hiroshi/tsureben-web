@@ -24,6 +24,21 @@
   }
 }
 
+/* ネイティブアプリ(iOS/Android)ではスクロールバーを非表示にする。
+   iOS のネイティブ UI ではスクロールバーは操作中のみ自動表示されるため、
+   WKWebView の常時表示スクロールバーを隠してネイティブ体験に合わせる。 */
+.is-native ::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
+}
+
+.is-native,
+.is-native * {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
 @keyframes toastFadeIn {
   from {
     opacity: 0;

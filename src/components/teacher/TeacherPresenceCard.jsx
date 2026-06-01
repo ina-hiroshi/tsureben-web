@@ -38,8 +38,8 @@ function SubjectTopicLine({ subject, topic }) {
 export default function TeacherPresenceCard({ user, onClick }) {
   const book = (user.book || '').trim();
   const meta = formatStudentMeta(user);
-  const elapsedMinutes = useSessionElapsedMinutes(user.startTime);
-  const elapsedLabel = formatElapsedDuration(elapsedMinutes);
+  const elapsedMinutes = useSessionElapsedMinutes(user);
+  const elapsedLabel = user.isPaused ? '休憩中' : formatElapsedDuration(elapsedMinutes);
   const startLabel = user.startTime ? `${user.startTime}開始` : '開始時刻不明';
   const accentClass = subjectBarColorClass(user.subject);
 

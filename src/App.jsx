@@ -2,10 +2,12 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { AuthProvider } from './contexts/AuthContext';
+import { StudyTimerProvider } from './contexts/StudyTimerContext';
 import { UiFeedbackProvider } from './contexts/UiFeedbackContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import { normalizeLocalhostOrigin } from './services/googleOAuth';
 import Login from './pages/Login';
+import PrivacyPolicyPage from './pages/PrivacyPolicyPage';
 import OAuthCallback from './pages/OAuthCallback';
 import Home from './pages/Home';
 import StudyPlanPage from './pages/StudyPlanPage';
@@ -20,13 +22,16 @@ import TeacherLivePresencePage from './pages/TeacherLivePresencePage';
 import TeacherRouteShell from './components/teacher/TeacherRouteShell';
 import StudentFeedbackPage from './pages/StudentFeedbackPage';
 import DemoSettingsAccessSync from './components/dev/DemoSettingsAccessSync';
+import StudyTimerStalePrompt from './components/StudyTimerStalePrompt';
 
 function AppLayout() {
   return (
     <>
       <DemoSettingsAccessSync />
+      <StudyTimerStalePrompt />
       <Routes>
       <Route path="/" element={<Login />} />
+      <Route path="/privacy" element={<PrivacyPolicyPage />} />
       <Route path="/oauth-callback" element={<OAuthCallback />} />
       <Route path="/mate-invite/:token" element={<MateInvitePage />} />
       <Route
@@ -133,34 +138,36 @@ function App() {
     normalizeLocalhostOrigin();
   }, []);
 
+  // iOS の Google ログイン初期化。
+  // codetrix プラグインの iOS 実装は load() が空で、initialize() を呼ばないと
+  // 内部の GIDSignIn(googleSignIn) が nil のままになり、signIn 時に nil 強制
+  // アンラップでクラッシュする。clientId/scopes は capacitor.config.json の
+  // iosClientId から解決されるため、ネイティブブリッジ経由で初期化しておく。
+  // （以前の external 指定 JS import 経由の init は解決失敗で機能しなかった）
   useEffect(() => {
-    if (Capacitor.isNativePlatform()) {
-      import('@codetrix-studio/capacitor-google-auth')
-        .then(({ GoogleAuth }) => {
-          GoogleAuth.init({
-            clientId: WEB_CLIENT_ID,
-            scopes: ['profile', 'email'],
-            grantOfflineAccess: true,
-          });
+    if (!Capacitor.isNativePlatform()) return;
+    const GoogleAuth = window.Capacitor?.Plugins?.GoogleAuth;
+    if (GoogleAuth?.initialize) {
+      Promise.resolve(
+        GoogleAuth.initialize({
+          scopes: ['profile', 'email'],
+          grantOfflineAccess: true,
         })
-        .catch((err) => {
-          console.error('GoogleAuth init error:', err);
-        });
+      ).catch((err) => console.error('GoogleAuth initialize error:', err));
     }
   }, []);
 
   return (
     <AuthProvider>
-      <UiFeedbackProvider>
-        <Router>
-          <AppLayout />
-        </Router>
-      </UiFeedbackProvider>
+      <StudyTimerProvider>
+        <UiFeedbackProvider>
+          <Router>
+            <AppLayout />
+          </Router>
+        </UiFeedbackProvider>
+      </StudyTimerProvider>
     </AuthProvider>
   );
 }
-
-const WEB_CLIENT_ID =
-  '77789669140-61nhedsb0v3i2qsthnsq0pm7nba0ahkr.apps.googleusercontent.com';
 
 export default App;

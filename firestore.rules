@@ -55,6 +55,32 @@ service cloud.firestore {
         || (isTeacher() && !exists(/databases/$(database)/documents/users/$(targetEmail)));
     }
 
+    // 学年・組・番号は変更不可。null・未設定・数値/文字列の差で誤判定しないよう正規化して比較する。
+    function profileIdentityField(data, field) {
+      let v = data.get(field, '');
+      return v == null ? '' : string(v);
+    }
+
+    function userProfileIdentityUnchanged() {
+      return profileIdentityField(request.resource.data, 'grade') == profileIdentityField(resource.data, 'grade')
+        && profileIdentityField(request.resource.data, 'class') == profileIdentityField(resource.data, 'class')
+        && profileIdentityField(request.resource.data, 'number') == profileIdentityField(resource.data, 'number');
+    }
+
+    function isSelfRegisteredStudent() {
+      return resource.data.get('registrationType', '') == 'self_registered';
+    }
+
+    function onlyDisplayNameFieldsChanged() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['name', 'nameLower', 'updatedAt']);
+    }
+
+    function canUpdateOwnUserProfile() {
+      return userProfileIdentityUnchanged()
+        || (isSelfRegisteredStudent() && onlyDisplayNameFieldsChanged());
+    }
+
     match /schools/{schoolId} {
       allow read: if isAuthenticated();
       allow create: if isSuperAdmin();
@@ -71,9 +97,7 @@ service cloud.firestore {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && userEmail() == email;
       allow update: if isAuthenticated() && userEmail() == email
-        && request.resource.data.grade == resource.data.get('grade', null)
-        && request.resource.data.class == resource.data.get('class', null)
-        && request.resource.data.number == resource.data.get('number', null);
+        && canUpdateOwnUserProfile();
       allow delete: if false;
     }
 

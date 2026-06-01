@@ -4,6 +4,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { getProfile } from '../services/firestore/userService';
 import { db } from '../firebase';
+import FullScreenLoader from './ui/FullScreenLoader';
 
 export default function ProtectedRoute({
   children,
@@ -72,7 +73,7 @@ export default function ProtectedRoute({
     return true;
   }, [needsTeacherCheck, teacherSnap, role, requireSuperAdmin, requireSchoolAdmin]);
 
-  if (loading || checking) return null;
+  if (loading || checking) return <FullScreenLoader label="読み込み中…" />;
 
   if (!email) {
     return <Navigate to="/" replace />;
