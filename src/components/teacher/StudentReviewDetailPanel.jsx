@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import dayjs from 'dayjs';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, MessageSquare } from 'lucide-react';
 import { useStudentPeriodData } from '../../hooks/useStudentPeriodData';
 import PeriodNav from '../ui/PeriodNav';
 import PlanCardList from '../PlanCardList';
@@ -12,6 +12,7 @@ import FeedbackThreadPanel from './FeedbackThreadPanel';
 import AppIcon from '../ui/AppIcon';
 import Card from '../ui/Card';
 import LoadingOverlay from '../ui/LoadingOverlay';
+import DraggableDialog from '../ui/DraggableDialog';
 import {
   TEACHER_PLAN_READONLY_EMPTY,
   TEACHER_LOG_READONLY_EMPTY,
@@ -20,7 +21,6 @@ import {
 const TABS = [
   { id: 'plan', label: '学習計画' },
   { id: 'log', label: '学習記録' },
-  { id: 'feedback', label: 'フィードバック' },
 ];
 
 export default function StudentReviewDetailPanel({
@@ -33,6 +33,7 @@ export default function StudentReviewDetailPanel({
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [periodMode, setPeriodMode] = useState('day');
   const [activeTab, setActiveTab] = useState('plan');
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
 
   const dateKey = selectedDate.format('YYYY-MM-DD');
   const {
@@ -81,7 +82,7 @@ export default function StudentReviewDetailPanel({
       />
 
       <div className="border-b border-white/10 shrink-0" role="tablist" aria-label="学習情報の表示切替">
-        <div className="flex flex-wrap gap-1">
+        <div className="flex flex-wrap items-center gap-1">
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -101,11 +102,25 @@ export default function StudentReviewDetailPanel({
               </button>
             );
           })}
+
+          <button
+            type="button"
+            onClick={() => setFeedbackOpen(true)}
+            aria-pressed={feedbackOpen}
+            className={`ml-auto inline-flex items-center gap-1.5 px-3 py-2 text-sm font-semibold rounded-lg border transition min-h-touch sm:min-h-0 ${
+              feedbackOpen
+                ? 'bg-white/20 border-white/30 text-tsure-on-primary'
+                : 'bg-white/10 border-white/20 text-tsure-on-primary/80 hover:bg-white/15 hover:text-tsure-on-primary'
+            }`}
+          >
+            <AppIcon icon={MessageSquare} size="sm" />
+            フィードバック
+          </button>
         </div>
       </div>
 
       <div className="relative flex-1 min-h-0 pt-4 md:overflow-y-auto" role="tabpanel">
-        {loading && activeTab !== 'feedback' && <LoadingOverlay message="読み込み中…" />}
+        {loading && <LoadingOverlay message="読み込み中…" />}
 
         {activeTab === 'plan' && !isPeriodView && (
           <PlanCardList
@@ -157,17 +172,23 @@ export default function StudentReviewDetailPanel({
           />
         )}
 
-        {activeTab === 'feedback' && (
-          <FeedbackThreadPanel
-            student={student}
-            schoolId={schoolId}
-            dateKey={dateKey}
-            teacherName={teacherName}
-            mode="teacher"
-            onDark
-          />
-        )}
       </div>
+
+      <DraggableDialog
+        open={feedbackOpen}
+        onClose={() => setFeedbackOpen(false)}
+        title={`フィードバック — ${student.name || student.email}`}
+        defaultWidth={440}
+        defaultHeight={560}
+      >
+        <FeedbackThreadPanel
+          student={student}
+          schoolId={schoolId}
+          dateKey={dateKey}
+          teacherName={teacherName}
+          mode="teacher"
+        />
+      </DraggableDialog>
     </div>
   );
 }

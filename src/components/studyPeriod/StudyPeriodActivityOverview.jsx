@@ -193,10 +193,13 @@ function PlanDayOverviewCard({
 
 function PlanDayEntries({ entries = [], className = 'max-h-28' }) {
   if (!entries.length) return null;
+  const scrollClass = className.includes('max-h-none')
+    ? ''
+    : 'overflow-y-auto overscroll-y-contain';
 
   return (
     <ul
-      className={`mt-2 w-full space-y-1.5 text-left overflow-y-auto overscroll-y-contain ${className}`}
+      className={`mt-2 w-full space-y-1.5 text-left ${scrollClass} ${className}`}
     >
       {entries.map((entry) => {
         const timeRange =
@@ -260,10 +263,13 @@ function CompactPlanDayEntries({ entries = [] }) {
 
 function LogDayEntries({ entries = [], className = 'max-h-28' }) {
   if (!entries.length) return null;
+  const scrollClass = className.includes('max-h-none')
+    ? ''
+    : 'overflow-y-auto overscroll-y-contain';
 
   return (
     <ul
-      className={`mt-2 w-full space-y-1.5 text-left overflow-y-auto overscroll-y-contain ${className}`}
+      className={`mt-2 w-full space-y-1.5 text-left ${scrollClass} ${className}`}
     >
       {entries.map((entry) => {
         const subjectLine = [entry.subject, entry.topic].filter(Boolean).join(' / ');
@@ -672,7 +678,7 @@ function WeekStrip({ items, valueKey, unitLabel, contentVariant = 'none', planMi
             return (
               <div
                 key={item.dateKey}
-                className="flex flex-col items-stretch rounded-xl border border-tsure-border bg-white px-1.5 py-2 min-w-0 md:min-h-[22rem]"
+                className="flex flex-col items-stretch rounded-xl border border-tsure-border bg-white px-1.5 py-2 min-w-0"
               >
                 <div className="text-center">
                   <span className="text-[10px] sm:text-xs text-tsure-muted">{item.weekday}</span>
@@ -701,7 +707,7 @@ function WeekStrip({ items, valueKey, unitLabel, contentVariant = 'none', planMi
                     </p>
                   )}
                 </div>
-                <LogDayEntries entries={item.entries} className="max-h-60 flex-1 min-h-0 mt-2" />
+                <LogDayEntries entries={item.entries} className="max-h-none mt-2" />
               </div>
             );
           }
@@ -710,7 +716,7 @@ function WeekStrip({ items, valueKey, unitLabel, contentVariant = 'none', planMi
             <div
               key={item.dateKey}
               className={`flex flex-col items-stretch rounded-xl border border-tsure-border px-1.5 py-2 min-w-0 ${
-                isPlan ? 'bg-white md:min-h-[22rem]' : intensityClass(value, maxValue)
+                isPlan ? 'bg-white' : intensityClass(value, maxValue)
               }`}
             >
               <div className="text-center">
@@ -746,7 +752,7 @@ function WeekStrip({ items, valueKey, unitLabel, contentVariant = 'none', planMi
                 {formatActivityValue(value, valueKey, unitLabel)}
               </span>
               {isPlan && (
-                <PlanDayEntries entries={item.entries} className="max-h-60 flex-1 min-h-0" />
+                <PlanDayEntries entries={item.entries} className="max-h-none" />
               )}
             </div>
           );
