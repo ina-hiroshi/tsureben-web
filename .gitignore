@@ -18,6 +18,15 @@ dist-ssr
 # Firebase cache
 .firebase/
 
+# App Store Connect API 認証情報（機密）
+ios/.appstore.env
+*.p8
+AuthKey_*.p8
+
+# iOS ビルド成果物
+ios/App/output/
+ios/App/build/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
