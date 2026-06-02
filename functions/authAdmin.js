@@ -400,11 +400,23 @@ export async function createSelfRegisteredStudentHandler({ email, password, scho
     emailVerified: true,
   });
 
-  await db().collection("users").doc(normalized).set({
+  await db().collection("users").doc(normalized).set(
+    buildSelfRegisteredUserDoc(normalized, { schoolId: schoolId || null })
+  );
+
+  await codeSnap.ref.delete();
+
+  const customToken = await auth.createCustomToken(userRecord.uid);
+  return { success: true, uid: userRecord.uid, customToken };
+}
+
+function buildSelfRegisteredUserDoc(email, extra = {}) {
+  const normalized = normalizeEmail(email);
+  return {
     role: "student",
     name: normalized.split("@")[0],
     nameLower: normalized.split("@")[0].toLowerCase(),
-    schoolId: schoolId || null,
+    schoolId: null,
     registrationType: "self_registered",
     profileComplete: false,
     shareScope: "学年のみ",
@@ -416,12 +428,49 @@ export async function createSelfRegisteredStudentHandler({ email, password, scho
     hiddenRequests: [],
     subjectCatalog: {},
     createdAt: FieldValue.serverTimestamp(),
-  });
+    ...extra,
+  };
+}
 
-  await codeSnap.ref.delete();
+export async function registerAppleStudentHandler(request) {
+  if (!request.auth?.token?.email) {
+    throw new HttpsError("unauthenticated", "ログインが必要です");
+  }
 
-  const customToken = await auth.createCustomToken(userRecord.uid);
-  return { success: true, uid: userRecord.uid, customToken };
+  const signInProvider = request.auth.token.firebase?.sign_in_provider;
+  if (signInProvider !== "apple.com") {
+    throw new HttpsError("permission-denied", "Apple ID でログインしてください");
+  }
+
+  const email = normalizeEmail(request.auth.token.email);
+  if (!email) {
+    throw new HttpsError("failed-precondition", "Apple ID からメールアドレスを取得できませんでした");
+  }
+
+  const userRef = db().collection("users").doc(email);
+  const userSnap = await userRef.get();
+
+  if (userSnap.exists) {
+    const registrationType = userSnap.data()?.registrationType;
+    if (registrationType === "school_provisioned") {
+      throw new HttpsError(
+        "failed-precondition",
+        "学校登録済みのアカウントです。配布されたパスワードでログインしてください"
+      );
+    }
+    if (registrationType && registrationType !== "self_registered") {
+      throw new HttpsError("failed-precondition", "このアカウントでは Apple ID 登録を利用できません");
+    }
+    return { success: true, created: false, email };
+  }
+
+  await userRef.set(
+    buildSelfRegisteredUserDoc(email, {
+      authProvider: "apple.com",
+    })
+  );
+
+  return { success: true, created: true, email };
 }
 
 export async function resetPasswordWithCodeHandler({ email, code, newPassword }) {

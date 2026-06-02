@@ -95,6 +95,8 @@ export const verifyCode = (payload) => call('verifyCode', payload);
 export const createSelfRegisteredStudent = (payload) =>
   call('createSelfRegisteredStudent', payload);
 
+export const registerAppleStudent = () => call('registerAppleStudent', {});
+
 export const resetPasswordWithCode = (payload) =>
   call('resetPasswordWithCode', payload);
 

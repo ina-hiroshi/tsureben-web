@@ -16,6 +16,7 @@ import {
   browserLocalPersistence,
   signInWithEmailAndPassword,
   signInWithCustomToken,
+  signOut,
 } from 'firebase/auth';
 import { auth } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,6 +25,7 @@ import {
   verifyCode,
   createSelfRegisteredStudent,
   resetPasswordWithCode,
+  registerAppleStudent,
 } from '../services/authApi';
 import {
   shouldUseGoogleRedirect,
@@ -33,6 +35,15 @@ import {
   normalizeLocalhostOrigin,
 } from '../services/googleOAuth';
 import { ensureUserDoc } from '../utils/ensureUserDoc';
+import {
+  isNativeApp,
+  isWebPlatform,
+  isTeacherEmail,
+  getUserRegistrationType,
+  canUseWebAsStudent,
+} from '../utils/platformAccess';
+import { signInWithApple, isAppleLoginCancelled } from '../utils/appleAuth';
+import { getAppStoreUrl } from '../constants/appLinks';
 import {
   consumePostLoginReturnUrl,
   peekPostLoginReturnUrl,
@@ -50,6 +61,9 @@ function formatStudentAuthError(err, fallback) {
   }
   if (err?.code === 'auth/user-not-found' || err?.code === 'auth/invalid-credential') {
     return 'メールアドレスまたはパスワードが正しくありません';
+  }
+  if (err?.code === 'auth/account-exists-with-different-credential') {
+    return 'このメールアドレスは別の方法で登録されています。メールとパスワードでログインしてください';
   }
   return err?.message || fallback;
 }
@@ -80,17 +94,31 @@ export default function Login() {
   const [resetConfirm, setResetConfirm] = useState('');
   const [redirecting, setRedirecting] = useState(false);
 
+  const webPlatform = isWebPlatform();
+  const nativeApp = isNativeApp();
+  const appStoreUrl = getAppStoreUrl();
+
   useEffect(() => {
     normalizeLocalhostOrigin();
   }, []);
 
   useEffect(() => {
     if (!loading && email) {
-      resolveDefaultPostLoginPath(email).then((fallback) => {
+      resolveDefaultPostLoginPath(email).then(async (fallback) => {
+        if (!fallback) {
+          if (webPlatform) {
+            const regType = await getUserRegistrationType(email);
+            if (!canUseWebAsStudent(regType) && !(await isTeacherEmail(email))) {
+              await signOut(auth);
+              setError('一般ユーザーは iOS アプリからご利用ください');
+            }
+          }
+          return;
+        }
         navigate(consumePostLoginReturnUrl(fallback), { replace: true });
       });
     }
-  }, [email, loading, navigate]);
+  }, [email, loading, navigate, webPlatform]);
 
   useEffect(() => {
     // リダイレクトログインは Web のみ。ネイティブ(WKWebView)では
@@ -116,9 +144,46 @@ export default function Login() {
   }, []);
 
   const finishLogin = async (user) => {
+    if (webPlatform) {
+      const isTeacher = await isTeacherEmail(user.email);
+      if (!isTeacher) {
+        const regType = await getUserRegistrationType(user.email);
+        if (!canUseWebAsStudent(regType)) {
+          await signOut(auth);
+          setError('一般ユーザーは iOS アプリからご利用ください');
+          return;
+        }
+      }
+    }
+
     await ensureUserDoc(user);
     const fallback = await resolveDefaultPostLoginPath(user.email);
+    if (!fallback) {
+      await signOut(auth);
+      setError('このアカウントでは Web 版にログインできません');
+      return;
+    }
     navigate(consumePostLoginReturnUrl(fallback));
+  };
+
+  const handleAppleLogin = async () => {
+    setError(null);
+    setSubmitting(true);
+    try {
+      const result = await signInWithApple();
+      await registerAppleStudent();
+      await finishLogin(result.user);
+    } catch (err) {
+      if (isAppleLoginCancelled(err)) return;
+      console.error('Apple login error:', err);
+      if (err?.code === 'auth/account-exists-with-different-credential') {
+        setError('このメールアドレスはメール/パスワードで登録済みです。メールでログインしてください');
+      } else {
+        setError(err.message || 'Apple ID ログインに失敗しました');
+      }
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleTeacherLogin = async () => {
@@ -348,6 +413,14 @@ export default function Login() {
             <AppLogo variant="login" />
           </div>
 
+          {webPlatform && (
+            <p className="text-xs text-gray-500 mb-4 text-center leading-relaxed">
+              学校から配布されたアカウントはこちらからログインできます。
+              <br />
+              一般ユーザーの方は iOS アプリをご利用ください。
+            </p>
+          )}
+
           {!showVerificationStep && (
             <form
               onSubmit={
@@ -398,14 +471,9 @@ export default function Login() {
                   />
                 </div>
               )}
-              {!isRegisterMode && !isResetMode && (
-                <p className="text-xs text-gray-500">
-                  学校から配布されたアカウントは認証コードなしでログインできます
-                </p>
-              )}
               {isRegisterMode && (
                 <p className="text-xs text-gray-500">
-                  自己登録の場合はメールに認証コードが送信されます。アカウント削除はログイン後、設定画面から行えます。
+                  一般ユーザーの場合はメールに認証コードが送信されます。アカウント削除はログイン後、設定画面から行えます。
                 </p>
               )}
               {isResetMode && (
@@ -429,24 +497,39 @@ export default function Login() {
                   ログインに戻る
                 </button>
               ) : (
-                <div className="space-y-1">
-                  <button
-                    type="button"
-                    onClick={() => switchMode('register')}
-                    className="w-full text-sm text-tsure-primary underline min-h-touch"
-                  >
-                    新規登録（認証コード必要）
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => switchMode('reset')}
-                    className="w-full text-sm text-tsure-primary underline min-h-touch"
-                  >
-                    パスワードを忘れた方はこちら
-                  </button>
-                </div>
+                nativeApp && (
+                  <div className="space-y-1">
+                    <button
+                      type="button"
+                      onClick={() => switchMode('register')}
+                      className="w-full text-sm text-tsure-primary underline min-h-touch"
+                    >
+                      新規登録（認証コード必要）
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => switchMode('reset')}
+                      className="w-full text-sm text-tsure-primary underline min-h-touch"
+                    >
+                      パスワードを忘れた方はこちら
+                    </button>
+                  </div>
+                )
               )}
             </form>
+          )}
+
+          {webPlatform && !showVerificationStep && appStoreUrl && (
+            <p className="mt-4 text-center text-xs">
+              <a
+                href={appStoreUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-tsure-primary underline"
+              >
+                App Store でアプリを入手
+              </a>
+            </p>
           )}
 
           {showVerificationStep && (
@@ -515,6 +598,17 @@ export default function Login() {
 
           {error && <p className="mt-4 text-sm text-red-600 text-center">{error}</p>}
         </Card>
+
+        {nativeApp && !showVerificationStep && !isRegisterMode && !isResetMode && (
+          <Button
+            type="button"
+            disabled={submitting}
+            className="w-full"
+            onClick={handleAppleLogin}
+          >
+            {submitting ? '処理中...' : 'Apple IDで登録 / ログイン'}
+          </Button>
+        )}
 
         <div className="text-center">
           <button

@@ -1,5 +1,6 @@
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
+import { isWebPlatform } from './platformAccess';
 
 const POST_LOGIN_RETURN_URL_KEY = 'postLoginReturnUrl';
 
@@ -22,8 +23,17 @@ export function peekPostLoginReturnUrl() {
 export async function resolveDefaultPostLoginPath(email) {
   if (!email) return '/home';
   try {
-    const snap = await getDoc(doc(db, 'teachers', email));
-    return snap.exists() ? '/teacher' : '/home';
+    const snap = await getDoc(doc(db, 'teachers', email.trim().toLowerCase()));
+    if (snap.exists()) return '/teacher';
+
+    if (isWebPlatform()) {
+      const userSnap = await getDoc(doc(db, 'users', email.trim().toLowerCase()));
+      const registrationType = userSnap.data()?.registrationType;
+      if (registrationType === 'school_provisioned') return '/home';
+      return null;
+    }
+
+    return '/home';
   } catch (err) {
     console.error('Failed to resolve post-login path:', err);
     return '/home';

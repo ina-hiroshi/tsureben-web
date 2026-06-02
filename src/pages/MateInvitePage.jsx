@@ -5,6 +5,8 @@ import { useUiFeedback } from '../contexts/UiFeedbackContext';
 import { getMateInvitePreview } from '../services/authApi';
 import { submitMateInviteRequest } from '../services/firestore/mateService';
 import { setPostLoginReturnUrl } from '../utils/postLoginRedirect';
+import { isWebPlatform } from '../utils/platformAccess';
+import { getAppStoreUrl } from '../constants/appLinks';
 import PageLayout from '../components/ui/PageLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -26,6 +28,8 @@ export default function MateInvitePage() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [now, setNow] = useState(Date.now());
+  const webPlatform = isWebPlatform();
+  const appStoreUrl = getAppStoreUrl();
 
   useEffect(() => {
     if (!token) return;
@@ -136,10 +140,40 @@ export default function MateInvitePage() {
           </p>
         ) : !email ? (
           <div className="space-y-3">
-            <p className="text-sm text-tsure-muted">申請するにはログインが必要です。</p>
-            <Button onClick={handleLogin} className="w-full">
-              ログインして申請
-            </Button>
+            {webPlatform ? (
+              <>
+                <p className="text-sm text-tsure-muted">
+                  学校から配布されたアカウントの方は Web からログインして申請できます。
+                </p>
+                <Button onClick={handleLogin} className="w-full">
+                  ログインして申請
+                </Button>
+                <div className="rounded-xl border border-tsure-border bg-tsure-surface/50 px-4 py-3 space-y-2">
+                  <p className="text-sm text-tsure-primary">
+                    一般ユーザーの方は iOS アプリからログインしてください。
+                  </p>
+                  {appStoreUrl ? (
+                    <a
+                      href={appStoreUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block text-sm text-tsure-primary underline"
+                    >
+                      App Store でアプリを入手
+                    </a>
+                  ) : (
+                    <p className="text-xs text-tsure-muted">App Store で「連れ勉」を検索してください。</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-tsure-muted">申請するにはログインが必要です。</p>
+                <Button onClick={handleLogin} className="w-full">
+                  ログインして申請
+                </Button>
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-3">

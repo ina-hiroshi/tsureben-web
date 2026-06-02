@@ -15,6 +15,7 @@ import {
   createSelfRegisteredStudentHandler,
   deleteSelfRegisteredAccountHandler,
   migrateLegacyDataHandler,
+  registerAppleStudentHandler,
   resetStudentPasswordHandler,
   resetPasswordWithCodeHandler,
   sendVerificationCodeHandler,
@@ -106,6 +107,16 @@ export const createSelfRegisteredStudent = onCall(
   defaultCallableOptions,
   wrapCallable(async (request) => {
     return createSelfRegisteredStudentHandler(request.data || {});
+  })
+);
+
+export const registerAppleStudent = onCall(
+  defaultCallableOptions,
+  wrapCallable(async (request) => {
+    if (!request.auth?.token?.email) {
+      throw new HttpsError("unauthenticated", "ログインが必要です");
+    }
+    return registerAppleStudentHandler(request);
   })
 );
 

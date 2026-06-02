@@ -39,7 +39,7 @@ function AppLayout() {
       <Route
         path="/home"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute blockSelfRegisteredOnWeb>
             <Home />
           </ProtectedRoute>
         }
@@ -47,7 +47,7 @@ function AppLayout() {
       <Route
         path="/studyplan"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute blockSelfRegisteredOnWeb>
             <StudyPlanPage />
           </ProtectedRoute>
         }
@@ -55,7 +55,7 @@ function AppLayout() {
       <Route
         path="/pomodoro"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute blockSelfRegisteredOnWeb>
             <StudyTimerPage />
           </ProtectedRoute>
         }
@@ -63,7 +63,7 @@ function AppLayout() {
       <Route
         path="/studyrecord"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute blockSelfRegisteredOnWeb>
             <StudyRecordPage />
           </ProtectedRoute>
         }
@@ -71,7 +71,7 @@ function AppLayout() {
       <Route
         path="/turebenmate"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute blockSelfRegisteredOnWeb>
             <TureBenMatePage />
           </ProtectedRoute>
         }
@@ -79,7 +79,7 @@ function AppLayout() {
       <Route
         path="/settings"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute blockSelfRegisteredOnWeb>
             <SettingsPage />
           </ProtectedRoute>
         }
@@ -133,7 +133,7 @@ function AppLayout() {
       <Route
         path="/feedback"
         element={
-          <ProtectedRoute>
+          <ProtectedRoute blockSelfRegisteredOnWeb>
             <StudentFeedbackPage />
           </ProtectedRoute>
         }

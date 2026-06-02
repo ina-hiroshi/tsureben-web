@@ -13,6 +13,7 @@ import { useTeacherStatus } from '../hooks/useTeacherStatus';
 import { getProfile, updateProfile } from '../services/firestore/userService';
 import { deleteSelfRegisteredAccount } from '../services/authApi';
 import { logout } from '../utils/authSession';
+import { reauthenticateWithApple, isAppleLoginCancelled } from '../utils/appleAuth';
 import {
   canDeleteSelfRegisteredAccount,
   canEditSelfRegisteredDisplayName,
@@ -68,6 +69,8 @@ export default function SettingsPage() {
 
   const isPasswordUser =
     auth.currentUser?.providerData?.some((p) => p.providerId === 'password') ?? false;
+  const isAppleUser =
+    auth.currentUser?.providerData?.some((p) => p.providerId === 'apple.com') ?? false;
   const canEditDisplayName = !isTeacher && canEditSelfRegisteredDisplayName(profile);
   const canChangePassword = isPasswordUser && !isTeacher;
   const canDeleteAccount = !isTeacher && canDeleteSelfRegisteredAccount(profile);
@@ -190,7 +193,7 @@ export default function SettingsPage() {
       toast.error(`「${DELETE_CONFIRM_PHRASE}」と入力してください`);
       return;
     }
-    if (!deletePassword) {
+    if (!isAppleUser && !deletePassword) {
       toast.error('パスワードを入力してください');
       return;
     }
@@ -207,14 +210,19 @@ export default function SettingsPage() {
 
     setDeletingAccount(true);
     try {
-      const credential = EmailAuthProvider.credential(email, deletePassword);
-      await reauthenticateWithCredential(auth.currentUser, credential);
+      if (isAppleUser) {
+        await reauthenticateWithApple(auth.currentUser);
+      } else {
+        const credential = EmailAuthProvider.credential(email, deletePassword);
+        await reauthenticateWithCredential(auth.currentUser, credential);
+      }
       await deleteSelfRegisteredAccount();
       resetDeleteModal();
       await logout();
       toast.success('アカウントを削除しました');
       navigate('/', { replace: true });
     } catch (err) {
+      if (isAppleLoginCancelled(err)) return;
       if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         toast.error('パスワードが正しくありません');
       } else if (err.code === 'auth/requires-recent-login') {
@@ -389,7 +397,7 @@ export default function SettingsPage() {
                 {canDeleteAccount ? (
                   <>
                     <p className="text-sm text-tsure-primary leading-relaxed mb-3">
-                      自己登録アカウントを削除すると、プロフィール・学習計画・記録・連れ勉・フィードバックなどがすべて削除され、取り消せません。
+                      一般ユーザーのアカウントを削除すると、プロフィール・学習計画・記録・連れ勉・フィードバックなどがすべて削除され、取り消せません。
                     </p>
                     <Button variant="danger" className="w-full lg:w-auto" onClick={() => setDeleteModalOpen(true)}>
                       アカウントを削除
@@ -468,13 +476,15 @@ export default function SettingsPage() {
             onChange={(e) => setDeleteConfirmPhrase(e.target.value)}
             autoComplete="off"
           />
-          <Input
-            type="password"
-            label="パスワード（本人確認）"
-            value={deletePassword}
-            onChange={(e) => setDeletePassword(e.target.value)}
-            autoComplete="current-password"
-          />
+          {!isAppleUser && (
+            <Input
+              type="password"
+              label="パスワード（本人確認）"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              autoComplete="current-password"
+            />
+          )}
         </div>
         <div className="flex flex-col gap-2 mt-6">
           <Button
@@ -483,7 +493,11 @@ export default function SettingsPage() {
             onClick={handleDeleteAccount}
             disabled={deletingAccount}
           >
-            {deletingAccount ? '削除中…' : 'アカウントを完全に削除'}
+            {deletingAccount
+              ? '削除中…'
+              : isAppleUser
+                ? 'Apple で再認証して削除'
+                : 'アカウントを完全に削除'}
           </Button>
           <Button variant="secondary" className="w-full" onClick={resetDeleteModal}>
             キャンセル

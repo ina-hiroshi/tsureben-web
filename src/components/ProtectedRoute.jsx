@@ -4,6 +4,8 @@ import { doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { getProfile } from '../services/firestore/userService';
 import { db } from '../firebase';
+import { isWebPlatform } from '../utils/platformAccess';
+import WebSelfRegisteredBlock from './WebSelfRegisteredBlock';
 import FullScreenLoader from './ui/FullScreenLoader';
 
 export default function ProtectedRoute({
@@ -11,11 +13,13 @@ export default function ProtectedRoute({
   requireTeacher = false,
   requireSchoolAdmin = false,
   requireSuperAdmin = false,
+  blockSelfRegisteredOnWeb = false,
 }) {
   const { email, loading } = useAuth();
   const location = useLocation();
   const [checking, setChecking] = useState(true);
   const [teacherSnap, setTeacherSnap] = useState(null);
+  const [registrationType, setRegistrationType] = useState(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [error, setError] = useState(null);
 
@@ -42,6 +46,7 @@ export default function ProtectedRoute({
         if (!active) return;
 
         setMustChangePassword(profile?.mustChangePassword === true);
+        setRegistrationType(profile?.registrationType ?? null);
         if (needsTeacherCheck) {
           setTeacherSnap(teacherDoc?.exists() ? teacherDoc.data() : null);
         }
@@ -50,6 +55,7 @@ export default function ProtectedRoute({
         console.error('ProtectedRoute check failed:', err);
         if (active) {
           setTeacherSnap(null);
+          setRegistrationType(null);
           setMustChangePassword(false);
           setError('failed');
         }
@@ -73,10 +79,20 @@ export default function ProtectedRoute({
     return true;
   }, [needsTeacherCheck, teacherSnap, role, requireSuperAdmin, requireSchoolAdmin]);
 
+  const blockedOnWeb =
+    blockSelfRegisteredOnWeb &&
+    isWebPlatform() &&
+    !!email &&
+    registrationType === 'self_registered';
+
   if (loading || checking) return <FullScreenLoader label="読み込み中…" />;
 
   if (!email) {
     return <Navigate to="/" replace />;
+  }
+
+  if (blockedOnWeb) {
+    return <WebSelfRegisteredBlock />;
   }
 
   if (needsTeacherCheck && !authorized) {
