@@ -94,6 +94,11 @@ REVIEW_EMAIL=your-review@gmail.com REVIEW_PASSWORD='YourPass6+' npm run create-r
 【カメラ】
 - 連れ勉の招待 QR コード読み取りのみ使用します。写真・動画の保存はしません。
 
+【広告（AdMob）】
+- 自己登録（メール認証）の生徒アカウントのみ、iOS アプリのホーム・学習計画・学習記録・連れ勉画面下部にバナー広告を表示します。
+- 学校配布アカウント・教員・学習タイマー画面・Web 版では広告は表示しません。
+- 児童向けの非パーソナライズ広告（COPPA 対応）です。
+
 【テスト用ログイン】
 メール: tsureben.appstore.review@gmail.com（または create-review-account で指定したアドレス）
 パスワード: TsureBenReview2026!（スクリプト出力の値を使用）
@@ -116,7 +121,7 @@ itoguchi.app@gmail.com
 | ユーザー ID | はい | 認証（Firebase UID） | 同上 |
 | カメラ | はい（QR のみ、保存なし） | 連れ勉招待 | なし |
 | 位置情報 | いいえ | — | — |
-| 広告 ID | いいえ | — | — |
+| 広告 ID | はい（自己登録・iOS のみ） | 広告配信（非パーソナライズ） | Google AdMob |
 
 ## リジェクト時のエスカレーション
 

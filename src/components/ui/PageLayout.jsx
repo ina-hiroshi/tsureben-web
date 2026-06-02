@@ -1,6 +1,11 @@
+import { useLocation } from 'react-router-dom';
 import AppHeader from './AppHeader';
 import AppSidebar from './AppSidebar';
 import StudyTimerMiniBar from '../StudyTimerMiniBar';
+import AdBanner from '../AdBanner';
+import { isAdBannerRoute } from '../../constants/adRoutes';
+import { AD_BANNER_RESERVE_HEIGHT, useAdContext } from '../../contexts/AdContext';
+import { useAdEligibility } from '../../hooks/useAdEligibility';
 
 /** モバイルは中央寄せ max-w-2xl、md+ はサイドバー横の残り幅いっぱい */
 const MAIN_WIDTH = {
@@ -17,10 +22,22 @@ export default function PageLayout({
   contentWidth = 'default',
 }) {
   const mainWidthClass = MAIN_WIDTH[contentWidth] || MAIN_WIDTH.default;
+  const location = useLocation();
+  const { eligible: adEligible } = useAdEligibility();
+  const { initialized: adInitialized, bannerHeight } = useAdContext() ?? {};
+  const showAdBanner =
+    adEligible && adInitialized && isAdBannerRoute(location.pathname);
+  const adReservePx =
+    showAdBanner && bannerHeight > 0 ? bannerHeight : showAdBanner ? AD_BANNER_RESERVE_HEIGHT : 0;
 
   return (
     <div
-      className={`min-h-full flex flex-col md:flex-row md:min-h-dvh bg-tsure-bg text-tsure-on-primary pb-[calc(1rem+var(--safe-bottom))] md:pb-0 ${className}`}
+      className={`min-h-full flex flex-col md:flex-row md:min-h-dvh bg-tsure-bg text-tsure-on-primary md:pb-0 ${className}`}
+      style={{
+        paddingBottom: showAdBanner
+          ? `calc(1rem + ${adReservePx}px + var(--safe-bottom))`
+          : 'calc(1rem + var(--safe-bottom))',
+      }}
     >
       {showNav && <AppSidebar />}
       <div className="flex-1 flex flex-col min-w-0">
@@ -33,6 +50,7 @@ export default function PageLayout({
         >
           {children}
         </main>
+        {showAdBanner && <AdBanner key={location.pathname} />}
       </div>
     </div>
   );

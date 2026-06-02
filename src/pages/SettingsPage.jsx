@@ -371,38 +371,38 @@ export default function SettingsPage() {
                 </Button>
               </Card>
             )}
-          </div>
 
-          {(canDeleteAccount || isSchoolProvisionedStudent) && (
-            <Card className="order-6 lg:order-none border-red-200">
-              <SectionTitle
-                action={
-                  canDeleteAccount ? (
-                    <SectionHelpButton
-                      ariaLabel="アカウント削除の説明"
-                      onClick={() => setHelpId('deleteAccount')}
-                    />
-                  ) : null
-                }
-              >
-                アカウント削除
-              </SectionTitle>
-              {canDeleteAccount ? (
-                <>
-                  <p className="text-sm text-tsure-primary leading-relaxed mb-3">
-                    自己登録アカウントを削除すると、プロフィール・学習計画・記録・連れ勉・フィードバックなどがすべて削除され、取り消せません。
+            {(canDeleteAccount || isSchoolProvisionedStudent) && (
+              <Card className="order-6 lg:order-none border-red-200">
+                <SectionTitle
+                  action={
+                    canDeleteAccount ? (
+                      <SectionHelpButton
+                        ariaLabel="アカウント削除の説明"
+                        onClick={() => setHelpId('deleteAccount')}
+                      />
+                    ) : null
+                  }
+                >
+                  アカウント削除
+                </SectionTitle>
+                {canDeleteAccount ? (
+                  <>
+                    <p className="text-sm text-tsure-primary leading-relaxed mb-3">
+                      自己登録アカウントを削除すると、プロフィール・学習計画・記録・連れ勉・フィードバックなどがすべて削除され、取り消せません。
+                    </p>
+                    <Button variant="danger" className="w-full lg:w-auto" onClick={() => setDeleteModalOpen(true)}>
+                      アカウントを削除
+                    </Button>
+                  </>
+                ) : (
+                  <p className="text-sm text-tsure-muted leading-relaxed">
+                    学校から配布されたアカウントは、アプリから削除できません。削除が必要な場合は学校管理者にお問い合わせください。
                   </p>
-                  <Button variant="danger" className="w-full" onClick={() => setDeleteModalOpen(true)}>
-                    アカウントを削除
-                  </Button>
-                </>
-              ) : (
-                <p className="text-sm text-tsure-muted leading-relaxed">
-                  学校から配布されたアカウントは、アプリから削除できません。削除が必要な場合は学校管理者にお問い合わせください。
-                </p>
-              )}
-            </Card>
-          )}
+                )}
+              </Card>
+            )}
+          </div>
 
           <Card className="order-4 lg:order-none lg:flex-1 lg:min-w-0 lg:self-start lg:sticky lg:top-0">
             <SectionTitle

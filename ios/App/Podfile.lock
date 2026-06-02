@@ -7,16 +7,22 @@ PODS:
     - AppAuth/Core
   - Capacitor (6.2.1):
     - CapacitorCordova
+  - CapacitorCommunityAdmob (6.2.0):
+    - Capacitor
+    - Google-Mobile-Ads-SDK (= 11.3.0)
   - CapacitorCordova (6.2.1)
   - CapacitorShare (6.0.4):
     - Capacitor
   - CodetrixStudioCapacitorGoogleAuth (0.0.1):
     - Capacitor
     - GoogleSignIn (~> 7.1)
+  - Google-Mobile-Ads-SDK (11.3.0):
+    - GoogleUserMessagingPlatform (>= 1.1)
   - GoogleSignIn (7.1.0):
     - AppAuth (< 2.0, >= 1.7.3)
     - GTMAppAuth (< 5.0, >= 4.1.1)
     - GTMSessionFetcher/Core (~> 3.3)
+  - GoogleUserMessagingPlatform (3.1.0)
   - GTMAppAuth (4.1.1):
     - AppAuth/Core (~> 1.7)
     - GTMSessionFetcher/Core (< 4.0, >= 3.3)
@@ -24,6 +30,7 @@ PODS:
 
 DEPENDENCIES:
   - "Capacitor (from `../../node_modules/@capacitor/ios`)"
+  - "CapacitorCommunityAdmob (from `../../node_modules/@capacitor-community/admob`)"
   - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
   - "CapacitorShare (from `../../node_modules/@capacitor/share`)"
   - "CodetrixStudioCapacitorGoogleAuth (from `../../node_modules/@codetrix-studio/capacitor-google-auth`)"
@@ -32,13 +39,17 @@ DEPENDENCIES:
 SPEC REPOS:
   trunk:
     - AppAuth
+    - Google-Mobile-Ads-SDK
     - GoogleSignIn
+    - GoogleUserMessagingPlatform
     - GTMAppAuth
     - GTMSessionFetcher
 
 EXTERNAL SOURCES:
   Capacitor:
     :path: "../../node_modules/@capacitor/ios"
+  CapacitorCommunityAdmob:
+    :path: "../../node_modules/@capacitor-community/admob"
   CapacitorCordova:
     :path: "../../node_modules/@capacitor/ios"
   CapacitorShare:
@@ -49,13 +60,16 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   AppAuth: d4f13a8fe0baf391b2108511793e4b479691fb73
   Capacitor: c95400d761e376be9da6be5a05f226c0e865cebf
+  CapacitorCommunityAdmob: 52a6ebbec5e4c277d2694657becd42bcadbe369a
   CapacitorCordova: 8d93e14982f440181be7304aa9559ca631d77fff
   CapacitorShare: 77ff779e3b7c6ae9fb5461e52cf7ef805d429491
   CodetrixStudioCapacitorGoogleAuth: 88ad04845b71e573d44237c15dd6a2345c8cdfcb
+  Google-Mobile-Ads-SDK: 301a16c461c331ba34ff4dab40a22ab7c147af61
   GoogleSignIn: d4281ab6cf21542b1cfaff85c191f230b399d2db
+  GoogleUserMessagingPlatform: befe603da6501006420c206222acd449bba45a9c
   GTMAppAuth: f69bd07d68cd3b766125f7e072c45d7340dea0de
   GTMSessionFetcher: 5aea5ba6bd522a239e236100971f10cb71b96ab6
 
-PODFILE CHECKSUM: f5a0353665e7662605e5eff6a99daffcae61ef3e
+PODFILE CHECKSUM: af53c381a96e22a3edef52ace821be3da09b2c05
 
 COCOAPODS: 1.16.2

@@ -4,7 +4,7 @@ import Button from '../components/ui/Button';
 import AppLogo from '../components/ui/AppLogo';
 import { SUPPORT_EMAIL } from '../constants/supportContact';
 
-const EFFECTIVE_DATE = '2026年6月1日';
+const EFFECTIVE_DATE = '2026年6月2日';
 
 export default function PrivacyPolicyPage() {
   return (
@@ -40,6 +40,9 @@ export default function PrivacyPolicyPage() {
                 <li>
                   カメラ（連れ勉招待用 QR コードの読み取りのみ。画像・動画は端末外に保存しません）
                 </li>
+                <li>
+                  端末情報・広告識別子（自己登録ユーザーが iOS アプリで広告を表示する場合。児童向けの非パーソナライズ配信）
+                </li>
               </ul>
             </section>
 
@@ -49,6 +52,7 @@ export default function PrivacyPolicyPage() {
                 <li>アカウントの作成・認証・セキュリティの確保</li>
                 <li>学習支援機能の提供（計画・記録・タイマー・連れ勉・フィードバック）</li>
                 <li>学校・教員による生徒サポート（学校配布アカウントの場合）</li>
+                <li>自己登録ユーザー向け iOS アプリの広告表示（アプリ運営のため）</li>
                 <li>お問い合わせへの対応</li>
               </ul>
             </section>
@@ -57,8 +61,31 @@ export default function PrivacyPolicyPage() {
               <h2 className="font-semibold mb-2">4. 第三者サービス</h2>
               <p>
                 本アプリは Google Firebase（認証・データベース・クラウド関数）を利用します。教員ログインには
-                Google アカウント認証を使用します。各サービスのプライバシーポリシーもあわせてご確認ください。
+                Google アカウント認証を使用します。自己登録ユーザーが iOS アプリを利用する場合、広告配信のため
+                Google AdMob も利用します（学校配布アカウント・教員・Web 版では広告を表示しません）。各サービスのプライバシーポリシーもあわせてご確認ください。
               </p>
+              <ul className="list-disc pl-5 space-y-1 mt-2">
+                <li>
+                  <a
+                    href="https://policies.google.com/privacy"
+                    className="underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Google プライバシーポリシー
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://support.google.com/admob/answer/6128543"
+                    className="underline"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Google AdMob（広告）
+                  </a>
+                </li>
+              </ul>
             </section>
 
             <section>

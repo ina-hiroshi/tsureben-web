@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { AuthProvider } from './contexts/AuthContext';
+import { AdProvider } from './contexts/AdContext';
 import { StudyTimerProvider } from './contexts/StudyTimerContext';
 import { UiFeedbackProvider } from './contexts/UiFeedbackContext';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -168,13 +169,15 @@ function App() {
 
   return (
     <AuthProvider>
-      <StudyTimerProvider>
-        <UiFeedbackProvider>
-          <Router>
-            <AppLayout />
-          </Router>
-        </UiFeedbackProvider>
-      </StudyTimerProvider>
+      <AdProvider>
+        <StudyTimerProvider>
+          <UiFeedbackProvider>
+            <Router>
+              <AppLayout />
+            </Router>
+          </UiFeedbackProvider>
+        </StudyTimerProvider>
+      </AdProvider>
     </AuthProvider>
   );
 }
