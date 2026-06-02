@@ -225,6 +225,22 @@ export default function AppHeader() {
               </li>
             )}
 
+            {isSchoolAdmin && (
+              <li className="border-t border-white/10 mt-1 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    navigate('/admin');
+                    setOpen(false);
+                  }}
+                  className="w-full flex items-center gap-2 px-4 py-3 min-h-touch text-tsure-on-primary hover:bg-white/10 text-left"
+                >
+                  <AppIcon icon={Shield} size="sm" />
+                  管理
+                </button>
+              </li>
+            )}
+
             <li className="sm:hidden">
               <button
                 type="button"
