@@ -229,7 +229,7 @@ export default function FeedbackThreadPanel({
 
     setBusyMessageId(message.id);
     try {
-      await deleteMessage(selectedThreadId, message.id);
+      await deleteMessage(selectedThreadId, message.id, message.authorEmail);
       toast.success('コメントを削除しました');
     } catch (err) {
       toast.error(err.message || '削除に失敗しました');

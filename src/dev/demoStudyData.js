@@ -1,7 +1,7 @@
 import dayjs from 'dayjs';
 import { flattenDayPlans } from '../utils/planUtils';
 import { enumerateDateKeys } from '../utils/studyPeriod';
-import { isDemoEnvironment, isDemoFeatureEnabled } from './demoSettings';
+import { isDemoDataActive, isDemoFeatureEnabled } from './demoSettings';
 
 const DEMO_REVIEW_EMAIL_PREFIX = 'demo-review-';
 
@@ -99,7 +99,7 @@ export function isDemoReviewStudentEmail(email) {
 }
 
 export function shouldUseDemoStudyData(email) {
-  if (!isDemoEnvironment() || !email) return false;
+  if (!isDemoDataActive() || !email) return false;
   if (isDemoFeatureEnabled('teacherReview') && isDemoReviewStudentEmail(email)) {
     return true;
   }

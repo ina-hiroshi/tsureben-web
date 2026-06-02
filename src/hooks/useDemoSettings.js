@@ -3,6 +3,7 @@ import {
   DEMO_FEATURES,
   canManageDemoSettings,
   getDemoSettings,
+  isDemoDataActive,
   isDemoEnvironment,
   setAllDemoFeaturesEnabled,
   setDemoFeatureEnabled,
@@ -16,7 +17,7 @@ export function useDemoSettings() {
 
   useEffect(() => subscribeDemoSettings(setSettings), []);
 
-  const canManage = isDemoEnvironment() && isSuperAdmin && canManageDemoSettings();
+  const canManage = isSuperAdmin && canManageDemoSettings();
 
   const toggle = useCallback((featureId, enabled) => {
     if (!canManageDemoSettings()) return;
@@ -33,6 +34,7 @@ export function useDemoSettings() {
 
   return {
     isDev: isDemoEnvironment(),
+    isDemoActive: isDemoDataActive(),
     canManage,
     settings,
     features: DEMO_FEATURES,

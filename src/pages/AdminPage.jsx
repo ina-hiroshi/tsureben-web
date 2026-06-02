@@ -8,6 +8,7 @@ import PageLayout from '../components/ui/PageLayout';
 import Card from '../components/ui/Card';
 import SectionTitle from '../components/ui/SectionTitle';
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 export default function AdminPage() {
   const { schoolId: teacherSchoolId, isSuperAdmin } = useTeacherStatus();
@@ -38,13 +39,25 @@ export default function AdminPage() {
           />
         </Card>
         <Card>
+          <SectionTitle>教員コメント履歴</SectionTitle>
+          <p className="text-sm text-gray-700 mb-3">
+            本校の教員コメントと生徒の返信を確認できます（削除後も履歴に残ります）。
+          </p>
+          <Link
+            to="/admin/teacher-comments"
+            className="inline-flex px-4 py-2 text-sm rounded-lg bg-[#5a3e28] text-white hover:bg-[#7a5639]"
+          >
+            コメント履歴を開く
+          </Link>
+        </Card>
+        <Card>
           <SectionTitle>生徒情報管理</SectionTitle>
           <StudentManagementPanel
             schoolId={selectedSchoolId}
             refreshKey={studentsRefreshKey}
           />
         </Card>
-        {isSuperAdmin && import.meta.env.DEV && (
+        {isSuperAdmin && (
           <Card>
             <SectionTitle>デモデータ</SectionTitle>
             <DemoDataPanel />

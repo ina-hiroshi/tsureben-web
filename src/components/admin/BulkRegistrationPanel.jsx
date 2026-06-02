@@ -1,6 +1,4 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../../firebase';
 import {
   adminBulkImportStudents,
   adminBulkImportTeachers,
@@ -12,6 +10,7 @@ import {
   readCsvFile,
 } from '../../utils/csvUtils';
 import { fetchStudentsForSchool } from '../../utils/adminStudents';
+import { fetchTeachersForSchool } from '../../utils/adminTeachers';
 import LoadingOverlay from '../ui/LoadingOverlay';
 import { useUiFeedback } from '../../contexts/UiFeedbackContext';
 
@@ -19,14 +18,6 @@ const IMPORT_LABELS = {
   teachers: '教員を登録しています...',
   students: '生徒を登録しています...',
 };
-
-async function fetchTeachersForSchool(schoolId) {
-  const snap = await getDocs(collection(db, 'teachers'));
-  return snap.docs
-    .map((d) => ({ email: d.id, ...d.data() }))
-    .filter((t) => t.schoolId === schoolId)
-    .sort((a, b) => a.email.localeCompare(b.email));
-}
 
 function ImportResult({ result }) {
   if (!result) return null;

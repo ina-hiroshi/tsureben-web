@@ -5,7 +5,6 @@ import {
   getDocs,
   addDoc,
   updateDoc,
-  deleteDoc,
   query,
   where,
   orderBy,
@@ -34,6 +33,10 @@ function mapMessageDoc(snap) {
     id: snap.id,
     ...snap.data(),
   };
+}
+
+export function isMessageVisible(message) {
+  return message != null && !message.deletedAt;
 }
 
 function threadTimestamp(thread) {
@@ -76,7 +79,8 @@ export function subscribeMessages(threadId, onChange, onError) {
   if (!threadId) return () => {};
 
   if (isDemoTeacherReviewEnabled() && isDemoFeedbackThreadId(threadId)) {
-    onChange(getDemoFeedbackMessages(threadId));
+    const visible = getDemoFeedbackMessages(threadId).filter(isMessageVisible);
+    onChange(visible);
     return () => {};
   }
 
@@ -86,7 +90,10 @@ export function subscribeMessages(threadId, onChange, onError) {
   );
   return onSnapshot(
     q,
-    (snap) => onChange(snap.docs.map(mapMessageDoc)),
+    (snap) => {
+      const messages = snap.docs.map(mapMessageDoc).filter(isMessageVisible);
+      onChange(messages);
+    },
     onError
   );
 }
@@ -203,7 +210,7 @@ async function syncThreadMetadata(threadId) {
     getDocs(collection(db, 'feedbackThreads', threadId, 'messages')),
   ]);
 
-  const messages = messagesSnap.docs.map(mapMessageDoc);
+  const messages = messagesSnap.docs.map(mapMessageDoc).filter(isMessageVisible);
   const now = serverTimestamp();
 
   if (messages.length === 0) {
@@ -233,9 +240,12 @@ export async function updateMessage(threadId, messageId, body) {
   await syncThreadMetadata(threadId);
 }
 
-export async function deleteMessage(threadId, messageId) {
-  if (!threadId || !messageId || isDemoFeedbackThreadId(threadId)) return;
-  await deleteDoc(doc(db, 'feedbackThreads', threadId, 'messages', messageId));
+export async function deleteMessage(threadId, messageId, deletedBy) {
+  if (!threadId || !messageId || !deletedBy || isDemoFeedbackThreadId(threadId)) return;
+  await updateDoc(doc(db, 'feedbackThreads', threadId, 'messages', messageId), {
+    deletedAt: serverTimestamp(),
+    deletedBy,
+  });
   await syncThreadMetadata(threadId);
 }
 

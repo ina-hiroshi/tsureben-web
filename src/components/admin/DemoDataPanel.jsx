@@ -39,8 +39,9 @@ export default function DemoDataPanel() {
       <div>
         <h3 className="font-semibold text-[#5a3e28]">デモデータ</h3>
         <p className="text-sm text-gray-600 mt-1">
-          開発サーバー専用の UI 確認用データです。設定はこのブラウザの localStorage
-          に保存され、super_admin のみが変更できます。
+          UI 確認・App Store スクリーンショット用の架空データです。本番環境では super_admin
+          のみが利用できます。設定はこのブラウザの localStorage に保存され、初回はすべて OFF
+          です。
         </p>
       </div>
 

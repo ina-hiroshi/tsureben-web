@@ -6,6 +6,12 @@ export const DEMO_FEATURES = {
     label: '生徒確認',
     description: '教員の生徒確認ページ用。120名のデモ生徒・学習計画・記録・フィードバックを表示します。',
   },
+  teacherCommentAudit: {
+    id: 'teacherCommentAudit',
+    label: '教員コメント履歴',
+    description:
+      '管理画面の教員コメント履歴用。デモの教員コメント・生徒返信（削除済みサンプル含む）を一覧表示します。',
+  },
   mate: {
     id: 'mate',
     label: '連れ勉',
@@ -24,28 +30,55 @@ export const DEMO_FEATURES = {
   },
 };
 
-const DEFAULTS = {
+const DEV_DEFAULTS = {
   teacherReview: true,
+  teacherCommentAudit: true,
   mate: true,
   presence: true,
   studyData: true,
 };
 
+const PROD_DEFAULTS = {
+  teacherReview: false,
+  teacherCommentAudit: false,
+  mate: false,
+  presence: false,
+  studyData: false,
+};
+
 const listeners = new Set();
 
-function readStored() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULTS };
-    const parsed = JSON.parse(raw);
+function getDefaults() {
+  return import.meta.env.DEV ? { ...DEV_DEFAULTS } : { ...PROD_DEFAULTS };
+}
+
+function parseStored(parsed) {
+  if (import.meta.env.DEV) {
     return {
       teacherReview: parsed.teacherReview !== false,
+      teacherCommentAudit: parsed.teacherCommentAudit !== false,
       mate: parsed.mate !== false,
       presence: parsed.presence !== false,
       studyData: parsed.studyData !== false,
     };
+  }
+  return {
+    teacherReview: parsed.teacherReview === true,
+    teacherCommentAudit: parsed.teacherCommentAudit === true,
+    mate: parsed.mate === true,
+    presence: parsed.presence === true,
+    studyData: parsed.studyData === true,
+  };
+}
+
+function readStored() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return getDefaults();
+    const parsed = JSON.parse(raw);
+    return parseStored(parsed);
   } catch {
-    return { ...DEFAULTS };
+    return getDefaults();
   }
 }
 
@@ -61,23 +94,36 @@ export function isDemoEnvironment() {
   return import.meta.env.DEV;
 }
 
+export function isDemoDataActive() {
+  return isDemoEnvironment() || managerAllowed;
+}
+
 export function setDemoSettingsManagerAllowed(allowed) {
-  managerAllowed = Boolean(allowed);
+  const next = Boolean(allowed);
+  if (managerAllowed === next) return;
+  managerAllowed = next;
+  notify();
 }
 
 export function canManageDemoSettings() {
-  return isDemoEnvironment() && managerAllowed;
+  return managerAllowed;
 }
 
 export function getDemoSettings() {
-  if (!isDemoEnvironment()) {
-    return { teacherReview: false, mate: false, presence: false, studyData: false };
+  if (!isDemoDataActive()) {
+    return {
+      teacherReview: false,
+      teacherCommentAudit: false,
+      mate: false,
+      presence: false,
+      studyData: false,
+    };
   }
   return { ...cached };
 }
 
 export function isDemoFeatureEnabled(featureId) {
-  if (!isDemoEnvironment()) return false;
+  if (!isDemoDataActive()) return false;
   return cached[featureId] !== false;
 }
 
@@ -92,6 +138,7 @@ export function setAllDemoFeaturesEnabled(enabled) {
   if (!canManageDemoSettings()) return;
   cached = {
     teacherReview: Boolean(enabled),
+    teacherCommentAudit: Boolean(enabled),
     mate: Boolean(enabled),
     presence: Boolean(enabled),
     studyData: Boolean(enabled),

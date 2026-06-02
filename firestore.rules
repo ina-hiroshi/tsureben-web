@@ -156,16 +156,29 @@ service cloud.firestore {
         allow update: if isAuthenticated()
           && canReadFeedbackThread(threadId)
           && resource.data.authorEmail == userEmail()
-          && request.resource.data.authorEmail == resource.data.authorEmail
-          && request.resource.data.authorRole == resource.data.authorRole
-          && request.resource.data.authorName == resource.data.authorName
-          && request.resource.data.createdAt == resource.data.createdAt
-          && request.resource.data.body is string
-          && request.resource.data.body.size() > 0
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['body', 'updatedAt']);
-        allow delete: if isAuthenticated()
-          && canReadFeedbackThread(threadId)
-          && resource.data.authorEmail == userEmail();
+          && (
+            (
+              request.resource.data.authorEmail == resource.data.authorEmail
+              && request.resource.data.authorRole == resource.data.authorRole
+              && request.resource.data.authorName == resource.data.authorName
+              && request.resource.data.createdAt == resource.data.createdAt
+              && request.resource.data.body is string
+              && request.resource.data.body.size() > 0
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['body', 'updatedAt'])
+            )
+            || (
+              request.resource.data.authorEmail == resource.data.authorEmail
+              && request.resource.data.authorRole == resource.data.authorRole
+              && request.resource.data.authorName == resource.data.authorName
+              && request.resource.data.createdAt == resource.data.createdAt
+              && request.resource.data.body == resource.data.body
+              && resource.data.get('deletedAt', null) == null
+              && request.resource.data.deletedAt is timestamp
+              && request.resource.data.deletedBy == userEmail()
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['deletedAt', 'deletedBy'])
+            )
+          );
+        allow delete: if false;
       }
     }
   }

@@ -35,6 +35,20 @@ Live study session for presence.
 - `subject`, `topic`, `book`, `content`, `startTime`
 - `mateEmails` (array for array-contains queries)
 
+## feedbackThreads/{threadId}
+
+Teacher–student feedback threads.
+
+- `studentEmail`, `schoolId`, `scope` (`daily` | `general`), `dateKey`, `title`
+- `createdBy`, `createdByName`, `createdAt`, `updatedAt`, `lastMessageAt`
+- `unreadByStudent`, `unreadByTeacher`
+
+### messages/{messageId}
+
+- `authorEmail`, `authorRole` (`teacher` | `student`), `authorName`, `body`, `createdAt`
+- `updatedAt` (optional, on edit)
+- `deletedAt`, `deletedBy` (optional, soft delete — hidden from normal UI; visible on school admin audit page)
+
 ## teachers/{email}, schools/{id}, verification_codes/{email}
 
 Unchanged from prior design.

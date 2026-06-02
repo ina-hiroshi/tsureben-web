@@ -17,6 +17,7 @@ import TureBenMatePage from './pages/TureBenMatePage';
 import MateInvitePage from './pages/MateInvitePage';
 import SettingsPage from './pages/SettingsPage';
 import AdminPage from './pages/AdminPage';
+import AdminTeacherCommentsPage from './pages/AdminTeacherCommentsPage';
 import TeacherStudentReviewPage from './pages/TeacherStudentReviewPage';
 import TeacherLivePresencePage from './pages/TeacherLivePresencePage';
 import TeacherRouteShell from './components/teacher/TeacherRouteShell';
@@ -87,6 +88,14 @@ function AppLayout() {
         element={
           <ProtectedRoute requireSchoolAdmin>
             <AdminPage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/teacher-comments"
+        element={
+          <ProtectedRoute requireSchoolAdmin>
+            <AdminTeacherCommentsPage />
           </ProtectedRoute>
         }
       />

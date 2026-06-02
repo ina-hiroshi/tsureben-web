@@ -2,6 +2,7 @@ import dayjs from 'dayjs';
 import { compareNatural } from '../utils/adminStudents';
 
 import { isDemoFeatureEnabled } from './demoSettings';
+import { mapAuditRow, auditRowTimestamp } from '../services/firestore/adminFeedbackAuditService';
 import {
   getDemoStudyDayData,
   getDemoStudyRangeData,
@@ -14,8 +15,9 @@ export function isDemoTeacherReviewEnabled() {
 
 export const DEMO_TEACHER_REVIEW_EMAIL_PREFIX = 'demo-review-';
 
-const DEMO_TEACHER_EMAIL = 'demo-teacher@tsureben.dev';
-const DEMO_TEACHER_NAME = 'デモ 先生';
+export const DEMO_TEACHER_EMAIL = 'demo-teacher@tsureben.dev';
+export const DEMO_TEACHER_NAME = 'デモ 先生';
+export const DEMO_SCHOOL_ID = '__demo_school__';
 
 const SURNAMES = [
   '青木', '赤坂', '江川', '浅野', '新井', '飯島', '飯塚', '生田', '池田', '石川',
@@ -62,7 +64,7 @@ function buildDemoStudents() {
         students.push({
           email,
           role: 'student',
-          schoolId: '__demo_school__',
+          schoolId: DEMO_SCHOOL_ID,
           name: `${pick(SURNAMES, nameIndex)} ${pick(GIVEN_NAMES, nameIndex, 7)}`,
           grade,
           class: String(classNum),
@@ -98,7 +100,7 @@ const DEMO_THREADS_BY_STUDENT = Object.fromEntries(
     threads.push({
       id: `demo-thread-daily-${student.email}-${today}`,
       studentEmail: student.email,
-      schoolId: '__demo_school__',
+      schoolId: DEMO_SCHOOL_ID,
       scope: 'daily',
       dateKey: today,
       title: `${dayjs(today).format('M月D日')}の学習について`,
@@ -115,7 +117,7 @@ const DEMO_THREADS_BY_STUDENT = Object.fromEntries(
       threads.push({
         id: `demo-thread-daily-${student.email}-${yesterday}`,
         studentEmail: student.email,
-        schoolId: '__demo_school__',
+        schoolId: DEMO_SCHOOL_ID,
         scope: 'daily',
         dateKey: yesterday,
         title: `${dayjs(yesterday).format('M月D日')}の学習について`,
@@ -133,7 +135,7 @@ const DEMO_THREADS_BY_STUDENT = Object.fromEntries(
       threads.push({
         id: `demo-thread-general-${student.email}`,
         studentEmail: student.email,
-        schoolId: '__demo_school__',
+        schoolId: DEMO_SCHOOL_ID,
         scope: 'general',
         dateKey: null,
         title: '全体のフィードバック',
@@ -189,6 +191,19 @@ for (const [email, threads] of Object.entries(DEMO_THREADS_BY_STUDENT)) {
       });
     }
 
+    if (hash % 11 === 0) {
+      messages.push({
+        id: `${thread.id}-msg-deleted`,
+        authorEmail: DEMO_TEACHER_EMAIL,
+        authorRole: 'teacher',
+        authorName: DEMO_TEACHER_NAME,
+        body: '（削除済みデモ）体調面も気をつけて、無理のないペースで進めましょう。',
+        createdAt: fakeTimestamp(thread.dateKey || dayjs().format('YYYY-MM-DD'), 17, 0),
+        deletedAt: fakeTimestamp(thread.dateKey || dayjs().format('YYYY-MM-DD'), 21, 0),
+        deletedBy: DEMO_TEACHER_EMAIL,
+      });
+    }
+
     DEMO_MESSAGES_BY_THREAD[thread.id] = messages;
   }
 }
@@ -202,7 +217,7 @@ export function isDemoFeedbackThreadId(threadId) {
 }
 
 export function mergeDemoStudents(students = []) {
-  if (!isDemoTeacherReviewEnabled()) return students;
+  if (!isDemoTeacherReviewEnabled() && !isDemoTeacherCommentAuditEnabled()) return students;
 
   const existing = new Set(students.map((s) => s.email));
   const merged = [...students];
@@ -235,6 +250,42 @@ export function getDemoFeedbackThreads(studentEmail) {
 
 export function getDemoFeedbackMessages(threadId) {
   return [...(DEMO_MESSAGES_BY_THREAD[threadId] || [])];
+}
+
+export function isDemoTeacherCommentAuditEnabled() {
+  return isDemoFeatureEnabled('teacherCommentAudit');
+}
+
+export function getDemoTeacherCommentAuditRows({ teacherEmail } = {}) {
+  if (!isDemoTeacherCommentAuditEnabled()) return [];
+
+  const rows = [];
+  for (const threads of Object.values(DEMO_THREADS_BY_STUDENT)) {
+    for (const thread of threads) {
+      const messages = getDemoFeedbackMessages(thread.id);
+      for (const message of messages) {
+        if (message.authorRole !== 'teacher' && message.authorRole !== 'student') continue;
+        if (teacherEmail) {
+          if (message.authorRole === 'teacher' && message.authorEmail !== teacherEmail) continue;
+          if (
+            message.authorRole === 'student' &&
+            !messages.some((m) => m.authorRole === 'teacher' && m.authorEmail === teacherEmail)
+          ) {
+            continue;
+          }
+        }
+        const student = getDemoStudentProfile(thread.studentEmail);
+        rows.push(mapAuditRow(thread, message, student));
+      }
+    }
+  }
+
+  return rows.sort((a, b) => auditRowTimestamp(b) - auditRowTimestamp(a));
+}
+
+export function getDemoTeachersForAudit() {
+  if (!isDemoTeacherCommentAuditEnabled()) return [];
+  return [{ email: DEMO_TEACHER_EMAIL, name: DEMO_TEACHER_NAME, schoolId: DEMO_SCHOOL_ID }];
 }
 
 export function getDemoStudentProfile(studentEmail) {
