@@ -113,7 +113,7 @@ export const createSelfRegisteredStudent = onCall(
 export const registerAppleStudent = onCall(
   defaultCallableOptions,
   wrapCallable(async (request) => {
-    if (!request.auth?.token?.email) {
+    if (!request.auth?.uid) {
       throw new HttpsError("unauthenticated", "ログインが必要です");
     }
     return registerAppleStudentHandler(request);

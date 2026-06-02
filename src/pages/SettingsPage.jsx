@@ -29,6 +29,10 @@ import SectionHelpButton from '../components/ui/SectionHelpButton';
 import Modal from '../components/ui/Modal';
 import { useUiFeedback } from '../contexts/UiFeedbackContext';
 import { SETTINGS_SECTION_HELP } from '../content/settingsSectionHelp';
+import {
+  MIN_PASSWORD_LENGTH,
+  PASSWORD_MIN_LENGTH_MESSAGE,
+} from '../constants/password';
 
 const SHARE_SCOPE_OPTIONS = [
   { value: '学年のみ', label: '学年のみ' },
@@ -138,8 +142,8 @@ export default function SettingsPage() {
   };
 
   const handlePasswordChange = async () => {
-    if (!newPassword || newPassword.length < 6) {
-      toast.error('新しいパスワードは6文字以上にしてください');
+    if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) {
+      toast.error(PASSWORD_MIN_LENGTH_MESSAGE);
       return;
     }
     if (newPassword !== confirmPassword) {

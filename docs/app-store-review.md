@@ -2,13 +2,17 @@
 
 ## 審査前のデプロイ
 
-1. Cloud Functions をデプロイ（`deleteSelfRegisteredAccount` / `registerAppleStudent` を含む）
+1. Firestore ルールと Cloud Functions をデプロイ（セキュリティ修正を含む）
+
+   ```bash
+   firebase deploy --only firestore:rules,functions
+   ```
+
+   個別にデプロイする場合:
 
    ```bash
    firebase deploy --only functions:deleteSelfRegisteredAccount,functions:registerAppleStudent
    ```
-
-   または `firebase deploy --only functions`
 
 2. Web をビルド・Hosting 反映（プライバシーポリシー `/privacy` を含む）
 
@@ -48,20 +52,15 @@ Firebase 管理者権限（`firebase login` 済み）で次を実行すると、
 npm run create-review-account
 ```
 
-任意のメール・パスワード:
+メール・パスワード（**パスワードは必須・8文字以上・リポジトリに保存しない**）:
 
 ```bash
-REVIEW_EMAIL=your-review@gmail.com REVIEW_PASSWORD='YourPass6+' npm run create-review-account
+REVIEW_EMAIL=your-review@gmail.com REVIEW_PASSWORD='YourPass8+' npm run create-review-account
 ```
 
-デフォルト（スクリプト未指定時）:
+メール未指定時のデフォルト: `tsureben.appstore.review@gmail.com`
 
-| 項目 | 値 |
-|------|-----|
-| メール | `tsureben.appstore.review@gmail.com` |
-| パスワード | `TsureBenReview2026!` |
-
-※ 実運用では審査専用 Gmail を用意し、`REVIEW_EMAIL` / `REVIEW_PASSWORD` で上書きすることを推奨します。
+※ 審査専用 Gmail と強力なパスワードを用意し、Connect の審査メモにのみ記載してください。使い終わったらパスワードをローテーションすることを推奨します。
 
 審査員向けに、**事前に Firebase 上で自己登録済み**のアカウントを用意するか、審査メモに「新規登録手順」を記載する。
 
@@ -78,7 +77,7 @@ REVIEW_EMAIL=your-review@gmail.com REVIEW_PASSWORD='YourPass6+' npm run create-r
 ### 手順 A: 審査員に新規登録してもらう（iOS アプリ）
 
 1. **iOS アプリ**を起動 → 生徒ログイン欄で「新規登録（認証コード必要）」**または**「Apple で登録 / ログイン」
-2. 審査用メール（例: `appreview+apple@example.com`）とパスワード（6文字以上）を入力（メール登録の場合）
+2. 審査用メール（例: `appreview+apple@example.com`）とパスワード（8文字以上）を入力（メール登録の場合）
 3. 届いた認証コードを入力して登録完了（メール登録の場合）
 4. ホーム → 学習計画・タイマー・連れ勉（カメラは QR 読取のみ）を確認
 5. **設定 → アカウント削除** でアカウントを完全削除できることを確認

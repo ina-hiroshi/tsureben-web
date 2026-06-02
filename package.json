@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "create-review-account": "node scripts/createAppStoreReviewAccount.mjs",
+    "test:rules": "firebase emulators:exec --only firestore \"node --test tests/firestore.rules.test.mjs\"",
     "postinstall": "patch-package"
   },
   "dependencies": {
@@ -39,6 +40,7 @@
   "devDependencies": {
     "@capacitor/cli": "^6.2.1",
     "@eslint/js": "^9.29.0",
+    "@firebase/rules-unit-testing": "^4.0.1",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",
     "@vitejs/plugin-react": "^4.5.2",

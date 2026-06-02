@@ -8,6 +8,7 @@ import {
 } from "firebase/auth";
 import { getFirestore, initializeFirestore } from "firebase/firestore";
 import { Capacitor } from '@capacitor/core';
+import { initAppCheck } from './utils/appCheck';
 
 let analytics;
 // トップレベル await はモジュールを非同期化し、一部 WKWebView で起動に影響する。
@@ -47,6 +48,7 @@ const firebaseConfig = isNative
     };
 
 const app = initializeApp(firebaseConfig);
+initAppCheck(app);
 
 // ✅ Auth
 // ネイティブ(WKWebView)では indexedDB 永続化が不安定で onAuthStateChanged が

@@ -20,8 +20,8 @@ const { OAuth2Client } = require('google-auth-library');
 
 const PROJECT_ID = 'tsureben';
 const DEFAULT_EMAIL = 'tsureben.appstore.review@gmail.com';
-const DEFAULT_PASSWORD = 'TsureBenReview2026!';
 const DEFAULT_NAME = 'App Store 審査用';
+const MIN_REVIEW_PASSWORD_LENGTH = 8;
 // firebase-tools と同じ OAuth クライアント（公開値）
 const FIREBASE_CLI_CLIENT_ID =
   '563584335869-fgrhgmd47bqnekij5i8b5pr03ho849e6.apps.googleusercontent.com';
@@ -29,11 +29,21 @@ const FIREBASE_CLI_CLIENT_SECRET =
   process.env.FIREBASE_CLIENT_SECRET || 'j9iVZfS8kkCEFUPaAeJV0sAi';
 
 const email = (process.env.REVIEW_EMAIL || DEFAULT_EMAIL).trim().toLowerCase();
-const password = process.env.REVIEW_PASSWORD || DEFAULT_PASSWORD;
+const password = process.env.REVIEW_PASSWORD?.trim();
 const displayName = process.env.REVIEW_NAME || DEFAULT_NAME;
 
-if (password.length < 6) {
-  console.error('REVIEW_PASSWORD は6文字以上にしてください');
+if (!password) {
+  console.error(
+    'REVIEW_PASSWORD を環境変数で指定してください（8文字以上、リポジトリに保存しないこと）'
+  );
+  console.error(
+    "例: REVIEW_EMAIL=review@example.com REVIEW_PASSWORD='YourPass8+' npm run create-review-account"
+  );
+  process.exit(1);
+}
+
+if (password.length < MIN_REVIEW_PASSWORD_LENGTH) {
+  console.error(`REVIEW_PASSWORD は${MIN_REVIEW_PASSWORD_LENGTH}文字以上にしてください`);
   process.exit(1);
 }
 

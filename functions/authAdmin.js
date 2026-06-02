@@ -11,6 +11,23 @@ function db() {
 
 const VALID_TEACHER_ROLES = new Set(["teacher", "school_admin", "super_admin"]);
 
+const MIN_PASSWORD_LENGTH = 8;
+const VERIFICATION_SEND_WINDOW_MS = 15 * 60 * 1000;
+const VERIFICATION_MAX_SENDS_PER_WINDOW = 3;
+const VERIFICATION_MIN_RESEND_MS = 60 * 1000;
+const VERIFICATION_MAX_ATTEMPTS = 5;
+
+export function validatePassword(password, fieldLabel = "パスワード") {
+  const value = String(password || "");
+  if (value.length < MIN_PASSWORD_LENGTH) {
+    throw new HttpsError(
+      "invalid-argument",
+      `${fieldLabel}は${MIN_PASSWORD_LENGTH}文字以上にしてください`
+    );
+  }
+  return value;
+}
+
 export function normalizeEmail(value) {
   return String(value || "").trim().toLowerCase();
 }
@@ -78,6 +95,10 @@ export async function bulkImportTeachersHandler(callerEmail, { schoolId, rows })
     }
     if (!VALID_TEACHER_ROLES.has(role)) {
       results.errors.push({ row, error: "role が不正です" });
+      continue;
+    }
+    if (role === "super_admin" && admin.role !== "super_admin") {
+      results.errors.push({ row, error: "super_admin の付与は super_admin のみ可能です" });
       continue;
     }
     try {
@@ -156,8 +177,11 @@ export async function bulkImportStudentsHandler(callerEmail, { schoolId, rows })
         });
         continue;
       }
-      if (initialPassword.length < 6) {
-        results.errors.push({ row, error: "initialPassword は6文字以上" });
+      if (initialPassword.length < MIN_PASSWORD_LENGTH) {
+        results.errors.push({
+          row,
+          error: `initialPassword は${MIN_PASSWORD_LENGTH}文字以上`,
+        });
         continue;
       }
 
@@ -204,15 +228,23 @@ export async function bulkImportStudentsHandler(callerEmail, { schoolId, rows })
 }
 
 export async function resetStudentPasswordHandler(callerEmail, { email, newPassword }) {
-  await assertSchoolAdmin(callerEmail);
+  const admin = await assertSchoolAdmin(callerEmail);
   const normalized = normalizeEmail(email);
-  if (!normalized || !newPassword || newPassword.length < 6) {
-    throw new HttpsError("invalid-argument", "email と newPassword(6文字以上) が必要です");
+  if (!normalized) {
+    throw new HttpsError("invalid-argument", "email が必要です");
   }
+  validatePassword(newPassword, "newPassword");
 
   const userSnap = await db().collection("users").doc(normalized).get();
   if (!userSnap.exists) {
     throw new HttpsError("not-found", "生徒が見つかりません");
+  }
+
+  const studentSchoolId = userSnap.data()?.schoolId;
+  if (admin.role !== "super_admin") {
+    if (!studentSchoolId || admin.schoolId !== studentSchoolId) {
+      throw new HttpsError("permission-denied", "他校の生徒のパスワードは変更できません");
+    }
   }
 
   const auth = getAuth();
@@ -270,20 +302,65 @@ export async function sendVerificationCodeHandler({ email, purpose = "register" 
     }
   }
 
+  const codeRef = db().collection("verification_codes").doc(normalized);
+  const existingSnap = await codeRef.get();
+  const now = Date.now();
+
+  if (existingSnap.exists) {
+    const existing = existingSnap.data();
+    const lastSentMs = existing.lastSentAt?.toMillis?.() ?? 0;
+    if (lastSentMs && now - lastSentMs < VERIFICATION_MIN_RESEND_MS) {
+      throw new HttpsError(
+        "resource-exhausted",
+        "しばらく待ってから再度お試しください"
+      );
+    }
+    const windowStartMs = existing.sendWindowStart?.toMillis?.() ?? 0;
+    const inWindow = windowStartMs && now - windowStartMs < VERIFICATION_SEND_WINDOW_MS;
+    const sendCount = inWindow ? (existing.sendCount || 0) + 1 : 1;
+    if (inWindow && sendCount > VERIFICATION_MAX_SENDS_PER_WINDOW) {
+      throw new HttpsError(
+        "resource-exhausted",
+        "認証コードの送信回数が上限に達しました。しばらく待ってからお試しください"
+      );
+    }
+  }
+
   const code = generateCode();
   const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+  const sendCount = existingSnap.exists
+    ? (() => {
+        const existing = existingSnap.data();
+        const windowStartMs = existing.sendWindowStart?.toMillis?.() ?? 0;
+        const inWindow =
+          windowStartMs && now - windowStartMs < VERIFICATION_SEND_WINDOW_MS;
+        return inWindow ? (existing.sendCount || 0) + 1 : 1;
+      })()
+    : 1;
+  const sendWindowStart =
+    existingSnap.exists &&
+    (() => {
+      const existing = existingSnap.data();
+      const windowStartMs = existing.sendWindowStart?.toMillis?.() ?? 0;
+      return windowStartMs && now - windowStartMs < VERIFICATION_SEND_WINDOW_MS;
+    })()
+      ? existingSnap.data().sendWindowStart
+      : FieldValue.serverTimestamp();
 
-  await db().collection("verification_codes").doc(normalized).set({
+  await codeRef.set({
     code,
     expiresAt,
     purpose: mode,
     verified: false,
+    attemptCount: 0,
+    sendCount,
+    sendWindowStart,
+    lastSentAt: FieldValue.serverTimestamp(),
     createdAt: FieldValue.serverTimestamp(),
   });
 
   await sendVerificationEmail({ to: normalized, code, purpose: mode });
 
-  console.log(`Verification code for ${normalized} (${mode}): ${code}`);
   return {
     success: true,
     message: "認証コードを送信しました",
@@ -311,6 +388,15 @@ export async function verifyCodeHandler({ email, code }) {
     throw new HttpsError("deadline-exceeded", "認証コードの有効期限が切れています");
   }
   if (data.code !== inputCode) {
+    const attempts = (data.attemptCount || 0) + 1;
+    if (attempts >= VERIFICATION_MAX_ATTEMPTS) {
+      await snap.ref.delete();
+      throw new HttpsError(
+        "resource-exhausted",
+        "認証の試行回数が上限に達しました。最初からやり直してください"
+      );
+    }
+    await snap.ref.set({ attemptCount: attempts }, { merge: true });
     throw new HttpsError("invalid-argument", "認証コードが正しくありません");
   }
 
@@ -377,9 +463,10 @@ export async function migrateLegacyDataHandler(callerEmail, { defaultSchoolId, d
 
 export async function createSelfRegisteredStudentHandler({ email, password, schoolId = null }) {
   const normalized = normalizeEmail(email);
-  if (!normalized || !password || password.length < 6) {
-    throw new HttpsError("invalid-argument", "email と password(6文字以上) が必要です");
+  if (!normalized) {
+    throw new HttpsError("invalid-argument", "email が必要です");
   }
+  validatePassword(password);
 
   const codeSnap = await db().collection("verification_codes").doc(normalized).get();
   if (!codeSnap.exists || !codeSnap.data()?.verified) {
@@ -432,8 +519,16 @@ function buildSelfRegisteredUserDoc(email, extra = {}) {
   };
 }
 
+async function resolveCallableUserEmail(request) {
+  const tokenEmail = normalizeEmail(request.auth?.token?.email);
+  if (tokenEmail) return tokenEmail;
+  if (!request.auth?.uid) return "";
+  const userRecord = await getAuth().getUser(request.auth.uid);
+  return normalizeEmail(userRecord.email);
+}
+
 export async function registerAppleStudentHandler(request) {
-  if (!request.auth?.token?.email) {
+  if (!request.auth?.uid) {
     throw new HttpsError("unauthenticated", "ログインが必要です");
   }
 
@@ -442,7 +537,7 @@ export async function registerAppleStudentHandler(request) {
     throw new HttpsError("permission-denied", "Apple ID でログインしてください");
   }
 
-  const email = normalizeEmail(request.auth.token.email);
+  const email = await resolveCallableUserEmail(request);
   if (!email) {
     throw new HttpsError("failed-precondition", "Apple ID からメールアドレスを取得できませんでした");
   }
@@ -479,9 +574,7 @@ export async function resetPasswordWithCodeHandler({ email, code, newPassword })
   if (!normalized || !inputCode) {
     throw new HttpsError("invalid-argument", "email と code が必要です");
   }
-  if (!newPassword || newPassword.length < 6) {
-    throw new HttpsError("invalid-argument", "新しいパスワードは6文字以上にしてください");
-  }
+  validatePassword(newPassword, "新しいパスワード");
 
   const snap = await db().collection("verification_codes").doc(normalized).get();
   if (!snap.exists) {
@@ -492,6 +585,15 @@ export async function resetPasswordWithCodeHandler({ email, code, newPassword })
     throw new HttpsError("failed-precondition", "メール認証が完了していません");
   }
   if (data.code !== inputCode) {
+    const attempts = (data.attemptCount || 0) + 1;
+    if (attempts >= VERIFICATION_MAX_ATTEMPTS) {
+      await snap.ref.delete();
+      throw new HttpsError(
+        "resource-exhausted",
+        "認証の試行回数が上限に達しました。最初からやり直してください"
+      );
+    }
+    await snap.ref.set({ attemptCount: attempts }, { merge: true });
     throw new HttpsError("invalid-argument", "認証コードが正しくありません");
   }
 

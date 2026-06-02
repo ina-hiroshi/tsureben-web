@@ -48,14 +48,38 @@ service cloud.firestore {
         && studentSchoolId(targetEmail) == teacherSchoolId();
     }
 
+    function callerUserDoc() {
+      return get(/databases/$(database)/documents/users/$(userEmail()));
+    }
+
+    function callerUserData() {
+      return callerUserDoc().data;
+    }
+
+    function isMateRelated(targetEmail) {
+      return exists(/databases/$(database)/documents/users/$(userEmail()))
+        && (
+          targetEmail in callerUserData().get('mutualMates', [])
+          || targetEmail in callerUserData().get('pendingSent', [])
+          || targetEmail in callerUserData().get('pendingReceived', [])
+          || targetEmail in callerUserData().get('hiddenMates', [])
+          || targetEmail in callerUserData().get('hiddenRequests', [])
+        );
+    }
+
+    function canReadUserProfile(targetEmail) {
+      return userEmail() == targetEmail
+        || isSuperAdmin()
+        || (isTeacher() && sameSchoolAsTarget(targetEmail))
+        || isMateRelated(targetEmail);
+    }
+
     function canAccessUserData(targetEmail) {
       return userEmail() == targetEmail
         || (isSuperAdmin() && exists(/databases/$(database)/documents/users/$(targetEmail)))
-        || (isTeacher() && sameSchoolAsTarget(targetEmail))
-        || (isTeacher() && !exists(/databases/$(database)/documents/users/$(targetEmail)));
+        || (isTeacher() && sameSchoolAsTarget(targetEmail));
     }
 
-    // 学年・組・番号は変更不可。null・未設定・数値/文字列の差で誤判定しないよう正規化して比較する。
     function profileIdentityField(data, field) {
       let v = data.get(field, '');
       return v == null ? '' : string(v);
@@ -76,9 +100,78 @@ service cloud.firestore {
         .hasOnly(['name', 'nameLower', 'updatedAt']);
     }
 
+    function studentProfilePatchAllowed() {
+      let k = request.resource.data.diff(resource.data).affectedKeys();
+      return k.hasOnly(['shareScope', 'updatedAt'])
+        || k.hasOnly(['mateScope', 'updatedAt'])
+        || k.hasOnly(['mustChangePassword', 'updatedAt'])
+        || k.hasOnly(['name', 'nameLower', 'updatedAt'])
+        || k.hasOnly(['subjectCatalog', 'updatedAt'])
+        || k.hasOnly(['shareScope', 'mateScope', 'updatedAt'])
+        || k.hasOnly(['hiddenMates', 'updatedAt'])
+        || k.hasOnly(['hiddenRequests', 'updatedAt']);
+    }
+
     function canUpdateOwnUserProfile() {
-      return userProfileIdentityUnchanged()
+      return (userProfileIdentityUnchanged() && studentProfilePatchAllowed())
         || (isSelfRegisteredStudent() && onlyDisplayNameFieldsChanged());
+    }
+
+    function userCreateAllowed() {
+      let data = request.resource.data;
+      return data.get('role', 'student') == 'student'
+        && !('registrationType' in data)
+        && !('mustChangePassword' in data)
+        && (!('schoolId' in data) || data.schoolId == null)
+        && data.get('mutualMates', []) == []
+        && data.get('pendingSent', []) == []
+        && data.get('pendingReceived', []) == []
+        && data.get('hiddenMates', []) == []
+        && data.get('hiddenRequests', []) == [];
+    }
+
+    function canReadActiveSession(sessionEmail, sessionData) {
+      return userEmail() == sessionEmail
+        || (isTeacher() && sessionData.get('schoolId', null) == teacherSchoolId())
+        || userEmail() in sessionData.get('mateEmails', [])
+        || activeSessionVisibleByShareScope(sessionData);
+    }
+
+    function activeSessionVisibleByShareScope(sessionData) {
+      return exists(/databases/$(database)/documents/users/$(userEmail()))
+        && callerUserData().get('schoolId', null) != null
+        && callerUserData().get('schoolId', null) == sessionData.get('schoolId', null)
+        && callerUserData().get('shareScope', '学年のみ') != '連れ勉仲間のみ'
+        && (
+          (
+            callerUserData().get('shareScope', '学年のみ') == '学年のみ'
+            && profileIdentityField(callerUserData(), 'grade') == profileIdentityField(sessionData, 'grade')
+          )
+          || (
+            callerUserData().get('shareScope', '') == '組のみ'
+            && profileIdentityField(callerUserData(), 'grade') == profileIdentityField(sessionData, 'grade')
+            && profileIdentityField(callerUserData(), 'class') == profileIdentityField(sessionData, 'class')
+          )
+        );
+    }
+
+    function activeSessionSchoolIdValid() {
+      let me = callerUserData();
+      let data = request.resource.data;
+      return !exists(/databases/$(database)/documents/users/$(userEmail()))
+        || !('schoolId' in data)
+        || data.schoolId == me.get('schoolId', null);
+    }
+
+    function feedbackThreadMetadataPatchAllowed() {
+      let k = request.resource.data.diff(resource.data).affectedKeys();
+      return k.hasOnly(['unreadByStudent', 'updatedAt'])
+        || k.hasOnly(['unreadByTeacher', 'updatedAt'])
+        || k.hasOnly(['unreadByStudent', 'unreadByTeacher', 'updatedAt'])
+        || k.hasOnly(['lastMessageAt', 'updatedAt'])
+        || k.hasOnly(['unreadByStudent', 'lastMessageAt', 'updatedAt'])
+        || k.hasOnly(['unreadByTeacher', 'lastMessageAt', 'updatedAt'])
+        || k.hasOnly(['unreadByStudent', 'unreadByTeacher', 'lastMessageAt', 'updatedAt']);
     }
 
     match /schools/{schoolId} {
@@ -94,8 +187,8 @@ service cloud.firestore {
     }
 
     match /users/{email} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && userEmail() == email;
+      allow read: if isAuthenticated() && canReadUserProfile(email);
+      allow create: if isAuthenticated() && userEmail() == email && userCreateAllowed();
       allow update: if isAuthenticated() && userEmail() == email
         && canUpdateOwnUserProfile();
       allow delete: if false;
@@ -110,8 +203,10 @@ service cloud.firestore {
     }
 
     match /activeSessions/{email} {
-      allow read: if isAuthenticated();
-      allow create, update, delete: if isAuthenticated() && userEmail() == email;
+      allow read: if isAuthenticated() && canReadActiveSession(email, resource.data);
+      allow create, update: if isAuthenticated() && userEmail() == email
+        && activeSessionSchoolIdValid();
+      allow delete: if isAuthenticated() && userEmail() == email;
     }
 
     match /verification_codes/{email} {
@@ -142,7 +237,9 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/users/$(request.resource.data.studentEmail))
         && request.resource.data.schoolId == studentSchoolId(request.resource.data.studentEmail)
         && (isSuperAdmin() || sameSchoolAsTarget(request.resource.data.studentEmail));
-      allow update: if isAuthenticated() && canReadFeedbackThreadData(resource.data);
+      allow update: if isAuthenticated()
+        && canReadFeedbackThreadData(resource.data)
+        && feedbackThreadMetadataPatchAllowed();
 
       match /messages/{messageId} {
         allow read: if isAuthenticated() && canReadFeedbackThread(threadId);

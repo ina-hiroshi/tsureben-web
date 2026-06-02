@@ -4,6 +4,10 @@ import { db } from '../../firebase';
 import { adminResetStudentPassword } from '../../services/authApi';
 import { fetchStudentsForSchool, uniqueSorted } from '../../utils/adminStudents';
 import { useUiFeedback } from '../../contexts/UiFeedbackContext';
+import {
+  MIN_PASSWORD_LENGTH,
+  PASSWORD_MIN_LENGTH_MESSAGE,
+} from '../../constants/password';
 import LoadingOverlay from '../ui/LoadingOverlay';
 import FilterSelect from '../ui/FilterSelect';
 import SuggestInput from '../ui/SuggestInput';
@@ -15,8 +19,8 @@ function PasswordResetModal({ student, schoolName, onClose, onSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!password || password.length < 6) {
-      toast.warning('新パスワードは6文字以上にしてください');
+    if (!password || password.length < MIN_PASSWORD_LENGTH) {
+      toast.warning(PASSWORD_MIN_LENGTH_MESSAGE);
       return;
     }
     setResetting(true);
@@ -71,7 +75,7 @@ function PasswordResetModal({ student, schoolName, onClose, onSuccess }) {
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="6文字以上"
+              placeholder={`${MIN_PASSWORD_LENGTH}文字以上`}
               className="w-full border border-[#c4b5a0] rounded-lg px-3 py-2"
               autoFocus
               required

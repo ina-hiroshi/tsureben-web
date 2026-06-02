@@ -1,0 +1,111 @@
+diff --git a/node_modules/@capacitor-community/apple-sign-in/ios/Plugin/Plugin.swift b/node_modules/@capacitor-community/apple-sign-in/ios/Plugin/Plugin.swift
+index f273691..dabab83 100755
+--- a/node_modules/@capacitor-community/apple-sign-in/ios/Plugin/Plugin.swift
++++ b/node_modules/@capacitor-community/apple-sign-in/ios/Plugin/Plugin.swift
+@@ -6,20 +6,23 @@ import AuthenticationServices
+ public class SignInWithApple: CAPPlugin {
+ 
+     @objc func authorize(_ call: CAPPluginCall) {
+-        let appleIDProvider = ASAuthorizationAppleIDProvider()
+-        let request = appleIDProvider.createRequest()
+-        request.requestedScopes = getRequestedScopes(from: call)
+-        request.state = call.getString("state")
+-        request.nonce = call.getString("nonce")
++        DispatchQueue.main.async {
++            let appleIDProvider = ASAuthorizationAppleIDProvider()
++            let request = appleIDProvider.createRequest()
++            request.requestedScopes = self.getRequestedScopes(from: call)
++            request.state = call.getString("state")
++            request.nonce = call.getString("nonce")
+ 
+-        let defaults = UserDefaults()
+-        defaults.setValue(call.callbackId, forKey: "callbackId")
++            let defaults = UserDefaults()
++            defaults.setValue(call.callbackId, forKey: "callbackId")
+ 
+-        self.bridge?.saveCall(call)
++            self.bridge?.saveCall(call)
+ 
+-        let authorizationController = ASAuthorizationController(authorizationRequests: [request])
+-        authorizationController.delegate = self
+-        authorizationController.performRequests()
++            let authorizationController = ASAuthorizationController(authorizationRequests: [request])
++            authorizationController.delegate = self
++            authorizationController.presentationContextProvider = self
++            authorizationController.performRequests()
++        }
+     }
+ 
+     func getRequestedScopes(from call: CAPPluginCall) -> [ASAuthorization.Scope]? {
+@@ -53,18 +56,37 @@ extension SignInWithApple: ASAuthorizationControllerDelegate {
+             return
+         }
+ 
+-        let result = [
+-            "response": [
+-                "user": appleIDCredential.user,
+-                "email": appleIDCredential.email,
+-                "givenName": appleIDCredential.fullName?.givenName,
+-                "familyName": appleIDCredential.fullName?.familyName,
+-                "identityToken": String(data: appleIDCredential.identityToken!, encoding: .utf8),
+-                "authorizationCode": String(data: appleIDCredential.authorizationCode!, encoding: .utf8)
+-            ]
++        guard
++            let identityTokenData = appleIDCredential.identityToken,
++            let identityToken = String(data: identityTokenData, encoding: .utf8)
++        else {
++            call.reject("Apple ID トークンの取得に失敗しました")
++            self.bridge?.releaseCall(call)
++            return
++        }
++
++        var response: [String: Any] = [
++            "user": appleIDCredential.user,
++            "identityToken": identityToken,
+         ]
+ 
+-        call.resolve(result)
++        if let email = appleIDCredential.email {
++            response["email"] = email
++        }
++        if let givenName = appleIDCredential.fullName?.givenName {
++            response["givenName"] = givenName
++        }
++        if let familyName = appleIDCredential.fullName?.familyName {
++            response["familyName"] = familyName
++        }
++        if
++            let authorizationCodeData = appleIDCredential.authorizationCode,
++            let authorizationCode = String(data: authorizationCodeData, encoding: .utf8)
++        {
++            response["authorizationCode"] = authorizationCode
++        }
++
++        call.resolve(["response": response])
+         self.bridge?.releaseCall(call)
+     }
+ 
+@@ -74,7 +96,22 @@ extension SignInWithApple: ASAuthorizationControllerDelegate {
+         guard let call = self.bridge?.savedCall(withID: id) else {
+             return
+         }
+-        call.reject(error.localizedDescription)
++
++        let nsError = error as NSError
++        call.reject(error.localizedDescription, "\(nsError.domain)/\(nsError.code)")
+         self.bridge?.releaseCall(call)
+     }
+ }
++
++extension SignInWithApple: ASAuthorizationControllerPresentationContextProviding {
++    public func presentationAnchor(for controller: ASAuthorizationController) -> ASPresentationAnchor {
++        if let window = self.bridge?.viewController?.view.window {
++            return window
++        }
++        if let scene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
++           let window = scene.windows.first(where: { $0.isKeyWindow }) ?? scene.windows.first {
++            return window
++        }
++        return UIApplication.shared.windows.first ?? ASPresentationAnchor()
++    }
++}

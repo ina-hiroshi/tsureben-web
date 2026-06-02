@@ -24,15 +24,35 @@ async function sha256(message) {
 export function isAppleLoginCancelled(err) {
   if (!err) return false;
   const code = String(err?.code || '');
-  if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+  if (
+    code === 'auth/popup-closed-by-user' ||
+    code === 'auth/cancelled-popup-request' ||
+    code.includes('1001') ||
+    code.includes('AuthorizationError')
+  ) {
     return true;
   }
   const message = String(err?.message || err?.errorMessage || '').toLowerCase();
   return (
     message.includes('cancel') ||
     message.includes('キャンセル') ||
-    message.includes('1001')
+    message.includes('1001') ||
+    message.includes('authorizationerror')
   );
+}
+
+export function getAppleLoginErrorMessage(err) {
+  const code = String(err?.code || '');
+  if (code === 'auth/operation-not-allowed') {
+    return 'Apple ID ログインが有効になっていません。アプリを最新版に更新して再度お試しください。';
+  }
+  if (code === 'auth/invalid-credential' || code === 'auth/missing-or-invalid-nonce') {
+    return 'Apple ID 認証に失敗しました。もう一度お試しください。';
+  }
+  if (code === 'auth/account-exists-with-different-credential') {
+    return 'このメールアドレスはメール/パスワードで登録済みです。メールでログインしてください';
+  }
+  return err?.message || 'Apple ID ログインに失敗しました';
 }
 
 export async function signInWithApple() {

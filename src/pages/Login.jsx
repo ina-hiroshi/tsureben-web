@@ -19,6 +19,10 @@ import {
   signOut,
 } from 'firebase/auth';
 import { auth } from '../firebase';
+import {
+  MIN_PASSWORD_LENGTH,
+  PASSWORD_MIN_LENGTH_MESSAGE,
+} from '../constants/password';
 import { useAuth } from '../contexts/AuthContext';
 import {
   sendVerificationCode,
@@ -42,7 +46,11 @@ import {
   getUserRegistrationType,
   canUseWebAsStudent,
 } from '../utils/platformAccess';
-import { signInWithApple, isAppleLoginCancelled } from '../utils/appleAuth';
+import {
+  signInWithApple,
+  isAppleLoginCancelled,
+  getAppleLoginErrorMessage,
+} from '../utils/appleAuth';
 import { getAppStoreUrl } from '../constants/appLinks';
 import {
   consumePostLoginReturnUrl,
@@ -171,16 +179,13 @@ export default function Login() {
     setSubmitting(true);
     try {
       const result = await signInWithApple();
+      await result.user.getIdToken(true);
       await registerAppleStudent();
       await finishLogin(result.user);
     } catch (err) {
       if (isAppleLoginCancelled(err)) return;
       console.error('Apple login error:', err);
-      if (err?.code === 'auth/account-exists-with-different-credential') {
-        setError('このメールアドレスはメール/パスワードで登録済みです。メールでログインしてください');
-      } else {
-        setError(err.message || 'Apple ID ログインに失敗しました');
-      }
+      setError(getAppleLoginErrorMessage(err));
     } finally {
       setSubmitting(false);
     }
@@ -308,8 +313,8 @@ export default function Login() {
       setError('パスワードが一致しません');
       return;
     }
-    if (studentPassword.length < 6) {
-      setError('パスワードは6文字以上にしてください');
+    if (studentPassword.length < MIN_PASSWORD_LENGTH) {
+      setError(PASSWORD_MIN_LENGTH_MESSAGE);
       return;
     }
     setSubmitting(true);
@@ -347,8 +352,8 @@ export default function Login() {
       setError('パスワードが一致しません');
       return;
     }
-    if (resetPassword.length < 6) {
-      setError('パスワードは6文字以上にしてください');
+    if (resetPassword.length < MIN_PASSWORD_LENGTH) {
+      setError(PASSWORD_MIN_LENGTH_MESSAGE);
       return;
     }
     setSubmitting(true);

@@ -272,7 +272,7 @@ export default function BulkRegistrationPanel({ schoolId, onStudentsChanged }) {
 
       <CsvImportBlock
         title="生徒"
-        description="新規生徒のみ登録します。CSV に登録済みのメールがある場合はスキップされます。initialPassword は新規行のみ必須（6文字以上）。パスワード変更は「生徒情報管理」で行ってください。"
+        description="新規生徒のみ登録します。CSV に登録済みのメールがある場合はスキップされます。initialPassword は新規行のみ必須（8文字以上）。パスワード変更は「生徒情報管理」で行ってください。"
         headers={STUDENT_CSV_HEADERS}
         templateFilename="students_template.csv"
         importLabel="生徒CSVをインポート"
