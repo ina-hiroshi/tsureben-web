@@ -71,7 +71,7 @@ export default function StudyPlanPage() {
 
         {!isPeriodView && (
           <div className="flex justify-end mb-3 shrink-0">
-            <Button onClick={openNew} className="inline-flex items-center gap-2">
+            <Button variant="surface" onClick={openNew} className="inline-flex items-center gap-2">
               <AppIcon icon={Plus} size="sm" />
               計画を追加
             </Button>
@@ -87,7 +87,7 @@ export default function StudyPlanPage() {
             onDelete={handleDelete}
             emptyState={STUDY_PLAN_EMPTY}
             emptyAction={
-              <Button onClick={openNew} className="inline-flex items-center gap-2" size="sm">
+              <Button variant="surface" onClick={openNew} className="inline-flex items-center gap-2" size="sm">
                 <AppIcon icon={Plus} size="sm" />
                 計画を追加
               </Button>

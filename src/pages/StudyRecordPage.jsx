@@ -179,6 +179,7 @@ export default function StudyRecordPage() {
             <section>
               <div className="flex justify-end mb-3 shrink-0">
                 <Button
+                  variant="surface"
                   className="inline-flex items-center gap-2"
                   onClick={handleAddManual}
                   disabled={isFutureDate}
@@ -193,6 +194,7 @@ export default function StudyRecordPage() {
                 onDelete={handleDelete}
                 emptyAction={
                   <Button
+                    variant="surface"
                     className="inline-flex items-center gap-2"
                     onClick={handleAddManual}
                     disabled={isFutureDate}
