@@ -3,6 +3,10 @@ import { defineSecret } from "firebase-functions/params";
 /** Resend 認証コード送信（sendVerificationCode のみで使用） */
 export const resendApiKey = defineSecret("RESEND_API_KEY");
 
+/** Stripe 課金（Checkout / Webhook / Portal） */
+export const stripeSecretKey = defineSecret("STRIPE_SECRET_KEY");
+export const stripeWebhookSecret = defineSecret("STRIPE_WEBHOOK_SECRET");
+
 /** Gen2 callable: localhost / 本番ホスト / ネイティブ(Capacitor) の CORS（origin はスキーム付きまたは正規表現） */
 export const callableCors = [
   /^http:\/\/localhost(:\d+)?$/,

@@ -9,6 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "create-review-account": "node scripts/createAppStoreReviewAccount.mjs",
+    "setup:stripe": "node scripts/setupStripeProducts.mjs",
+    "migrate:legacy-school": "node scripts/migrateLegacyFreeSchool.mjs",
     "test:rules": "firebase emulators:exec --only firestore \"node --test tests/firestore.rules.test.mjs\"",
     "postinstall": "patch-package"
   },
@@ -38,6 +40,7 @@
     "three": "^0.181.2"
   },
   "devDependencies": {
+    "stripe": "^17.7.0",
     "@capacitor/cli": "^6.2.1",
     "@eslint/js": "^9.29.0",
     "@firebase/rules-unit-testing": "^4.0.1",

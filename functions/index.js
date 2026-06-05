@@ -1,5 +1,5 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
-import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2/options";
 import { getApps, initializeApp } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
@@ -11,7 +11,6 @@ import {
   redeemMateInviteHandler,
   bulkImportStudentsHandler,
   bulkImportTeachersHandler,
-  createSchoolHandler,
   createSelfRegisteredStudentHandler,
   deleteSelfRegisteredAccountHandler,
   migrateLegacyDataHandler,
@@ -26,7 +25,17 @@ import {
   defaultCallableOptions,
   bulkCallableOptions,
   sendVerificationCallableOptions,
+  stripeSecretKey,
+  stripeWebhookSecret,
 } from "./callableConfig.js";
+import {
+  createCheckoutSessionHandler,
+  claimBillingSchoolAdminHandler,
+  createBillingPortalSessionHandler,
+  adminListSchoolBillingHandler,
+  createLegacyFreeSchoolHandler,
+  handleStripeWebhookRequest,
+} from "./billing.js";
 
 setGlobalOptions({ region: "asia-northeast1" });
 
@@ -61,8 +70,59 @@ export const createSchool = onCall(
   defaultCallableOptions,
   wrapCallable(async (request) => {
     const email = requireAuth(request);
-    return createSchoolHandler(email, request.data || {});
+    return createLegacyFreeSchoolHandler(email, request.data || {});
   })
+);
+
+export const createLegacyFreeSchool = onCall(
+  defaultCallableOptions,
+  wrapCallable(async (request) => {
+    const email = requireAuth(request);
+    return createLegacyFreeSchoolHandler(email, request.data || {});
+  })
+);
+
+const stripeCallableOptions = {
+  cors: defaultCallableOptions.cors,
+  secrets: [stripeSecretKey],
+};
+
+export const createCheckoutSession = onCall(
+  stripeCallableOptions,
+  wrapCallable(async (request) => {
+    return createCheckoutSessionHandler(null, request.data || {});
+  })
+);
+
+export const claimBillingSchoolAdmin = onCall(
+  { ...defaultCallableOptions, secrets: [stripeSecretKey] },
+  wrapCallable(async (request) => {
+    return claimBillingSchoolAdminHandler(request);
+  })
+);
+
+export const createBillingPortalSession = onCall(
+  stripeCallableOptions,
+  wrapCallable(async (request) => {
+    const email = requireAuth(request);
+    return createBillingPortalSessionHandler(email, request.data || {});
+  })
+);
+
+export const adminListSchoolBilling = onCall(
+  defaultCallableOptions,
+  wrapCallable(async (request) => {
+    const email = requireAuth(request);
+    return adminListSchoolBillingHandler(email);
+  })
+);
+
+export const stripeWebhook = onRequest(
+  {
+    region: "asia-northeast1",
+    secrets: [stripeSecretKey, stripeWebhookSecret],
+  },
+  handleStripeWebhookRequest
 );
 
 export const adminBulkImportTeachers = onCall(

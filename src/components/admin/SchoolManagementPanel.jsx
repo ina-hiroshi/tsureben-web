@@ -1,11 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import {
-  addDoc,
-  collection,
-  getDocs,
-  serverTimestamp,
-} from 'firebase/firestore';
-import { auth, db } from '../../firebase';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../../firebase';
+import { createLegacyFreeSchool } from '../../services/billingApi';
 import { useTeacherStatus } from '../../hooks/useTeacherStatus';
 import { useUiFeedback } from '../../contexts/UiFeedbackContext';
 import LoadingOverlay from '../ui/LoadingOverlay';
@@ -44,18 +40,16 @@ export default function SchoolManagementPanel({
         settings.studentEmailDomain = studentEmailDomain.trim();
       }
 
-      const ref = await addDoc(collection(db, 'schools'), {
+      const { schoolId } = await createLegacyFreeSchool({
         name: newSchoolName.trim(),
         settings,
-        createdAt: serverTimestamp(),
-        createdBy: auth.currentUser?.email || '',
       });
 
-      toast.success(`学校「${newSchoolName}」を作成しました`);
+      toast.success(`無償枠の学校「${newSchoolName}」を作成しました`);
       setNewSchoolName('');
       setStudentEmailDomain('');
       await loadSchools();
-      onSelectSchool(ref.id);
+      onSelectSchool(schoolId);
     } catch (err) {
       console.error('School create error:', err);
       if (err.code === 'permission-denied') {
@@ -88,7 +82,14 @@ export default function SchoolManagementPanel({
 
       {showCreateForm && isSuperAdmin && (
         <form onSubmit={handleCreateSchool} className="border-t pt-4 space-y-3">
-          <h3 className="font-semibold text-[#5a3e28]">新規学校作成（super_admin）</h3>
+          <h3 className="font-semibold text-[#5a3e28]">無償枠学校の作成（legacy_free）</h3>
+          <p className="text-xs text-gray-600">
+            恒久無償提供の学校のみ手動作成します。有料契約は{' '}
+            <a href="/for-schools" className="underline text-[#5a3e28]">
+              学校向け案内
+            </a>{' '}
+            から Stripe で申し込みます。
+          </p>
           <input
             type="text"
             placeholder="学校名"

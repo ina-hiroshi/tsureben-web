@@ -4,6 +4,7 @@ import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
 import { HttpsError } from "firebase-functions/v2/https";
 import { canMateInteract } from "./mateScope.js";
 import { sendVerificationEmail } from "./email.js";
+import { assertSchoolBillingAllowsWrite } from "./billingGuards.js";
 
 function db() {
   return getFirestore();
@@ -56,21 +57,6 @@ export async function assertSuperAdmin(callerEmail) {
   return teacher;
 }
 
-export async function createSchoolHandler(callerEmail, { name, settings = {} }) {
-  await assertSuperAdmin(callerEmail);
-  if (!name?.trim()) {
-    throw new HttpsError("invalid-argument", "学校名が必要です");
-  }
-  const ref = db().collection("schools").doc();
-  await ref.set({
-    name: name.trim(),
-    settings: settings || {},
-    createdAt: FieldValue.serverTimestamp(),
-    createdBy: normalizeEmail(callerEmail),
-  });
-  return { schoolId: ref.id, name: name.trim() };
-}
-
 export async function bulkImportTeachersHandler(callerEmail, { schoolId, rows }) {
   const admin = await assertSchoolAdmin(callerEmail);
   if (!schoolId) {
@@ -82,6 +68,8 @@ export async function bulkImportTeachersHandler(callerEmail, { schoolId, rows })
   if (!Array.isArray(rows) || rows.length === 0) {
     throw new HttpsError("invalid-argument", "rows が空です");
   }
+
+  await assertSchoolBillingAllowsWrite(schoolId, { allowTeacherImport: true });
 
   const results = { created: 0, updated: 0, errors: [] };
 
@@ -135,6 +123,16 @@ export async function bulkImportStudentsHandler(callerEmail, { schoolId, rows })
 
   const auth = getAuth();
   const results = { created: 0, skipped: 0, errors: [] };
+  let potentialNewStudents = 0;
+  for (const row of rows) {
+    const email = normalizeEmail(row.email);
+    const name = String(row.name || "").trim();
+    const initialPassword = String(row.initialPassword || "").trim();
+    if (email && name && initialPassword) potentialNewStudents += 1;
+  }
+  await assertSchoolBillingAllowsWrite(schoolId, {
+    newStudents: potentialNewStudents,
+  });
 
   for (const row of rows) {
     const email = normalizeEmail(row.email);
@@ -213,6 +211,7 @@ export async function bulkImportStudentsHandler(callerEmail, { schoolId, rows })
           registrationType: "school_provisioned",
           profileComplete,
           mustChangePassword: true,
+          onboardingComplete: false,
           createdAt: FieldValue.serverTimestamp(),
           updatedAt: FieldValue.serverTimestamp(),
         },

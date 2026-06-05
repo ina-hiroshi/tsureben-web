@@ -14,7 +14,7 @@ export default function PrivacyPolicyPage() {
     >
       <div className="max-w-2xl mx-auto space-y-4">
         <div className="flex justify-center pt-4">
-          <AppLogo variant="login" />
+          <AppLogo variant="login" theme="dark" />
         </div>
         <Card>
           <h1 className="text-xl font-bold text-tsure-primary mb-2">プライバシーポリシー</h1>
@@ -126,9 +126,14 @@ export default function PrivacyPolicyPage() {
             </section>
           </div>
 
-          <Button to="/" variant="secondary" className="w-full mt-8">
-            ログイン画面へ戻る
-          </Button>
+          <div className="flex flex-col gap-3 mt-8">
+            <Button to="/for-schools" variant="secondary" className="w-full">
+              学校向けのご案内
+            </Button>
+            <Button to="/" variant="secondary" className="w-full">
+              ログイン画面へ戻る
+            </Button>
+          </div>
         </Card>
       </div>
     </div>

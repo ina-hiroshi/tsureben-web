@@ -1,8 +1,10 @@
 import SchoolManagementPanel from '../components/admin/SchoolManagementPanel';
+import SchoolBillingOverviewPanel from '../components/admin/SchoolBillingOverviewPanel';
 import BulkRegistrationPanel from '../components/admin/BulkRegistrationPanel';
 import StudentManagementPanel from '../components/admin/StudentManagementPanel';
 import UiFeedbackPreviewPanel from '../components/admin/UiFeedbackPreviewPanel';
 import DemoDataPanel from '../components/admin/DemoDataPanel';
+import BillingPortalButton from '../components/admin/BillingPortalButton';
 import { useTeacherStatus } from '../hooks/useTeacherStatus';
 import PageLayout from '../components/ui/PageLayout';
 import Card from '../components/ui/Card';
@@ -11,7 +13,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 export default function AdminPage() {
-  const { schoolId: teacherSchoolId, isSuperAdmin } = useTeacherStatus();
+  const { schoolId: teacherSchoolId, isSuperAdmin, isSchoolAdmin } = useTeacherStatus();
   const [selectedSchoolId, setSelectedSchoolId] = useState('');
   const [studentsRefreshKey, setStudentsRefreshKey] = useState(0);
 
@@ -24,6 +26,21 @@ export default function AdminPage() {
   return (
     <PageLayout title="管理" contentWidth="wide">
       <div className="space-y-4 pb-8">
+        {isSuperAdmin && (
+          <Card>
+            <SectionTitle>契約・登録状況（全校）</SectionTitle>
+            <SchoolBillingOverviewPanel onSelectSchool={setSelectedSchoolId} />
+          </Card>
+        )}
+        {isSchoolAdmin && !isSuperAdmin && (
+          <Card>
+            <SectionTitle>契約・請求</SectionTitle>
+            <p className="text-sm text-gray-700 mb-3">
+              プラン変更・請求書・支払い方法は Stripe の顧客ポータルから行えます。
+            </p>
+            <BillingPortalButton schoolId={selectedSchoolId || teacherSchoolId} />
+          </Card>
+        )}
         <Card>
           <SectionTitle>学校管理</SectionTitle>
           <SchoolManagementPanel

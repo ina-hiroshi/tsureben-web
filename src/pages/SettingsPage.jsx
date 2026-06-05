@@ -365,6 +365,8 @@ export default function SettingsPage() {
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
                     autoComplete="new-password"
+                    minLength={MIN_PASSWORD_LENGTH}
+                    placeholder={`${MIN_PASSWORD_LENGTH}文字以上`}
                   />
                   <Input
                     type="password"
@@ -372,8 +374,10 @@ export default function SettingsPage() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     autoComplete="new-password"
+                    minLength={MIN_PASSWORD_LENGTH}
                   />
                 </div>
+                <p className="text-xs text-tsure-muted mt-2">{PASSWORD_MIN_LENGTH_MESSAGE}</p>
                 <Button
                   className="w-full mt-3 lg:w-auto"
                   onClick={handlePasswordChange}

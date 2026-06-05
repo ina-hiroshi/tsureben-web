@@ -87,6 +87,9 @@ export const adminResetStudentPassword = (payload) =>
 
 export const createSchool = (payload) => call('createSchool', payload);
 
+/** @deprecated createLegacyFreeSchool を使用 */
+export { createLegacyFreeSchool } from './billingApi';
+
 export const sendVerificationCode = (payload) =>
   call('sendVerificationCode', payload);
 

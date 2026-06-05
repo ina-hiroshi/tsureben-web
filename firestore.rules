@@ -105,6 +105,10 @@ service cloud.firestore {
       return k.hasOnly(['shareScope', 'updatedAt'])
         || k.hasOnly(['mateScope', 'updatedAt'])
         || k.hasOnly(['mustChangePassword', 'updatedAt'])
+        || k.hasOnly(['onboardingComplete', 'updatedAt'])
+        || k.hasOnly(['onboardingComplete', 'mustChangePassword', 'updatedAt'])
+        || k.hasOnly(['shareScope', 'mateScope', 'onboardingComplete', 'updatedAt'])
+        || k.hasOnly(['shareScope', 'mateScope', 'onboardingComplete', 'mustChangePassword', 'updatedAt'])
         || k.hasOnly(['name', 'nameLower', 'updatedAt'])
         || k.hasOnly(['subjectCatalog', 'updatedAt'])
         || k.hasOnly(['shareScope', 'mateScope', 'updatedAt'])
@@ -176,9 +180,15 @@ service cloud.firestore {
 
     match /schools/{schoolId} {
       allow read: if isAuthenticated();
-      allow create: if isSuperAdmin();
-      allow update: if isSuperAdmin();
-      allow delete: if false;
+      allow write: if false;
+    }
+
+    match /billingInvites/{email} {
+      allow read, write: if false;
+    }
+
+    match /stripeEvents/{eventId} {
+      allow read, write: if false;
     }
 
     match /teachers/{email} {

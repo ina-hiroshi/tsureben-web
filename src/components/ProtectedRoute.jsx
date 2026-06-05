@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { getProfile } from '../services/firestore/userService';
 import { db } from '../firebase';
 import { isWebPlatform } from '../utils/platformAccess';
+import { needsSchoolOnboarding } from '../utils/schoolOnboarding';
 import WebSelfRegisteredBlock from './WebSelfRegisteredBlock';
 import FullScreenLoader from './ui/FullScreenLoader';
 
@@ -21,6 +22,7 @@ export default function ProtectedRoute({
   const [teacherSnap, setTeacherSnap] = useState(null);
   const [registrationType, setRegistrationType] = useState(null);
   const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [profile, setProfile] = useState(null);
   const [error, setError] = useState(null);
 
   const needsTeacherCheck = requireTeacher || requireSchoolAdmin || requireSuperAdmin;
@@ -45,6 +47,7 @@ export default function ProtectedRoute({
         const [profile, teacherDoc] = await Promise.all([profilePromise, teacherPromise]);
         if (!active) return;
 
+        setProfile(profile);
         setMustChangePassword(profile?.mustChangePassword === true);
         setRegistrationType(profile?.registrationType ?? null);
         if (needsTeacherCheck) {
@@ -56,6 +59,7 @@ export default function ProtectedRoute({
         if (active) {
           setTeacherSnap(null);
           setRegistrationType(null);
+          setProfile(null);
           setMustChangePassword(false);
           setError('failed');
         }
@@ -114,7 +118,17 @@ export default function ProtectedRoute({
     );
   }
 
-  if (mustChangePassword && location.pathname !== '/settings') {
+  const schoolOnboardingRequired = needsSchoolOnboarding(profile);
+
+  if (schoolOnboardingRequired && location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" replace state={{ from: location.pathname }} />;
+  }
+
+  if (
+    mustChangePassword &&
+    !schoolOnboardingRequired &&
+    location.pathname !== '/settings'
+  ) {
     return <Navigate to="/settings" replace state={{ from: location.pathname }} />;
   }
 

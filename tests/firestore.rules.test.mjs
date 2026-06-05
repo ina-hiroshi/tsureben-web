@@ -119,6 +119,36 @@ describe('users collection', () => {
   });
 });
 
+describe('schools collection', () => {
+  it('blocks client writes including super_admin', async () => {
+    await seedBaseData();
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc('teachers/super@school.test').set({
+        schoolId: 'school-a',
+        role: 'super_admin',
+        name: 'Super',
+      });
+    });
+    const superAdmin = testEnv.authenticatedContext('super@school.test', {
+      email: 'super@school.test',
+    });
+    await assertFails(
+      superAdmin.firestore().collection('schools').add({ name: '新規校' })
+    );
+    await assertFails(
+      superAdmin.firestore().doc('schools/school-a').update({ name: '改ざん' })
+    );
+  });
+
+  it('allows authenticated read of schools', async () => {
+    await seedBaseData();
+    const teacher = testEnv.authenticatedContext('teacher-a@school.test', {
+      email: 'teacher-a@school.test',
+    });
+    await assertSucceeds(teacher.firestore().doc('schools/school-a').get());
+  });
+});
+
 describe('activeSessions collection', () => {
   it('blocks unrelated student from reading another session', async () => {
     await seedBaseData();

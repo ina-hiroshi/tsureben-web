@@ -17,12 +17,16 @@ import StudyRecordPage from './pages/StudyRecordPage';
 import TureBenMatePage from './pages/TureBenMatePage';
 import MateInvitePage from './pages/MateInvitePage';
 import SettingsPage from './pages/SettingsPage';
+import SchoolOnboardingPage from './pages/SchoolOnboardingPage';
 import AdminPage from './pages/AdminPage';
 import AdminTeacherCommentsPage from './pages/AdminTeacherCommentsPage';
 import TeacherStudentReviewPage from './pages/TeacherStudentReviewPage';
 import TeacherLivePresencePage from './pages/TeacherLivePresencePage';
 import TeacherRouteShell from './components/teacher/TeacherRouteShell';
 import StudentFeedbackPage from './pages/StudentFeedbackPage';
+import PricingPage from './pages/PricingPage';
+import ForSchoolsPage from './pages/ForSchoolsPage';
+import BillingSuccessPage from './pages/BillingSuccessPage';
 import DemoSettingsAccessSync from './components/dev/DemoSettingsAccessSync';
 import StudyTimerStalePrompt from './components/StudyTimerStalePrompt';
 
@@ -34,6 +38,9 @@ function AppLayout() {
       <Routes>
       <Route path="/" element={<Login />} />
       <Route path="/privacy" element={<PrivacyPolicyPage />} />
+      <Route path="/for-schools" element={<ForSchoolsPage />} />
+      <Route path="/pricing" element={<PricingPage />} />
+      <Route path="/billing/success" element={<BillingSuccessPage />} />
       <Route path="/oauth-callback" element={<OAuthCallback />} />
       <Route path="/mate-invite/:token" element={<MateInvitePage />} />
       <Route
@@ -73,6 +80,14 @@ function AppLayout() {
         element={
           <ProtectedRoute blockSelfRegisteredOnWeb>
             <TureBenMatePage />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/onboarding"
+        element={
+          <ProtectedRoute blockSelfRegisteredOnWeb>
+            <SchoolOnboardingPage />
           </ProtectedRoute>
         }
       />
