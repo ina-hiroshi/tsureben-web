@@ -10,6 +10,7 @@ Profile and social graph (flat document).
 - `mutualMates`, `pendingSent`, `pendingReceived`, `hiddenMates`, `hiddenRequests`
 - `subjectCatalog` (map for autocomplete)
 - `profileComplete`, `mustChangePassword`, `onboardingComplete`（学校配布アカウントの初回セットアップ完了）
+- `migratedTo`, `migratedAt`, `disabledAt`（別メールへ引き継ぎ後に無効化された移行元の tombstone。Cloud Functions のみ）
 
 ## plans/{email}/days/{YYYY-MM-DD}
 
@@ -81,3 +82,18 @@ Time-limited mate invite tokens (Cloud Functions only).
 
 - `inviterEmail`
 - `createdAt`, `expiresAt` (30-minute TTL)
+
+## accountTransfers/{code}
+
+一般ユーザー（`self_registered`）が別メールの管理アカウント（`school_provisioned`）へデータを引き継ぐためのコード（Cloud Functions のみ）。
+
+- `sourceEmail`（引き継ぎ元）
+- `used`, `usedAt`, `targetEmail`（使用後）
+- `createdAt`, `expiresAt`（15-minute TTL、単回使用）
+
+## schoolJoinInvites/{email}
+
+学校管理者の一括登録で「既存の一般ユーザーと同一メール」が検出されたときに作成される参加招待（Cloud Functions のみ）。承認するとその場で `school_provisioned` へ昇格する。
+
+- `schoolId`, `name`, `grade`, `class`, `number`
+- `createdAt`, `createdBy`

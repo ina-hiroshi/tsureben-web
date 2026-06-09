@@ -227,6 +227,14 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /accountTransfers/{code} {
+      allow read, write: if false;
+    }
+
+    match /schoolJoinInvites/{email} {
+      allow read, write: if false;
+    }
+
     function feedbackThreadData(threadId) {
       return get(/databases/$(database)/documents/feedbackThreads/$(threadId)).data;
     }

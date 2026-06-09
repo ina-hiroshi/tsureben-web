@@ -11,7 +11,13 @@ import { auth, db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useTeacherStatus } from '../hooks/useTeacherStatus';
 import { getProfile, updateProfile } from '../services/firestore/userService';
-import { deleteSelfRegisteredAccount } from '../services/authApi';
+import {
+  deleteSelfRegisteredAccount,
+  createAccountTransferCode,
+  redeemAccountTransfer,
+  getPendingSchoolJoin,
+  acceptSchoolJoin,
+} from '../services/authApi';
 import { logout } from '../utils/authSession';
 import { reauthenticateWithApple, isAppleLoginCancelled } from '../utils/appleAuth';
 import {
@@ -70,6 +76,14 @@ export default function SettingsPage() {
   const [deleteConfirmPhrase, setDeleteConfirmPhrase] = useState('');
   const [deletePassword, setDeletePassword] = useState('');
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [schoolPlan, setSchoolPlan] = useState(null);
+  const [transferCode, setTransferCode] = useState(null);
+  const [transferExpiresAt, setTransferExpiresAt] = useState(null);
+  const [generatingCode, setGeneratingCode] = useState(false);
+  const [pendingJoin, setPendingJoin] = useState(null);
+  const [acceptingJoin, setAcceptingJoin] = useState(false);
+  const [importCode, setImportCode] = useState('');
+  const [importingTransfer, setImportingTransfer] = useState(false);
 
   const isPasswordUser =
     auth.currentUser?.providerData?.some((p) => p.providerId === 'password') ?? false;
@@ -80,6 +94,8 @@ export default function SettingsPage() {
   const canDeleteAccount = !isTeacher && canDeleteSelfRegisteredAccount(profile);
   const isSchoolProvisionedStudent =
     !isTeacher && profile && !canDeleteSelfRegisteredAccount(profile);
+  const isLegacyFreeSchool = schoolPlan === 'legacy_free';
+  const canImportTransfer = isSchoolProvisionedStudent && !isLegacyFreeSchool;
   const activeHelp = helpId ? SETTINGS_SECTION_HELP[helpId] : null;
 
   useEffect(() => {
@@ -95,12 +111,26 @@ export default function SettingsPage() {
       const schoolId = p.schoolId || teacherSchoolId;
       if (schoolId) {
         const schoolSnap = await getDoc(doc(db, 'schools', schoolId));
-        setSchoolName(schoolSnap.exists() ? schoolSnap.data()?.name || '' : '');
+        const schoolData = schoolSnap.exists() ? schoolSnap.data() : null;
+        setSchoolName(schoolData?.name || '');
+        setSchoolPlan(schoolData?.billing?.plan ?? null);
       } else {
         setSchoolName('');
+        setSchoolPlan(null);
       }
     });
   }, [email, teacherSchoolId]);
+
+  useEffect(() => {
+    if (!email || isTeacher || !profile) return;
+    if (!canDeleteSelfRegisteredAccount(profile)) {
+      setPendingJoin(null);
+      return;
+    }
+    getPendingSchoolJoin()
+      .then((res) => setPendingJoin(res?.invite ?? null))
+      .catch(() => setPendingJoin(null));
+  }, [email, isTeacher, profile]);
 
   const saveShareScope = async (value) => {
     setShareScope(value);
@@ -112,6 +142,50 @@ export default function SettingsPage() {
     setMateScope(value);
     await updateProfile(email, { mateScope: value });
     toast.success('保存しました');
+  };
+
+  const handleGenerateTransferCode = async () => {
+    setGeneratingCode(true);
+    try {
+      const res = await createAccountTransferCode();
+      setTransferCode(res.code);
+      setTransferExpiresAt(res.expiresAt ?? null);
+      toast.success('引き継ぎコードを発行しました');
+    } catch (err) {
+      toast.error(err.message || 'コードの発行に失敗しました');
+    } finally {
+      setGeneratingCode(false);
+    }
+  };
+
+  const handleAcceptJoin = async () => {
+    setAcceptingJoin(true);
+    try {
+      await acceptSchoolJoin();
+      toast.success('参加しました。画面を更新します');
+      window.location.reload();
+    } catch (err) {
+      toast.error(err.message || '参加に失敗しました');
+      setAcceptingJoin(false);
+    }
+  };
+
+  const handleImportTransfer = async () => {
+    const code = importCode.trim();
+    if (!code) {
+      toast.warning('引き継ぎコードを入力してください');
+      return;
+    }
+    setImportingTransfer(true);
+    try {
+      await redeemAccountTransfer({ code });
+      setImportCode('');
+      toast.success('以前のアカウントのデータを引き継ぎました。画面を更新します');
+      window.location.reload();
+    } catch (err) {
+      toast.error(err.message || '引き継ぎに失敗しました');
+      setImportingTransfer(false);
+    }
   };
 
   const handleSaveName = async () => {
@@ -416,6 +490,84 @@ export default function SettingsPage() {
                     学校から配布されたアカウントは、アプリから削除できません。削除が必要な場合は学校管理者にお問い合わせください。
                   </p>
                 )}
+              </Card>
+            )}
+
+            {pendingJoin && (
+              <Card className="order-7 lg:order-none border-tsure-primary/40">
+                <SectionTitle>参加の招待が届いています</SectionTitle>
+                <p className="text-sm text-tsure-primary leading-relaxed mb-3">
+                  {pendingJoin.schoolName
+                    ? `「${pendingJoin.schoolName}」に参加しますか？`
+                    : '管理アカウントへの参加の招待が届いています。参加しますか？'}
+                  <br />
+                  参加すると、いまのデータはそのまま管理アカウントとして引き継がれます。
+                </p>
+                <Button
+                  className="w-full lg:w-auto"
+                  onClick={handleAcceptJoin}
+                  disabled={acceptingJoin}
+                >
+                  {acceptingJoin ? '参加中…' : '参加する'}
+                </Button>
+              </Card>
+            )}
+
+            {canDeleteAccount && (
+              <Card className="order-8 lg:order-none">
+                <SectionTitle>管理アカウントへ引き継ぐ</SectionTitle>
+                <p className="text-sm text-tsure-primary leading-relaxed mb-3">
+                  学校・塾などから別のアカウントを配布された場合、いまのデータ（学習計画・記録・連れ勉仲間など）をそのアカウントへ引き継げます。
+                  引き継ぎコードを発行し、配布されたアカウントでログインしてコードを入力してください。
+                  <br />
+                  引き継ぎが完了すると、このアカウントはログインできなくなります。
+                </p>
+                {transferCode ? (
+                  <div className="rounded-xl border border-tsure-border bg-tsure-surface px-4 py-3">
+                    <p className="text-xs text-tsure-muted">引き継ぎコード</p>
+                    <p className="text-2xl font-bold tracking-widest text-tsure-primary">
+                      {transferCode}
+                    </p>
+                    <p className="text-xs text-tsure-muted mt-1">
+                      {transferExpiresAt
+                        ? `有効期限: ${new Date(transferExpiresAt).toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' })}（約15分）`
+                        : '約15分間有効です'}
+                    </p>
+                  </div>
+                ) : (
+                  <Button
+                    className="w-full lg:w-auto"
+                    onClick={handleGenerateTransferCode}
+                    disabled={generatingCode}
+                  >
+                    {generatingCode ? '発行中…' : '引き継ぎコードを発行'}
+                  </Button>
+                )}
+              </Card>
+            )}
+
+            {canImportTransfer && (
+              <Card className="order-9 lg:order-none">
+                <SectionTitle>以前のアカウントから引き継ぐ</SectionTitle>
+                <p className="text-sm text-tsure-primary leading-relaxed mb-3">
+                  以前に使っていた一般ユーザーのアカウントで発行した引き継ぎコードを入力すると、その学習データをこのアカウントに取り込めます。
+                </p>
+                <div className="space-y-3">
+                  <Input
+                    label="引き継ぎコード"
+                    value={importCode}
+                    onChange={(e) => setImportCode(e.target.value)}
+                    inputMode="numeric"
+                    placeholder="6桁のコード"
+                  />
+                  <Button
+                    className="w-full lg:w-auto"
+                    onClick={handleImportTransfer}
+                    disabled={importingTransfer}
+                  >
+                    {importingTransfer ? '引き継ぎ中…' : 'データを引き継ぐ'}
+                  </Button>
+                </div>
               </Card>
             )}
           </div>

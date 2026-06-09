@@ -46,13 +46,14 @@ function mergeImportResults(target, chunk) {
   target.created += chunk.created || 0;
   target.updated += chunk.updated || 0;
   target.skipped += chunk.skipped || 0;
+  target.invited += chunk.invited || 0;
   if (chunk.errors?.length) {
     target.errors.push(...chunk.errors);
   }
 }
 
 async function callBatched(name, { schoolId, rows }, batchSize, onProgress) {
-  const aggregate = { created: 0, updated: 0, skipped: 0, errors: [] };
+  const aggregate = { created: 0, updated: 0, skipped: 0, invited: 0, errors: [] };
   const totalBatches = Math.ceil(rows.length / batchSize) || 1;
 
   for (let i = 0; i < rows.length; i += batchSize) {
@@ -114,3 +115,12 @@ export const redeemMateInvite = (payload) => call('redeemMateInvite', payload);
 export const cancelMateRequest = (payload) => call('cancelMateRequest', payload);
 
 export const deleteSelfRegisteredAccount = () => call('deleteSelfRegisteredAccount', {});
+
+export const createAccountTransferCode = () => call('createAccountTransferCode', {});
+
+export const redeemAccountTransfer = (payload) =>
+  call('redeemAccountTransfer', payload);
+
+export const getPendingSchoolJoin = () => call('getPendingSchoolJoin', {});
+
+export const acceptSchoolJoin = () => call('acceptSchoolJoin', {});

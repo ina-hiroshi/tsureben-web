@@ -19,6 +19,10 @@ import {
   resetPasswordWithCodeHandler,
   sendVerificationCodeHandler,
   verifyCodeHandler,
+  createAccountTransferCodeHandler,
+  redeemAccountTransferHandler,
+  getPendingSchoolJoinHandler,
+  acceptSchoolJoinHandler,
 } from "./authAdmin.js";
 import { exchangeOAuthCode } from "./oauthExchange.js";
 import {
@@ -239,6 +243,38 @@ export const deleteSelfRegisteredAccount = onCall(
   wrapCallable(async (request) => {
     const email = requireAuth(request);
     return deleteSelfRegisteredAccountHandler(email);
+  })
+);
+
+export const createAccountTransferCode = onCall(
+  defaultCallableOptions,
+  wrapCallable(async (request) => {
+    const email = requireAuth(request);
+    return createAccountTransferCodeHandler(email);
+  })
+);
+
+export const redeemAccountTransfer = onCall(
+  bulkCallableOptions,
+  wrapCallable(async (request) => {
+    const email = requireAuth(request);
+    return redeemAccountTransferHandler(email, request.data || {});
+  })
+);
+
+export const getPendingSchoolJoin = onCall(
+  defaultCallableOptions,
+  wrapCallable(async (request) => {
+    const email = requireAuth(request);
+    return getPendingSchoolJoinHandler(email);
+  })
+);
+
+export const acceptSchoolJoin = onCall(
+  defaultCallableOptions,
+  wrapCallable(async (request) => {
+    const email = requireAuth(request);
+    return acceptSchoolJoinHandler(email);
   })
 );
 

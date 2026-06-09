@@ -7,6 +7,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { getProfile, updateProfile } from '../services/firestore/userService';
+import { redeemAccountTransfer } from '../services/authApi';
 import { needsSchoolOnboarding } from '../utils/schoolOnboarding';
 import PageLayout from '../components/ui/PageLayout';
 import Card from '../components/ui/Card';
@@ -48,6 +49,9 @@ export default function SchoolOnboardingPage() {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
   const [schoolName, setSchoolName] = useState('');
+  const [isLegacyFreeSchool, setIsLegacyFreeSchool] = useState(false);
+  const [importCode, setImportCode] = useState('');
+  const [importingTransfer, setImportingTransfer] = useState(false);
   const [stepIndex, setStepIndex] = useState(0);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -77,7 +81,9 @@ export default function SchoolOnboardingPage() {
         if (p.schoolId) {
           const schoolSnap = await getDoc(doc(db, 'schools', p.schoolId));
           if (active) {
-            setSchoolName(schoolSnap.exists() ? schoolSnap.data()?.name || '' : '');
+            const schoolData = schoolSnap.exists() ? schoolSnap.data() : null;
+            setSchoolName(schoolData?.name || '');
+            setIsLegacyFreeSchool(schoolData?.billing?.plan === 'legacy_free');
           }
         }
       } catch (err) {
@@ -134,6 +140,24 @@ export default function SchoolOnboardingPage() {
       }
     } finally {
       setChangingPassword(false);
+    }
+  };
+
+  const handleImportTransfer = async () => {
+    const code = importCode.trim();
+    if (!code) {
+      toast.warning('引き継ぎコードを入力してください');
+      return;
+    }
+    setImportingTransfer(true);
+    try {
+      await redeemAccountTransfer({ code });
+      setImportCode('');
+      toast.success('以前のアカウントのデータを引き継ぎました');
+    } catch (err) {
+      toast.error(err.message || '引き継ぎに失敗しました');
+    } finally {
+      setImportingTransfer(false);
     }
   };
 
@@ -307,6 +331,35 @@ export default function SchoolOnboardingPage() {
                   </p>
                 </div>
               </div>
+
+              {!isLegacyFreeSchool && (
+                <div className="mt-6 rounded-xl border border-tsure-border bg-tsure-surface px-4 py-3">
+                  <h3 className="text-sm font-semibold text-tsure-primary mb-1">
+                    以前のアカウントから引き継ぐ（任意）
+                  </h3>
+                  <p className="text-xs text-tsure-muted mb-3 leading-relaxed">
+                    以前に一般ユーザーとして使っていたアカウントがある場合、そのアカウントで発行した引き継ぎコードを入力すると、学習データをこのアカウントに取り込めます。スキップしてもかまいません。
+                  </p>
+                  <div className="space-y-2">
+                    <Input
+                      label="引き継ぎコード"
+                      value={importCode}
+                      onChange={(e) => setImportCode(e.target.value)}
+                      inputMode="numeric"
+                      placeholder="6桁のコード"
+                    />
+                    <Button
+                      variant="secondary"
+                      className="w-full"
+                      onClick={handleImportTransfer}
+                      disabled={importingTransfer}
+                    >
+                      {importingTransfer ? '引き継ぎ中…' : 'データを引き継ぐ'}
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               <div className="flex flex-col gap-2 mt-6">
                 <Button className="w-full" onClick={handleFinish} disabled={finishing}>
                   {finishing ? '保存中…' : '設定を完了する'}

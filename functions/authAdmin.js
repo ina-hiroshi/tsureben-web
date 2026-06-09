@@ -122,7 +122,7 @@ export async function bulkImportStudentsHandler(callerEmail, { schoolId, rows })
   }
 
   const auth = getAuth();
-  const results = { created: 0, skipped: 0, errors: [] };
+  const results = { created: 0, skipped: 0, invited: 0, errors: [] };
   let potentialNewStudents = 0;
   for (const row of rows) {
     const email = normalizeEmail(row.email);
@@ -156,15 +156,33 @@ export async function bulkImportStudentsHandler(callerEmail, { schoolId, rows })
         if (err.code !== "auth/user-not-found") throw err;
       }
 
-      if (!alreadyRegistered) {
-        const userSnap = await db().collection("users").doc(email).get();
-        if (userSnap.exists) {
-          alreadyRegistered = true;
-        }
+      const userSnap = await db().collection("users").doc(email).get();
+      if (userSnap.exists) {
+        alreadyRegistered = true;
       }
 
       if (alreadyRegistered) {
-        results.skipped += 1;
+        // 既存が一般ユーザー（self_registered）なら、その場昇格のための参加招待を作成する。
+        const existingData = userSnap.exists ? userSnap.data() : null;
+        const isSelfRegistered =
+          existingData &&
+          existingData.registrationType !== "school_provisioned" &&
+          canDeleteSelfRegisteredAccount(existingData);
+        const existingTeacher = await getTeacherRecord(email);
+        if (isSelfRegistered && !existingTeacher) {
+          await db().collection("schoolJoinInvites").doc(email).set({
+            schoolId,
+            name: name || existingData.name || "",
+            grade,
+            class: classNum,
+            number,
+            createdAt: FieldValue.serverTimestamp(),
+            createdBy: normalizeEmail(callerEmail),
+          });
+          results.invited += 1;
+        } else {
+          results.skipped += 1;
+        }
         continue;
       }
 
@@ -545,7 +563,8 @@ export async function registerAppleStudentHandler(request) {
   const userSnap = await userRef.get();
 
   if (userSnap.exists) {
-    const registrationType = userSnap.data()?.registrationType;
+    const userData = userSnap.data() || {};
+    const registrationType = userData.registrationType;
     if (registrationType === "school_provisioned") {
       throw new HttpsError(
         "failed-precondition",
@@ -554,6 +573,9 @@ export async function registerAppleStudentHandler(request) {
     }
     if (registrationType && registrationType !== "self_registered") {
       throw new HttpsError("failed-precondition", "このアカウントでは Apple ID 登録を利用できません");
+    }
+    if (!registrationType && !looksLikeSchoolProvisioned(userData)) {
+      await userRef.set({ registrationType: "self_registered" }, { merge: true });
     }
     return { success: true, created: false, email };
   }
@@ -978,4 +1000,376 @@ export async function deleteSelfRegisteredAccountHandler(callerEmail) {
   }
 
   return { success: true };
+}
+
+const ACCOUNT_TRANSFER_TTL_MS = 15 * 60 * 1000;
+
+/**
+ * source のユーザーデータ（学習計画・記録・教科カタログ・メイト関係）を target にコピー/マージする。
+ * - plans/logs は移行先優先（同一 dateKey が既にあればスキップ）
+ * - メイト関係は双方向に source -> target に付け替え
+ * - 学外メイトが含まれる場合は target.mateScope を「学内外」にする
+ * 学校側が設定したプロフィール項目（schoolId/grade/class/number/name/role など）は上書きしない。
+ */
+async function copyUserScopedData(dbRef, source, target) {
+  const sourceEmail = normalizeEmail(source);
+  const targetEmail = normalizeEmail(target);
+
+  const [sourceSnap, targetSnap] = await Promise.all([
+    dbRef.collection("users").doc(sourceEmail).get(),
+    dbRef.collection("users").doc(targetEmail).get(),
+  ]);
+  if (!sourceSnap.exists) {
+    throw new HttpsError("not-found", "引き継ぎ元のデータが見つかりません");
+  }
+  if (!targetSnap.exists) {
+    throw new HttpsError("not-found", "引き継ぎ先のアカウントが見つかりません");
+  }
+
+  const sourceData = sourceSnap.data();
+  const targetData = targetSnap.data();
+  const targetSchoolId = targetData.schoolId ?? null;
+
+  // 1. plans / logs をコピー（移行先優先）
+  await copyDaysSubcollection(dbRef, "plans", sourceEmail, targetEmail);
+  await copyDaysSubcollection(dbRef, "logs", sourceEmail, targetEmail);
+
+  // 2. メイト関係を双方向に source -> target へ付け替え
+  const { hasOutOfSchoolMate } = await reassignMateReferences(
+    dbRef,
+    sourceEmail,
+    targetEmail,
+    targetSchoolId,
+    sourceData
+  );
+
+  // 3. target ユーザードキュメントを更新（教科カタログ + メイト配列をマージ）
+  const mergedSubjectCatalog = {
+    ...(sourceData.subjectCatalog || {}),
+    ...(targetData.subjectCatalog || {}),
+  };
+  const targetUpdate = {
+    subjectCatalog: mergedSubjectCatalog,
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  for (const field of MATE_REFERENCE_FIELDS) {
+    const combined = new Set(
+      (targetData[field] || []).map(normalizeEmail).filter(Boolean)
+    );
+    for (const entry of sourceData[field] || []) {
+      const ne = normalizeEmail(entry);
+      if (ne && ne !== targetEmail && ne !== sourceEmail) combined.add(ne);
+    }
+    targetUpdate[field] = [...combined];
+  }
+  if (hasOutOfSchoolMate) {
+    targetUpdate.mateScope = "学内外";
+  }
+  await dbRef.collection("users").doc(targetEmail).set(targetUpdate, { merge: true });
+}
+
+async function copyDaysSubcollection(dbRef, collectionName, source, target) {
+  const srcSnap = await dbRef
+    .collection(collectionName)
+    .doc(source)
+    .collection("days")
+    .get();
+  if (srcSnap.empty) return;
+
+  let batch = dbRef.batch();
+  let ops = 0;
+  for (const dayDoc of srcSnap.docs) {
+    const targetRef = dbRef
+      .collection(collectionName)
+      .doc(target)
+      .collection("days")
+      .doc(dayDoc.id);
+    const targetDaySnap = await targetRef.get();
+    if (targetDaySnap.exists) continue; // 移行先優先
+    batch.set(targetRef, dayDoc.data());
+    ops += 1;
+    if (ops >= 400) {
+      await batch.commit();
+      batch = dbRef.batch();
+      ops = 0;
+    }
+  }
+  if (ops > 0) await batch.commit();
+}
+
+/**
+ * source のメイト関係を相手側ドキュメントも含めて target へ付け替える。
+ * mutualMates は相手側も mutualMates、pendingSent は相手側 pendingReceived、
+ * pendingReceived は相手側 pendingSent を書き換える。
+ * 配列は読み込んで JS 側で source -> target に置換した結果を書き込む（同一フィールドへの
+ * 複数 transform 競合を避けるため）。
+ */
+async function reassignMateReferences(dbRef, source, target, targetSchoolId, sourceData) {
+  const friendFieldMap = new Map(); // friendEmail -> Set<friendField>
+  const addFriendField = (email, friendField) => {
+    const e = normalizeEmail(email);
+    if (!e || e === source || e === target) return;
+    if (!friendFieldMap.has(e)) friendFieldMap.set(e, new Set());
+    friendFieldMap.get(e).add(friendField);
+  };
+
+  for (const e of sourceData.mutualMates || []) addFriendField(e, "mutualMates");
+  for (const e of sourceData.pendingSent || []) addFriendField(e, "pendingReceived");
+  for (const e of sourceData.pendingReceived || []) addFriendField(e, "pendingSent");
+
+  let hasOutOfSchoolMate = false;
+  let batch = dbRef.batch();
+  let ops = 0;
+
+  for (const [friendEmail, fields] of friendFieldMap) {
+    const friendRef = dbRef.collection("users").doc(friendEmail);
+    const friendSnap = await friendRef.get();
+    if (!friendSnap.exists) continue;
+    const fdata = friendSnap.data();
+
+    const friendSchoolId = fdata.schoolId ?? null;
+    if (!targetSchoolId || friendSchoolId !== targetSchoolId) {
+      hasOutOfSchoolMate = true;
+    }
+
+    const update = { updatedAt: FieldValue.serverTimestamp() };
+    for (const field of fields) {
+      const arr = (fdata[field] || []).filter(
+        (x) => normalizeEmail(x) !== source
+      );
+      if (!arr.some((x) => normalizeEmail(x) === target)) arr.push(target);
+      update[field] = arr;
+    }
+    batch.update(friendRef, update);
+    ops += 1;
+    if (ops >= 400) {
+      await batch.commit();
+      batch = dbRef.batch();
+      ops = 0;
+    }
+  }
+  if (ops > 0) await batch.commit();
+
+  return { hasOutOfSchoolMate };
+}
+
+/** 移行元アカウントを無効化し、メイト配列をクリアして tombstone を残す。 */
+async function disableMigratedSourceAccount(dbRef, source, target) {
+  const sessionRef = dbRef.collection("activeSessions").doc(source);
+  const sessionSnap = await sessionRef.get();
+  if (sessionSnap.exists) {
+    await sessionRef.delete();
+  }
+  await batchArrayRemoveFromQuery(dbRef, "activeSessions", "mateEmails", source);
+
+  await dbRef.collection("users").doc(source).set(
+    {
+      migratedTo: target,
+      migratedAt: FieldValue.serverTimestamp(),
+      disabledAt: FieldValue.serverTimestamp(),
+      mutualMates: [],
+      pendingSent: [],
+      pendingReceived: [],
+      hiddenMates: [],
+      hiddenRequests: [],
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  const auth = getAuth();
+  try {
+    const userRecord = await auth.getUserByEmail(source);
+    await auth.updateUser(userRecord.uid, { disabled: true });
+  } catch (err) {
+    if (err.code !== "auth/user-not-found") throw err;
+  }
+}
+
+/** 一般ユーザーが管理アカウントへ引き継ぐためのコードを発行する（コードフロー / 別メール）。 */
+export async function createAccountTransferCodeHandler(callerEmail) {
+  const sourceEmail = normalizeEmail(callerEmail);
+  if (!sourceEmail) {
+    throw new HttpsError("invalid-argument", "メールアドレスが必要です");
+  }
+
+  const teacher = await getTeacherRecord(sourceEmail);
+  if (teacher) {
+    throw new HttpsError(
+      "permission-denied",
+      "教員・管理者アカウントは引き継ぎできません"
+    );
+  }
+
+  const userSnap = await db().collection("users").doc(sourceEmail).get();
+  if (!userSnap.exists) {
+    throw new HttpsError("not-found", "ユーザーが見つかりません");
+  }
+  if (!canDeleteSelfRegisteredAccount(userSnap.data())) {
+    throw new HttpsError(
+      "failed-precondition",
+      "このアカウントは引き継ぎコードを発行できません"
+    );
+  }
+
+  const code = generateCode();
+  const expiresAt = Timestamp.fromMillis(Date.now() + ACCOUNT_TRANSFER_TTL_MS);
+  await db().collection("accountTransfers").doc(code).set({
+    sourceEmail,
+    used: false,
+    createdAt: FieldValue.serverTimestamp(),
+    expiresAt,
+  });
+
+  return { code, expiresAt: expiresAt.toMillis() };
+}
+
+/** 管理アカウント側で引き継ぎコードを使用し、データを移行する（コードフロー / 別メール）。 */
+export async function redeemAccountTransferHandler(callerEmail, { code } = {}) {
+  const targetEmail = normalizeEmail(callerEmail);
+  const inputCode = String(code || "").trim();
+  if (!targetEmail) {
+    throw new HttpsError("unauthenticated", "ログインが必要です");
+  }
+  if (!inputCode) {
+    throw new HttpsError("invalid-argument", "引き継ぎコードを入力してください");
+  }
+
+  const targetSnap = await db().collection("users").doc(targetEmail).get();
+  if (!targetSnap.exists) {
+    throw new HttpsError("not-found", "アカウントが見つかりません");
+  }
+  if (targetSnap.data()?.registrationType !== "school_provisioned") {
+    throw new HttpsError(
+      "failed-precondition",
+      "学校・塾から配布されたアカウントでのみ引き継ぎできます"
+    );
+  }
+
+  const codeRef = db().collection("accountTransfers").doc(inputCode);
+  const codeSnap = await codeRef.get();
+  if (!codeSnap.exists) {
+    throw new HttpsError("not-found", "引き継ぎコードが見つかりません");
+  }
+  const codeData = codeSnap.data();
+  if (codeData.used) {
+    throw new HttpsError("failed-precondition", "この引き継ぎコードは使用済みです");
+  }
+  if (isInviteExpired(codeData.expiresAt)) {
+    throw new HttpsError("deadline-exceeded", "引き継ぎコードの有効期限が切れています");
+  }
+
+  const sourceEmail = normalizeEmail(codeData.sourceEmail);
+  if (!sourceEmail) {
+    throw new HttpsError("failed-precondition", "引き継ぎ元が不明です");
+  }
+  if (sourceEmail === targetEmail) {
+    throw new HttpsError("invalid-argument", "同じアカウントには引き継げません");
+  }
+
+  const sourceSnap = await db().collection("users").doc(sourceEmail).get();
+  if (!sourceSnap.exists) {
+    throw new HttpsError("not-found", "引き継ぎ元のデータが見つかりません");
+  }
+  if (!canDeleteSelfRegisteredAccount(sourceSnap.data())) {
+    throw new HttpsError("failed-precondition", "引き継ぎ元アカウントが不正です");
+  }
+
+  const dbRef = db();
+  await copyUserScopedData(dbRef, sourceEmail, targetEmail);
+  await codeRef.set(
+    { used: true, usedAt: FieldValue.serverTimestamp(), targetEmail },
+    { merge: true }
+  );
+  await disableMigratedSourceAccount(dbRef, sourceEmail, targetEmail);
+
+  return { success: true, sourceEmail };
+}
+
+/** 一般ユーザー宛ての参加招待（同一メール）を返す。 */
+export async function getPendingSchoolJoinHandler(callerEmail) {
+  const email = normalizeEmail(callerEmail);
+  if (!email) {
+    throw new HttpsError("invalid-argument", "メールアドレスが必要です");
+  }
+
+  const inviteSnap = await db().collection("schoolJoinInvites").doc(email).get();
+  if (!inviteSnap.exists) {
+    return { invite: null };
+  }
+  const invite = inviteSnap.data();
+
+  let schoolName = "";
+  if (invite.schoolId) {
+    const schoolSnap = await db().collection("schools").doc(invite.schoolId).get();
+    schoolName = schoolSnap.exists ? schoolSnap.data()?.name || "" : "";
+  }
+
+  return {
+    invite: {
+      schoolId: invite.schoolId || null,
+      schoolName,
+      grade: invite.grade || "",
+      class: invite.class || "",
+      number: invite.number || "",
+    },
+  };
+}
+
+/** 一般ユーザーが参加招待を承認し、その場で管理アカウントへ昇格する（同一メール）。 */
+export async function acceptSchoolJoinHandler(callerEmail) {
+  const email = normalizeEmail(callerEmail);
+  if (!email) {
+    throw new HttpsError("invalid-argument", "メールアドレスが必要です");
+  }
+
+  const teacher = await getTeacherRecord(email);
+  if (teacher) {
+    throw new HttpsError(
+      "permission-denied",
+      "教員・管理者アカウントでは利用できません"
+    );
+  }
+
+  const inviteRef = db().collection("schoolJoinInvites").doc(email);
+  const inviteSnap = await inviteRef.get();
+  if (!inviteSnap.exists) {
+    throw new HttpsError("not-found", "参加の招待が見つかりません");
+  }
+  const invite = inviteSnap.data();
+
+  const userSnap = await db().collection("users").doc(email).get();
+  if (!userSnap.exists) {
+    throw new HttpsError("not-found", "ユーザーが見つかりません");
+  }
+  if (!canDeleteSelfRegisteredAccount(userSnap.data())) {
+    throw new HttpsError("failed-precondition", "このアカウントは参加できません");
+  }
+
+  if (!invite.schoolId) {
+    throw new HttpsError("failed-precondition", "招待の情報が不正です");
+  }
+
+  // 在籍数の上限・契約状態を確認（1名追加）
+  await assertSchoolBillingAllowsWrite(invite.schoolId, { newStudents: 1 });
+
+  await db().collection("users").doc(email).set(
+    {
+      schoolId: invite.schoolId,
+      role: "student",
+      registrationType: "school_provisioned",
+      grade: invite.grade || "",
+      class: invite.class || "",
+      number: invite.number || "",
+      profileComplete: Boolean(invite.grade && invite.class && invite.number),
+      mustChangePassword: false,
+      onboardingComplete: true,
+      updatedAt: FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  await inviteRef.delete();
+
+  return { success: true, schoolId: invite.schoolId };
 }

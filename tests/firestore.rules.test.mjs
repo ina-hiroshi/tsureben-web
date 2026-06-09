@@ -149,6 +149,41 @@ describe('schools collection', () => {
   });
 });
 
+describe('accountTransfers collection', () => {
+  it('blocks all client read and write', async () => {
+    await seedBaseData();
+    const studentA = testEnv.authenticatedContext('student-a@school.test', {
+      email: 'student-a@school.test',
+    });
+    await assertFails(
+      studentA.firestore().doc('accountTransfers/123456').get()
+    );
+    await assertFails(
+      studentA.firestore().doc('accountTransfers/123456').set({
+        sourceEmail: 'student-a@school.test',
+        used: false,
+      })
+    );
+  });
+});
+
+describe('schoolJoinInvites collection', () => {
+  it('blocks all client read and write', async () => {
+    await seedBaseData();
+    const studentA = testEnv.authenticatedContext('student-a@school.test', {
+      email: 'student-a@school.test',
+    });
+    await assertFails(
+      studentA.firestore().doc('schoolJoinInvites/student-a@school.test').get()
+    );
+    await assertFails(
+      studentA.firestore().doc('schoolJoinInvites/student-a@school.test').set({
+        schoolId: 'school-a',
+      })
+    );
+  });
+});
+
 describe('activeSessions collection', () => {
   it('blocks unrelated student from reading another session', async () => {
     await seedBaseData();

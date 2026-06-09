@@ -26,6 +26,7 @@ function ImportResult({ result }) {
     <div className="text-sm bg-green-50 border border-green-200 p-3 rounded space-y-1">
       <p className="font-semibold text-green-800">{label}</p>
       {data.created != null && <p>新規: {data.created} 件</p>}
+      {data.invited > 0 && <p>参加招待を送信（既存の一般ユーザー）: {data.invited} 件</p>}
       {data.skipped > 0 && <p>スキップ（登録済み）: {data.skipped} 件</p>}
       {data.updated != null && data.updated > 0 && <p>更新: {data.updated} 件</p>}
       {data.message && <p>{data.message}</p>}
@@ -101,6 +102,7 @@ function CsvImportBlock({
 function formatImportToast(label, data) {
   const parts = [];
   if (data.created) parts.push(`新規 ${data.created}件`);
+  if (data.invited) parts.push(`参加招待 ${data.invited}件`);
   if (data.skipped) parts.push(`スキップ ${data.skipped}件`);
   if (data.updated) parts.push(`更新 ${data.updated}件`);
   if (data.errors?.length) parts.push(`エラー ${data.errors.length}件`);
