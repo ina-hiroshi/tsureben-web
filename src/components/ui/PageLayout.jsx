@@ -24,17 +24,16 @@ export default function PageLayout({
   const mainWidthClass = MAIN_WIDTH[contentWidth] || MAIN_WIDTH.default;
   const location = useLocation();
   const { eligible: adEligible } = useAdEligibility();
-  const { initialized: adInitialized, bannerHeight } = useAdContext() ?? {};
-  const showAdBanner =
-    adEligible && adInitialized && isAdBannerRoute(location.pathname);
+  const { bannerHeight } = useAdContext() ?? {};
+  const showAdSlot = adEligible && isAdBannerRoute(location.pathname);
   const adReservePx =
-    showAdBanner && bannerHeight > 0 ? bannerHeight : showAdBanner ? AD_BANNER_RESERVE_HEIGHT : 0;
+    showAdSlot && bannerHeight > 0 ? bannerHeight : showAdSlot ? AD_BANNER_RESERVE_HEIGHT : 0;
 
   return (
     <div
       className={`min-h-full flex flex-col md:flex-row md:min-h-dvh bg-tsure-bg text-tsure-on-primary md:pb-0 ${className}`}
       style={{
-        paddingBottom: showAdBanner
+        paddingBottom: showAdSlot
           ? `calc(1rem + ${adReservePx}px + var(--safe-bottom))`
           : 'calc(1rem + var(--safe-bottom))',
       }}
@@ -50,7 +49,7 @@ export default function PageLayout({
         >
           {children}
         </main>
-        {showAdBanner && <AdBanner key={location.pathname} />}
+        {showAdSlot && <AdBanner key={location.pathname} />}
       </div>
     </div>
   );

@@ -8,6 +8,10 @@ import {
   resolveAppOrigin,
 } from "./billingConfig.js";
 import { stripeSecretKey, stripeWebhookSecret } from "./callableConfig.js";
+import {
+  cancellationResetFieldsForActiveBilling,
+  processSchoolSubscriptionCancellation,
+} from "./billingCancellation.js";
 
 function db() {
   return getFirestore();
@@ -162,6 +166,7 @@ async function upsertSchoolFromCheckout(session) {
         name: schoolName,
         settings,
         billing,
+        ...cancellationResetFieldsForActiveBilling(),
         updatedAt: FieldValue.serverTimestamp(),
       },
       { merge: true }
@@ -214,30 +219,32 @@ async function syncSchoolBillingFromSubscription(subscription) {
     snap.docs[0].data()?.billing?.plan ||
     "standard";
 
-  await snap.docs[0].ref.set(
-    {
-      billing: {
-        plan: planKey,
-        status: mapSubscriptionStatus(subscription),
-        seatLimit:
-          Number(subscription.metadata?.seatLimit) ||
-          getPlanConfig(planKey)?.seatLimit ||
-          snap.docs[0].data()?.billing?.seatLimit ||
-          null,
-        stripeCustomerId: customerId,
-        stripeSubscriptionId: subscription.id,
-        currentPeriodEnd: subscription.current_period_end
-          ? Timestamp.fromMillis(subscription.current_period_end * 1000)
-          : null,
-        trialEnd: subscription.trial_end
-          ? Timestamp.fromMillis(subscription.trial_end * 1000)
-          : null,
-        updatedAt: FieldValue.serverTimestamp(),
-      },
+  const status = mapSubscriptionStatus(subscription);
+  const patch = {
+    billing: {
+      plan: planKey,
+      status,
+      seatLimit:
+        Number(subscription.metadata?.seatLimit) ||
+        getPlanConfig(planKey)?.seatLimit ||
+        snap.docs[0].data()?.billing?.seatLimit ||
+        null,
+      stripeCustomerId: customerId,
+      stripeSubscriptionId: subscription.id,
+      currentPeriodEnd: subscription.current_period_end
+        ? Timestamp.fromMillis(subscription.current_period_end * 1000)
+        : null,
+      trialEnd: subscription.trial_end
+        ? Timestamp.fromMillis(subscription.trial_end * 1000)
+        : null,
       updatedAt: FieldValue.serverTimestamp(),
     },
-    { merge: true }
-  );
+    updatedAt: FieldValue.serverTimestamp(),
+  };
+  if (status === "trialing" || status === "active") {
+    Object.assign(patch, cancellationResetFieldsForActiveBilling());
+  }
+  await snap.docs[0].ref.set(patch, { merge: true });
 }
 
 export async function handleStripeWebhookRequest(req, res) {
@@ -274,12 +281,21 @@ export async function handleStripeWebhookRequest(req, res) {
       case "customer.subscription.created":
         await syncSchoolBillingFromSubscription(event.data.object);
         break;
-      case "customer.subscription.deleted":
+      case "customer.subscription.deleted": {
+        const subscription = event.data.object;
         await syncSchoolBillingFromSubscription({
-          ...event.data.object,
+          ...subscription,
           status: "canceled",
         });
+        const customerId =
+          typeof subscription.customer === "string"
+            ? subscription.customer
+            : subscription.customer?.id;
+        if (customerId) {
+          await processSchoolSubscriptionCancellation(customerId);
+        }
         break;
+      }
       case "invoice.payment_failed": {
         const invoice = event.data.object;
         const customerId =

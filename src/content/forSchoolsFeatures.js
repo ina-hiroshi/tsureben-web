@@ -1,3 +1,95 @@
+/** 学校向け契約資料 PDF（public 配下に配置） */
+export const SCHOOL_GUIDE_PDF_PATH = '/tsureben-school-guide.pdf';
+
+/** 開発の背景（生徒・教員それぞれの課題） */
+export const FOR_SCHOOLS_BACKGROUND = {
+  lead:
+    '受験生の夏は孤独になりがちで、学習計画を続ける習慣づくりが大切です。1人で勉強していても、友達の頑張りを見て「もう少し頑張ろう」と思える仕組みを目指して開発しました。',
+  challenges: [
+    {
+      id: 'student',
+      side: '生徒側',
+      heading: '自学習は「続かない」',
+      points: ['計画が続かない', 'ひとりで孤独', 'サボってしまう'],
+    },
+    {
+      id: 'teacher',
+      side: '教員側',
+      heading: '学習が「見えない」',
+      points: [
+        'いつ・何を・どれだけ学習しているか分からない',
+        '面談や指導が「印象論」になりがち',
+        '生徒の学習状況から適切なアドバイスをしたい',
+      ],
+    },
+  ],
+};
+
+/** TsureBen の 3 つの機能（PDF のアプリ概要に対応） */
+export const FOR_SCHOOLS_CORE_FEATURES = [
+  {
+    id: 'share',
+    badge: '1',
+    category: '頑張りの共有',
+    title: '友達と一緒に学習',
+    description:
+      '「一緒に勉強中」で現在学習中の友人を表示。QRコードやLINE等の共有リンクで連れ勉仲間をつくり、仲間の頑張りを励みに学習を続けられます（学習時間そのものは共有されません）。',
+  },
+  {
+    id: 'plan-record',
+    badge: '2',
+    category: '計画と記録',
+    title: '計画的な学習と記録',
+    description:
+      '学習計画を細かく設定でき、週・月単位でも表示。学習タイマーで学習時間を計測し、学習記録で達成率や学習状況を振り返れます。',
+  },
+  {
+    id: 'advice',
+    badge: '3',
+    category: '進路指導補助',
+    title: '生徒へのアドバイス',
+    description:
+      '教員は生徒の現在の学習状況や学習計画・記録を確認し、フィードバック機能で学習アドバイスを送信できます。コメントは全件履歴が残り、学校管理者が閲覧できます。',
+  },
+];
+
+/** ログイン方法（生徒・教員） */
+export const FOR_SCHOOLS_LOGIN_METHODS = [
+  {
+    id: 'student',
+    role: '生徒',
+    points: [
+      'メールアドレス（学校指定ドメイン）と初期パスワード（8桁以上）でログイン。いずれも学校管理者が登録します。',
+      '初回ログイン時に、8文字以上の新しいパスワードへ変更します。',
+      '「一緒に勉強中」の公開範囲（学年のみ／組のみ／連れ勉仲間のみ）と連れ勉の申請範囲（学内のみ／学内外）を設定できます。',
+    ],
+  },
+  {
+    id: 'teacher',
+    role: '教員',
+    points: [
+      '「教員専用ログイン」から Google 認証でログインします。',
+      '管理画面で生徒・教員の一括登録やフィードバックの確認ができます。',
+    ],
+  },
+];
+
+/** 進路指導への展望 */
+export const FOR_SCHOOLS_CAREER_VISION = [
+  {
+    id: 'continuous-support',
+    title: '組織的・継続的な学習支援',
+    description:
+      '教員コメント機能を通じて、学校全体で継続的に生徒の学習を支援します。',
+  },
+  {
+    id: 'guidance-material',
+    title: '面談の材料として活用',
+    description:
+      '生徒一人ひとりの学習履歴を、進路面談・三者面談の材料として活用できます。',
+  },
+];
+
 /** 学校向け紹介ページの機能セクション（public/intro の画像パス） */
 export const FOR_SCHOOLS_FEATURES = [
   {

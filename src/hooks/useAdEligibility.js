@@ -1,51 +1,60 @@
 import { useEffect, useState } from 'react';
-import { Capacitor } from '@capacitor/core';
+import { auth } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useStudentProfile } from '../contexts/StudentProfileContext';
 import { useTeacherStatus } from './useTeacherStatus';
-import { getProfile } from '../services/firestore/userService';
+import { registerAppleStudent } from '../services/authApi';
+import { isSelfRegisteredStudentProfile } from '../utils/accountDeletion';
+import { isAppleAuthUser } from '../utils/resolveUserEmail';
+import { isIOSNative } from '../utils/platformAccess';
 
 export function useAdEligibility() {
   const { email, loading: authLoading } = useAuth();
   const { isTeacher, loading: teacherLoading } = useTeacherStatus();
-  const [registrationType, setRegistrationType] = useState(null);
-  const [profileLoading, setProfileLoading] = useState(true);
+  const { profile, loading: profileLoading, refreshProfile } = useStudentProfile() ?? {};
+  const [syncingAppleProfile, setSyncingAppleProfile] = useState(false);
 
   useEffect(() => {
-    if (authLoading || teacherLoading) return;
-
-    if (!email || isTeacher || !Capacitor.isNativePlatform()) {
-      setRegistrationType(null);
-      setProfileLoading(false);
-      return;
-    }
+    if (authLoading || teacherLoading || profileLoading || syncingAppleProfile) return;
+    if (!email || isTeacher || !isIOSNative() || profile) return;
+    if (!isAppleAuthUser(auth.currentUser)) return;
 
     let active = true;
-    setProfileLoading(true);
-    getProfile(email)
-      .then((profile) => {
-        if (!active) return;
-        setRegistrationType(profile?.registrationType ?? null);
-      })
+    setSyncingAppleProfile(true);
+    registerAppleStudent()
+      .then(() => refreshProfile?.())
       .catch((err) => {
-        console.warn('useAdEligibility: profile load failed', err);
-        if (active) setRegistrationType(null);
+        console.warn('useAdEligibility: registerAppleStudent failed', err);
       })
       .finally(() => {
-        if (active) setProfileLoading(false);
+        if (active) setSyncingAppleProfile(false);
       });
 
     return () => {
       active = false;
     };
-  }, [email, authLoading, teacherLoading, isTeacher]);
+  }, [
+    email,
+    authLoading,
+    teacherLoading,
+    profileLoading,
+    syncingAppleProfile,
+    isTeacher,
+    profile,
+    refreshProfile,
+  ]);
 
-  const loading = authLoading || teacherLoading || profileLoading;
+  const loading = authLoading || teacherLoading || profileLoading || syncingAppleProfile;
   const eligible =
     !loading &&
-    Capacitor.isNativePlatform() &&
+    isIOSNative() &&
     !!email &&
     !isTeacher &&
-    registrationType === 'self_registered';
+    isSelfRegisteredStudentProfile(profile);
 
-  return { eligible, loading, registrationType };
+  return {
+    eligible,
+    loading,
+    registrationType: profile?.registrationType ?? null,
+  };
 }

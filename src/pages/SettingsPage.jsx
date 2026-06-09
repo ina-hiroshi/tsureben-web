@@ -34,6 +34,8 @@ import SectionTitle from '../components/ui/SectionTitle';
 import SectionHelpButton from '../components/ui/SectionHelpButton';
 import Modal from '../components/ui/Modal';
 import { useUiFeedback } from '../contexts/UiFeedbackContext';
+import { isIOSNative } from '../utils/platformAccess';
+import { setReviewPromptBlocked } from '../services/inAppReviewService';
 import { SETTINGS_SECTION_HELP } from '../content/settingsSectionHelp';
 import {
   MIN_PASSWORD_LENGTH,
@@ -131,6 +133,12 @@ export default function SettingsPage() {
       .then((res) => setPendingJoin(res?.invite ?? null))
       .catch(() => setPendingJoin(null));
   }, [email, isTeacher, profile]);
+
+  useEffect(() => {
+    if (!isIOSNative()) return undefined;
+    setReviewPromptBlocked(deleteModalOpen);
+    return () => setReviewPromptBlocked(false);
+  }, [deleteModalOpen]);
 
   const saveShareScope = async (value) => {
     setShareScope(value);

@@ -4,8 +4,13 @@ import Button from '../components/ui/Button';
 import AppLogo from '../components/ui/AppLogo';
 import { PUBLIC_BILLING_PLANS, formatYen } from '../constants/billingPlans';
 import {
+  FOR_SCHOOLS_BACKGROUND,
+  FOR_SCHOOLS_CORE_FEATURES,
+  FOR_SCHOOLS_LOGIN_METHODS,
+  FOR_SCHOOLS_CAREER_VISION,
   FOR_SCHOOLS_FEATURES,
   FOR_SCHOOLS_ONBOARDING_STEPS,
+  SCHOOL_GUIDE_PDF_PATH,
 } from '../content/forSchoolsFeatures';
 
 function FeatureScreenshot({ feature }) {
@@ -55,12 +60,22 @@ export default function ForSchoolsPage() {
 
         <section className="text-center space-y-4">
           <h1 className="text-2xl md:text-3xl font-bold text-tsure-on-primary">
-            学校向けのご案内
+            連れ勉（TsureBen）のご紹介
           </h1>
           <p className="text-sm md:text-base text-tsure-on-primary/90 leading-relaxed max-w-2xl mx-auto">
-            連れ勉（TsureBen）は、学習計画・タイマー・記録・連れ勉をひとつにした学習支援アプリです。
-            学校単位で導入し、生徒の自学習と教員のサポートを Web とアプリで行えます。
+            連れ勉仲間とともに学習する、学校向けの学習支援アプリです。
+            生徒の自学習を「続く」「見える」ものにし、教員の進路指導を補助します。
           </p>
+          <div className="flex flex-col sm:flex-row gap-2 sm:justify-center">
+            <a
+              href={SCHOOL_GUIDE_PDF_PATH}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center rounded-xl font-semibold transition active:scale-[0.98] bg-tsure-accent text-tsure-primary shadow-tsure-button px-6 py-3 text-lg min-h-touch"
+            >
+              学校向けご案内資料（PDF）を見る
+            </a>
+          </div>
           <p className="text-xs text-tsure-on-primary/70">
             すでにアカウントをお持ちの方は
             <Link to="/" className="underline hover:text-white ml-1">
@@ -71,22 +86,82 @@ export default function ForSchoolsPage() {
         </section>
 
         <Card>
-          <h2 className="text-lg font-bold text-tsure-primary mb-4">学校導入のポイント</h2>
-          <ul className="space-y-3 text-sm text-tsure-primary leading-relaxed list-disc pl-5">
-            <li>
-              <strong>生徒向け</strong> — 計画・タイマー・記録・連れ勉で、日々の学習を可視化し仲間と励まし合えます。
-            </li>
-            <li>
-              <strong>教員・管理者向け（Web）</strong> — Google アカウントでログインし、生徒・教員の一括登録やフィードバックができます。
-            </li>
-            <li>
-              <strong>学校配布アカウント・Web 版は広告なし</strong> — 学校から配布するアカウントおよび Web 版では広告を表示しません（自己登録の iOS アプリのみ広告あり）。
-            </li>
-          </ul>
+          <h2 className="text-lg font-bold text-tsure-primary mb-2">開発の背景</h2>
+          <p className="text-sm text-tsure-primary leading-relaxed mb-4">
+            {FOR_SCHOOLS_BACKGROUND.lead}
+          </p>
+          <div className="grid gap-4 md:grid-cols-2">
+            {FOR_SCHOOLS_BACKGROUND.challenges.map((challenge) => (
+              <div
+                key={challenge.id}
+                className="rounded-xl border border-[#c4b5a0] bg-white p-4"
+              >
+                <p className="text-xs font-semibold text-tsure-muted">{challenge.side}</p>
+                <h3 className="font-bold text-tsure-primary mt-1 mb-2">{challenge.heading}</h3>
+                <ul className="space-y-1 text-sm text-tsure-primary list-disc pl-5">
+                  {challenge.points.map((point) => (
+                    <li key={point}>{point}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <h2 className="text-lg font-bold text-tsure-primary mb-4">TsureBen の 3 つの機能</h2>
+          <div className="grid gap-4 md:grid-cols-3">
+            {FOR_SCHOOLS_CORE_FEATURES.map((feature) => (
+              <div
+                key={feature.id}
+                className="rounded-xl border border-[#c4b5a0] bg-white p-4 flex flex-col"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <span
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-tsure-primary text-tsure-on-primary text-sm font-bold"
+                    aria-hidden
+                  >
+                    {feature.badge}
+                  </span>
+                  <span className="text-xs font-semibold text-tsure-muted">
+                    【{feature.category}】
+                  </span>
+                </div>
+                <h3 className="font-bold text-tsure-primary mb-2">{feature.title}</h3>
+                <p className="text-sm text-tsure-primary leading-relaxed">
+                  {feature.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card>
+          <h2 className="text-lg font-bold text-tsure-primary mb-4">ログイン方法</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            {FOR_SCHOOLS_LOGIN_METHODS.map((method) => (
+              <div
+                key={method.id}
+                className="rounded-xl border border-[#c4b5a0] bg-white p-4"
+              >
+                <h3 className="font-bold text-tsure-primary mb-2">{method.role}ログイン</h3>
+                <ul className="space-y-2 text-sm text-tsure-primary list-disc pl-5">
+                  {method.points.map((point) => (
+                    <li key={point}>{point}</li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-tsure-muted mt-4">
+            学校配布アカウントおよび Web 版では広告を表示しません（自己登録の iOS アプリのみ広告あり）。
+          </p>
         </Card>
 
         <section className="space-y-12">
-          <h2 className="text-xl font-bold text-tsure-on-primary text-center">主な機能</h2>
+          <h2 className="text-xl font-bold text-tsure-on-primary text-center">
+            画面でみる主な機能
+          </h2>
           {FOR_SCHOOLS_FEATURES.map((feature, index) => {
             const reversed = index % 2 === 1;
             return (
@@ -128,6 +203,23 @@ export default function ForSchoolsPage() {
               </li>
             ))}
           </ol>
+        </Card>
+
+        <Card>
+          <h2 className="text-lg font-bold text-tsure-primary mb-4">進路指導への展望</h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            {FOR_SCHOOLS_CAREER_VISION.map((item) => (
+              <div
+                key={item.id}
+                className="rounded-xl border border-[#c4b5a0] bg-white p-4"
+              >
+                <h3 className="font-bold text-tsure-primary mb-2">{item.title}</h3>
+                <p className="text-sm text-tsure-primary leading-relaxed">
+                  {item.description}
+                </p>
+              </div>
+            ))}
+          </div>
         </Card>
 
         <Card>
@@ -173,6 +265,14 @@ export default function ForSchoolsPage() {
         </Card>
 
         <p className="text-center text-sm text-tsure-on-primary/80 space-x-4 pb-4">
+          <a
+            href={SCHOOL_GUIDE_PDF_PATH}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-white"
+          >
+            ご案内資料（PDF）
+          </a>
           <Link to="/" className="underline hover:text-white">
             ログイン画面へ
           </Link>

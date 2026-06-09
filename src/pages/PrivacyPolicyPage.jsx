@@ -1,4 +1,3 @@
-import { Link } from 'react-router-dom';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import AppLogo from '../components/ui/AppLogo';
@@ -127,9 +126,6 @@ export default function PrivacyPolicyPage() {
           </div>
 
           <div className="flex flex-col gap-3 mt-8">
-            <Button to="/for-schools" variant="secondary" className="w-full">
-              学校向けのご案内
-            </Button>
             <Button to="/" variant="secondary" className="w-full">
               ログイン画面へ戻る
             </Button>

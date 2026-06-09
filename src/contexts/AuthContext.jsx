@@ -1,6 +1,7 @@
 import { onAuthStateChanged } from 'firebase/auth';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { auth } from '../firebase';
+import { resolveUserEmail } from '../utils/resolveUserEmail';
 
 export const AuthContext = createContext(null);
 
@@ -17,15 +18,16 @@ export function AuthProvider({ children }) {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       clearTimeout(safety);
       if (user) {
+        const resolvedEmail = resolveUserEmail(user);
         const name =
           (typeof user.displayName === 'string' && user.displayName.trim()) ||
-          user.email ||
+          resolvedEmail ||
           '';
-        setEmail(user.email);
+        setEmail(resolvedEmail);
         setUid(user.uid);
         setUserName(name);
-        if (user.email) {
-          localStorage.setItem('email', user.email);
+        if (resolvedEmail) {
+          localStorage.setItem('email', resolvedEmail);
           localStorage.setItem('userName', name);
         }
       } else {

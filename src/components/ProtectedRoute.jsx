@@ -6,6 +6,7 @@ import { getProfile } from '../services/firestore/userService';
 import { db } from '../firebase';
 import { isWebPlatform } from '../utils/platformAccess';
 import { needsSchoolOnboarding } from '../utils/schoolOnboarding';
+import { setPostLoginReturnUrl } from '../utils/postLoginRedirect';
 import WebSelfRegisteredBlock from './WebSelfRegisteredBlock';
 import FullScreenLoader from './ui/FullScreenLoader';
 
@@ -88,6 +89,14 @@ export default function ProtectedRoute({
     isWebPlatform() &&
     !!email &&
     registrationType === 'self_registered';
+
+  useEffect(() => {
+    if (loading || checking || email) return;
+    const returnUrl = `${location.pathname}${location.search}`;
+    if (returnUrl && returnUrl !== '/') {
+      setPostLoginReturnUrl(returnUrl);
+    }
+  }, [loading, checking, email, location.pathname, location.search]);
 
   if (loading || checking) return <FullScreenLoader label="読み込み中…" />;
 

@@ -1,7 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useTeacherWorkspace } from '../contexts/TeacherWorkspaceContext';
-import { getProfile } from '../services/firestore/userService';
+import { useDemoSettingsRevision } from '../hooks/useDemoSettings';
+import { mergeDemoStudents } from '../dev/demoTeacherReview';
+import { fetchStudentsForSchool, getProfile } from '../services/firestore/userService';
+import { normalizeEmail } from '../utils/normalizeEmail';
 import PageLayout from '../components/ui/PageLayout';
 import Card from '../components/ui/Card';
 import LoadingOverlay from '../components/ui/LoadingOverlay';
@@ -18,8 +22,47 @@ export default function TeacherStudentReviewPage() {
     selectedStudent,
     selectStudent,
   } = useTeacherWorkspace();
+  const [searchParams] = useSearchParams();
+  const targetEmail = normalizeEmail(searchParams.get('email'));
+  const demoRevision = useDemoSettingsRevision();
   const [teacherName, setTeacherName] = useState('');
   const [mobileShowDetail, setMobileShowDetail] = useState(false);
+
+  useEffect(() => {
+    if (!targetEmail || !effectiveSchoolId) return;
+    if (normalizeEmail(selectedStudent?.email) === targetEmail) return;
+
+    let active = true;
+    (async () => {
+      try {
+        const list = mergeDemoStudents(await fetchStudentsForSchool(effectiveSchoolId));
+        if (!active) return;
+        const match = list.find((student) => normalizeEmail(student.email) === targetEmail);
+        if (!match) return;
+
+        selectStudent({
+          email: match.email,
+          name: match.name,
+          grade: match.grade,
+          class: match.class,
+          number: match.number,
+        });
+        setMobileShowDetail(true);
+      } catch (err) {
+        console.error('Failed to resolve student from email query:', err);
+      }
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [
+    targetEmail,
+    effectiveSchoolId,
+    selectedStudent?.email,
+    selectStudent,
+    demoRevision,
+  ]);
 
   useEffect(() => {
     if (!email) return;

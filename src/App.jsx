@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Capacitor } from '@capacitor/core';
 import { AuthProvider } from './contexts/AuthContext';
+import { StudentProfileProvider } from './contexts/StudentProfileContext';
 import { AdProvider } from './contexts/AdContext';
 import { StudyTimerProvider } from './contexts/StudyTimerContext';
 import { UiFeedbackProvider } from './contexts/UiFeedbackContext';
@@ -29,12 +30,17 @@ import ForSchoolsPage from './pages/ForSchoolsPage';
 import BillingSuccessPage from './pages/BillingSuccessPage';
 import DemoSettingsAccessSync from './components/dev/DemoSettingsAccessSync';
 import StudyTimerStalePrompt from './components/StudyTimerStalePrompt';
+import { InAppReviewProvider } from './contexts/InAppReviewContext';
+import InAppReviewPrompt from './components/InAppReviewPrompt';
+import AppleStudentRegistrationSync from './components/AppleStudentRegistrationSync';
 
 function AppLayout() {
   return (
     <>
       <DemoSettingsAccessSync />
+      <AppleStudentRegistrationSync />
       <StudyTimerStalePrompt />
+      <InAppReviewPrompt />
       <Routes>
       <Route path="/" element={<Login />} />
       <Route path="/privacy" element={<PrivacyPolicyPage />} />
@@ -184,15 +190,19 @@ function App() {
 
   return (
     <AuthProvider>
+      <StudentProfileProvider>
       <AdProvider>
         <StudyTimerProvider>
           <UiFeedbackProvider>
             <Router>
-              <AppLayout />
+              <InAppReviewProvider>
+                <AppLayout />
+              </InAppReviewProvider>
             </Router>
           </UiFeedbackProvider>
         </StudyTimerProvider>
       </AdProvider>
+      </StudentProfileProvider>
     </AuthProvider>
   );
 }

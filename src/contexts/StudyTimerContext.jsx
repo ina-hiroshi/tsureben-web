@@ -8,6 +8,8 @@ import {
 } from 'react';
 import dayjs from 'dayjs';
 import { useAuth } from './AuthContext';
+import { useTeacherStatus } from '../hooks/useTeacherStatus';
+import { onTimerSaveSuccess } from '../services/inAppReviewService';
 import { getProfile } from '../services/firestore/userService';
 import { getDayPlans } from '../services/firestore/planService';
 import * as logService from '../services/firestore/logService';
@@ -49,6 +51,7 @@ function buildStoredState(email, status, startMsRef, startTimeStr, elapsedMinute
 
 export function StudyTimerProvider({ children }) {
   const { email } = useAuth();
+  const { isTeacher } = useTeacherStatus();
   const [status, setStatus] = useState('idle');
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
   const [startTimeStr, setStartTimeStr] = useState('');
@@ -292,8 +295,9 @@ export function StudyTimerProvider({ children }) {
       }
 
       resetToIdle();
+      onTimerSaveSuccess(email, { isTeacher });
     },
-    [email, elapsedMinutes, startTimeStr, resetToIdle]
+    [email, elapsedMinutes, startTimeStr, resetToIdle, isTeacher]
   );
 
   const value = {

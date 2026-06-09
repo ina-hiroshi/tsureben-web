@@ -1,12 +1,14 @@
 import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { normalizeNameLower } from './mateScope';
+import { resolveUserEmail } from './resolveUserEmail';
 
 export async function ensureUserDoc(user, extra = {}) {
-  if (!user?.email) return;
-  const userRef = doc(db, 'users', user.email);
+  const email = resolveUserEmail(user);
+  if (!email) return;
+  const userRef = doc(db, 'users', email);
   const userDoc = await getDoc(userRef);
-  const name = user.displayName ?? user.email.split('@')[0];
+  const name = user.displayName ?? email.split('@')[0];
   if (!userDoc.exists()) {
     await setDoc(userRef, {
       name,
