@@ -1,0 +1,2 @@
+# Copy to android/local.properties (Android Studio が自動生成することもあります)
+sdk.dir=/Users/YOUR_USERNAME/Library/Android/sdk

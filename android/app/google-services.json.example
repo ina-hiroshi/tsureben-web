@@ -1,0 +1,26 @@
+{
+  "_comment": "Firebase Console からダウンロードした google-services.json を android/app/google-services.json として配置してください。この example は構造参考用です。",
+  "project_info": {
+    "project_number": "YOUR_PROJECT_NUMBER",
+    "project_id": "tsureben",
+    "storage_bucket": "tsureben.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:YOUR_PROJECT_NUMBER:android:YOUR_APP_HASH",
+        "android_client_info": {
+          "package_name": "com.tsureben.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [{ "current_key": "YOUR_API_KEY" }],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

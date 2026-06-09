@@ -1,27 +1,39 @@
 import { useEffect, useRef } from 'react';
-import { Capacitor } from '@capacitor/core';
 import {
   AdMob,
   BannerAdPluginEvents,
   BannerAdPosition,
   BannerAdSize,
+  MaxAdContentRating,
 } from '@capacitor-community/admob';
-import { getAdMobIosBannerId, isAdMobTestBannerId } from '../constants/admobConfig';
+import { getAdMobNativeBannerId, shouldUseAdMobTestMode } from '../constants/admobConfig';
 import { AD_BANNER_RESERVE_HEIGHT, useAdContext } from '../contexts/AdContext';
+import { isNativeMobile } from '../utils/platformAccess';
+
+async function ensureAdMobInitialized(adId) {
+  await AdMob.initialize({
+    tagForChildDirectedTreatment: true,
+    tagForUnderAgeOfConsent: true,
+    maxAdContentRating: MaxAdContentRating.General,
+    initializeForTesting: shouldUseAdMobTestMode(adId),
+  });
+}
 
 export default function AdBanner() {
-  const { initialized, reportBannerHeight } = useAdContext();
+  const { reportBannerHeight } = useAdContext();
   const mountedRef = useRef(true);
 
   useEffect(() => {
-    if (!Capacitor.isNativePlatform() || !initialized) return undefined;
+    if (!isNativeMobile()) return undefined;
 
     mountedRef.current = true;
-    const adId = getAdMobIosBannerId();
+    const adId = getAdMobNativeBannerId();
     const listeners = [];
 
     const setup = async () => {
       try {
+        await ensureAdMobInitialized(adId);
+
         const sizeListener = await AdMob.addListener(
           BannerAdPluginEvents.SizeChanged,
           (info) => {
@@ -33,9 +45,10 @@ export default function AdBanner() {
 
         const failListener = await AdMob.addListener(
           BannerAdPluginEvents.FailedToLoad,
-          () => {
+          (info) => {
             if (!mountedRef.current) return;
-            reportBannerHeight(0);
+            console.warn('AdBanner: failed to load', info);
+            reportBannerHeight(AD_BANNER_RESERVE_HEIGHT);
           }
         );
         listeners.push(failListener);
@@ -46,12 +59,12 @@ export default function AdBanner() {
           adId,
           adSize: BannerAdSize.ADAPTIVE_BANNER,
           position: BannerAdPosition.BOTTOM_CENTER,
-          isTesting: import.meta.env.DEV || isAdMobTestBannerId(adId),
+          isTesting: shouldUseAdMobTestMode(adId),
           npa: true,
         });
       } catch (err) {
         console.warn('AdBanner: showBanner failed', err);
-        if (mountedRef.current) reportBannerHeight(0);
+        if (mountedRef.current) reportBannerHeight(AD_BANNER_RESERVE_HEIGHT);
       }
     };
 
@@ -65,7 +78,7 @@ export default function AdBanner() {
       });
       AdMob.removeBanner().catch(() => {});
     };
-  }, [initialized, reportBannerHeight]);
+  }, [reportBannerHeight]);
 
   return null;
 }

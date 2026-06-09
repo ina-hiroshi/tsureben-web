@@ -42,6 +42,7 @@ import { ensureUserDoc } from '../utils/ensureUserDoc';
 import {
   isNativeApp,
   isWebPlatform,
+  isIOSNative,
   isTeacherEmail,
   getUserRegistrationType,
   canUseWebAsStudent,
@@ -604,7 +605,7 @@ export default function Login() {
           {error && <p className="mt-4 text-sm text-red-600 text-center">{error}</p>}
         </Card>
 
-        {nativeApp && !showVerificationStep && !isRegisterMode && !isResetMode && (
+        {isIOSNative() && !showVerificationStep && !isRegisterMode && !isResetMode && (
           <Button
             type="button"
             disabled={submitting}

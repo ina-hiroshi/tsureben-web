@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:android": "vite build && cap sync android",
+    "android:aab": "bash android/build-release-aab.sh",
     "lint": "eslint .",
     "preview": "vite preview",
     "create-review-account": "node scripts/createAppStoreReviewAccount.mjs",
@@ -17,6 +19,8 @@
   "dependencies": {
     "@capacitor-community/admob": "^6.2.0",
     "@capacitor-community/apple-sign-in": "^6.0.0",
+    "@capacitor-community/in-app-review": "^6.0.0",
+    "@capacitor/android": "^6.2.1",
     "@capacitor/core": "^6.2.1",
     "@capacitor/ios": "^6.2.1",
     "@capacitor/share": "^6.0.4",
@@ -40,7 +44,6 @@
     "three": "^0.181.2"
   },
   "devDependencies": {
-    "stripe": "^17.7.0",
     "@capacitor/cli": "^6.2.1",
     "@eslint/js": "^9.29.0",
     "@firebase/rules-unit-testing": "^4.0.1",
@@ -54,6 +57,7 @@
     "globals": "^16.2.0",
     "patch-package": "^8.0.1",
     "postcss": "^8.5.6",
+    "stripe": "^17.7.0",
     "tailwindcss": "^3.4.1",
     "vite": "^7.0.0"
   }

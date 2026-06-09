@@ -6,6 +6,14 @@ export const isNativeApp = () => Capacitor.isNativePlatform();
 
 export const isWebPlatform = () => !Capacitor.isNativePlatform();
 
+export const isIOSNative = () =>
+  Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios';
+
+export const isAndroidNative = () =>
+  Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
+
+export const isNativeMobile = () => isIOSNative() || isAndroidNative();
+
 export async function isTeacherEmail(email) {
   if (!email) return false;
   try {

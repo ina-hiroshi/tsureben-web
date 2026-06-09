@@ -29,6 +29,14 @@ AuthKey_*.p8
 ios/App/output/
 ios/App/build/
 
+# Android 署名・ビルド成果物
+*.keystore
+android/key.properties
+android/local.properties
+android/app/release/
+android/app/build/
+android/.gradle/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

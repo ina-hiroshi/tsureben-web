@@ -1,6 +1,7 @@
-import { Capacitor } from '@capacitor/core';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { AdMob, MaxAdContentRating } from '@capacitor-community/admob';
+import { getAdMobNativeBannerId, shouldUseAdMobTestMode } from '../constants/admobConfig';
+import { isNativeMobile } from '../utils/platformAccess';
 
 const AdContext = createContext(null);
 
@@ -8,25 +9,26 @@ const AdContext = createContext(null);
 export const AD_BANNER_RESERVE_HEIGHT = 50;
 
 export function AdProvider({ children }) {
-  const [initialized, setInitialized] = useState(!Capacitor.isNativePlatform());
+  const [initialized, setInitialized] = useState(!isNativeMobile());
   const [bannerHeight, setBannerHeight] = useState(0);
 
   useEffect(() => {
-    if (!Capacitor.isNativePlatform()) return;
+    if (!isNativeMobile()) return;
 
     let active = true;
+    const adId = getAdMobNativeBannerId();
+
     AdMob.initialize({
       tagForChildDirectedTreatment: true,
       tagForUnderAgeOfConsent: true,
       maxAdContentRating: MaxAdContentRating.General,
-      initializeForTesting: import.meta.env.DEV,
+      initializeForTesting: shouldUseAdMobTestMode(adId),
     })
-      .then(() => {
-        if (active) setInitialized(true);
-      })
       .catch((err) => {
         console.warn('AdMob initialize failed:', err);
-        if (active) setInitialized(false);
+      })
+      .finally(() => {
+        if (active) setInitialized(true);
       });
 
     return () => {

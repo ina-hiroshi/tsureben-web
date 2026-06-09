@@ -1,0 +1,5 @@
+# Copy to android/key.properties and fill in (do not commit key.properties).
+storeFile=../tsureben-release.keystore
+storePassword=YOUR_STORE_PASSWORD
+keyAlias=tsureben
+keyPassword=YOUR_KEY_PASSWORD
