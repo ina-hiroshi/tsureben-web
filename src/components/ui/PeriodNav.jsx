@@ -39,7 +39,7 @@ export default function PeriodNav({
   };
 
   return (
-    <div className="sticky top-16 md:top-0 z-20 -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-3 md:py-0 md:min-h-[var(--app-subheader-height)] mb-4 shrink-0 bg-tsure-bg/95 backdrop-blur border-b border-white/10">
+    <div className="sticky top-[var(--app-header-height)] md:top-0 z-20 -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-3 md:py-0 md:min-h-[var(--app-subheader-height)] mb-4 shrink-0 bg-tsure-bg/95 backdrop-blur border-b border-white/10">
       <div className="flex flex-col gap-3 md:h-[var(--app-subheader-height)] md:justify-center">
         <div
           className="flex justify-center gap-1.5"
@@ -79,24 +79,22 @@ export default function PeriodNav({
             <span className="hidden sm:inline">{navLabels.previous}</span>
           </button>
 
-          <div className="flex-1 flex justify-center items-center min-w-0 px-1">
-            <div className="relative">
-              <span
-                className="block text-xl sm:text-2xl md:text-3xl font-bold text-tsure-on-primary tabular-nums leading-none tracking-wide text-center whitespace-nowrap"
-                aria-label={formatPeriodLabel(d, mode)}
+          <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-1 gap-1">
+            <span
+              className="text-xl sm:text-2xl md:text-3xl font-bold text-tsure-on-primary tabular-nums leading-none tracking-wide text-center"
+              aria-label={formatPeriodLabel(d, mode)}
+            >
+              {formatPeriodLabel(d, mode)}
+            </span>
+            {!isCurrent && (
+              <button
+                type="button"
+                className={RETURN_BTN}
+                onClick={goToCurrentPeriod}
               >
-                {formatPeriodLabel(d, mode)}
-              </span>
-              {!isCurrent && (
-                <button
-                  type="button"
-                  className={`${RETURN_BTN} absolute left-full top-1/2 -translate-y-1/2 ml-1.5 sm:ml-2`}
-                  onClick={goToCurrentPeriod}
-                >
-                  {getReturnToCurrentPeriodLabel(mode)}
-                </button>
-              )}
-            </div>
+                {getReturnToCurrentPeriodLabel(mode)}
+              </button>
+            )}
           </div>
 
           <button

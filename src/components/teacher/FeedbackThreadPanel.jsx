@@ -35,6 +35,7 @@ export default function FeedbackThreadPanel({
   mode = 'teacher',
   initialThreadId = null,
   onDark = false,
+  flatLayout = false,
 }) {
   const { email } = useAuth();
   const { toast, confirm } = useUiFeedback();
@@ -248,6 +249,72 @@ export default function FeedbackThreadPanel({
     );
   }
 
+  const messageList = loadingThreads ? (
+    <p className="text-sm text-tsure-muted text-center py-6">読み込み中...</p>
+  ) : selectedThread ? (
+    <FeedbackMessageList
+      messages={messages}
+      currentUserEmail={email}
+      onEditMessage={handleEditMessage}
+      onDeleteMessage={handleDeleteMessage}
+      busyMessageId={busyMessageId}
+    />
+  ) : (
+    <EmptyState {...FEEDBACK_THREAD_EMPTY} />
+  );
+
+  const composer = isTeacher ? (
+    <div className="space-y-3">
+      <FeedbackComposer
+        placeholder={`${dayjs(dateKey).format('M月D日')}の学習についてコメント...`}
+        submitLabel="コメントを送信"
+        onSubmit={handleSend}
+      />
+      <details className="text-sm">
+        <summary
+          className={`cursor-pointer ${
+            onDark
+              ? 'text-tsure-on-primary/70 hover:text-tsure-on-primary'
+              : 'text-tsure-muted hover:text-tsure-primary'
+          }`}
+        >
+          日付に関係ない全体フィードバックを新規作成
+        </summary>
+        <div className="mt-2">
+          <FeedbackComposer
+            placeholder="全体についてのコメント..."
+            submitLabel="全体フィードバックを作成"
+            onSubmit={handleCreateGeneral}
+          />
+        </div>
+      </details>
+    </div>
+  ) : (
+    selectedThread && (
+      <FeedbackComposer
+        placeholder="返信を入力..."
+        submitLabel="返信する"
+        showDisclaimer={false}
+        onSubmit={handleSend}
+      />
+    )
+  );
+
+  if (flatLayout && !isTeacher) {
+    return (
+      <div className="flex flex-col min-h-[min(32rem,70dvh)] lg:min-h-0">
+        <div className="flex-1 overflow-y-auto min-h-0 -mx-1 px-1 pb-3">
+          {messageList}
+        </div>
+        {selectedThread && (
+          <div className="shrink-0 border-t border-tsure-border pt-3 mt-1">
+            {composer}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {isTeacher && (
@@ -305,64 +372,18 @@ export default function FeedbackThreadPanel({
       )}
 
       <Card className="!p-4">
-        {loadingThreads ? (
-          <p className="text-sm text-tsure-muted text-center py-6">読み込み中...</p>
-        ) : selectedThread ? (
-          <>
-            <h3 className="text-sm font-bold text-tsure-primary mb-3">
-              {formatThreadLabel(selectedThread)}
-              {selectedThread.title && selectedThread.scope === 'daily' && (
-                <span className="font-normal text-tsure-muted ml-2">— {selectedThread.title}</span>
-              )}
-            </h3>
-            <FeedbackMessageList
-              messages={messages}
-              currentUserEmail={email}
-              onEditMessage={handleEditMessage}
-              onDeleteMessage={handleDeleteMessage}
-              busyMessageId={busyMessageId}
-            />
-          </>
-        ) : (
-          <EmptyState {...FEEDBACK_THREAD_EMPTY} />
+        {selectedThread && !loadingThreads && (
+          <h3 className="text-sm font-bold text-tsure-primary mb-3">
+            {formatThreadLabel(selectedThread)}
+            {selectedThread.title && selectedThread.scope === 'daily' && (
+              <span className="font-normal text-tsure-muted ml-2">— {selectedThread.title}</span>
+            )}
+          </h3>
         )}
+        {messageList}
       </Card>
 
-      {isTeacher ? (
-        <div className="space-y-3">
-          <FeedbackComposer
-            placeholder={`${dayjs(dateKey).format('M月D日')}の学習についてコメント...`}
-            submitLabel="コメントを送信"
-            onSubmit={handleSend}
-          />
-          <details className="text-sm">
-            <summary
-              className={`cursor-pointer ${
-                onDark
-                  ? 'text-tsure-on-primary/70 hover:text-tsure-on-primary'
-                  : 'text-tsure-muted hover:text-tsure-primary'
-              }`}
-            >
-              日付に関係ない全体フィードバックを新規作成
-            </summary>
-            <div className="mt-2">
-              <FeedbackComposer
-                placeholder="全体についてのコメント..."
-                submitLabel="全体フィードバックを作成"
-                onSubmit={handleCreateGeneral}
-              />
-            </div>
-          </details>
-        </div>
-      ) : (
-        selectedThread && (
-          <FeedbackComposer
-            placeholder="返信を入力..."
-            submitLabel="返信する"
-            onSubmit={handleSend}
-          />
-        )
-      )}
+      {composer}
     </div>
   );
 }

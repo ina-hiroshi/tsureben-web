@@ -40,7 +40,7 @@ export default function PricingPage() {
 
   return (
     <div
-      className="min-h-screen bg-tsure-bg p-4"
+      className="min-h-dvh bg-tsure-bg p-4"
       style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)' }}
     >
       <div className="max-w-4xl mx-auto space-y-6">

@@ -119,6 +119,7 @@ export async function createThread({
   authorRole = 'teacher',
 }) {
   const now = serverTimestamp();
+  const trimmedInitial = initialMessage?.trim() || '';
   const threadRef = await addDoc(collection(db, 'feedbackThreads'), {
     studentEmail,
     schoolId,
@@ -130,16 +131,17 @@ export async function createThread({
     createdAt: now,
     updatedAt: now,
     lastMessageAt: now,
+    lastMessagePreview: trimmedInitial.slice(0, 80),
     unreadByStudent: true,
     unreadByTeacher: false,
   });
 
-  if (initialMessage?.trim()) {
+  if (trimmedInitial) {
     await addDoc(collection(db, 'feedbackThreads', threadRef.id, 'messages'), {
       authorEmail: createdBy,
       authorRole,
       authorName: createdByName,
-      body: initialMessage.trim(),
+      body: trimmedInitial,
       createdAt: now,
     });
   }
@@ -192,6 +194,7 @@ export async function addMessage(threadId, { authorEmail, authorRole, authorName
     ...unreadPatch,
     updatedAt: now,
     lastMessageAt: now,
+    lastMessagePreview: trimmed.slice(0, 80),
   });
 }
 
@@ -223,8 +226,10 @@ async function syncThreadMetadata(threadId) {
   }
 
   const latest = [...messages].sort((a, b) => messageTimestamp(b) - messageTimestamp(a))[0];
+  const preview = (latest.body || '').replace(/\s+/g, ' ').trim().slice(0, 80);
   await updateDoc(threadRef, {
     lastMessageAt: latest.updatedAt || latest.createdAt,
+    lastMessagePreview: preview,
     updatedAt: now,
   });
 }

@@ -8,7 +8,7 @@ const EFFECTIVE_DATE = '2026年6月2日';
 export default function PrivacyPolicyPage() {
   return (
     <div
-      className="min-h-screen bg-tsure-bg p-4"
+      className="min-h-dvh bg-tsure-bg p-4"
       style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)' }}
     >
       <div className="max-w-2xl mx-auto space-y-4">

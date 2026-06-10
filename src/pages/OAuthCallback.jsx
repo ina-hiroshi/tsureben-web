@@ -103,7 +103,7 @@ export default function OAuthCallback() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#ede3d2]">
+      <div className="min-h-dvh flex items-center justify-center bg-[#ede3d2]">
         <div className="text-center text-[#5a3e28]">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#5a3e28] mx-auto" />
           <p className="mt-4">認証処理中...</p>
@@ -114,7 +114,7 @@ export default function OAuthCallback() {
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#ede3d2] p-4">
+      <div className="min-h-dvh flex items-center justify-center bg-[#ede3d2] p-4">
         <div className="bg-white p-8 rounded-xl shadow-md text-center max-w-lg">
           <p className="text-red-600 mb-4 whitespace-pre-wrap text-sm">{error}</p>
           <div className="flex flex-col gap-2">

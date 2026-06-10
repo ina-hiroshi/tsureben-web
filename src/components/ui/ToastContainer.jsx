@@ -30,6 +30,10 @@ export default function ToastContainer({ toasts, onDismiss }) {
   return (
     <div
       className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-3 p-4 pointer-events-none"
+      style={{
+        paddingTop: 'calc(1rem + var(--safe-top))',
+        paddingBottom: 'calc(1rem + var(--safe-bottom))',
+      }}
       aria-live="polite"
     >
       {toasts.map((toast) => {

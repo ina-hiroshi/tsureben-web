@@ -410,7 +410,7 @@ export default function Login() {
 
   return (
     <div
-      className="min-h-screen bg-tsure-bg flex items-center justify-center p-4"
+      className="min-h-dvh bg-tsure-bg flex items-center justify-center p-4"
       style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)' }}
     >
       <div className="w-full max-w-md space-y-4">

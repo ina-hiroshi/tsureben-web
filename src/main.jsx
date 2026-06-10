@@ -15,7 +15,7 @@ function showBootError(err) {
   root.innerHTML = '';
   const wrap = document.createElement('div');
   wrap.style.cssText =
-    'min-height:100vh;padding:24px;background:#fff5e9;color:#5a3e28;font-family:system-ui,sans-serif;overflow:auto;';
+    'min-height:100dvh;padding:24px;background:#fff5e9;color:#5a3e28;font-family:system-ui,sans-serif;overflow:auto;';
   const h = document.createElement('h1');
   h.textContent = '起動時にエラーが発生しました';
   h.style.cssText = 'font-size:18px;font-weight:700;margin:0 0 12px;';

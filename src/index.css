@@ -9,6 +9,8 @@
   --safe-right: env(safe-area-inset-right, 0px);
   /* サイドバーロゴ行と DateNav の高さ（py-4 + logo + py-4） */
   --app-subheader-height: 5rem;
+  /* モバイル AppHeader: safe-top + py-3 + min-h-touch */
+  --app-header-height: calc(var(--safe-top) + 4.25rem);
 }
 
 @layer base {

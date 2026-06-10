@@ -20,8 +20,8 @@ export default function Modal({
   const widthClass = PANEL_WIDTH[size] || PANEL_WIDTH.default;
 
   const panelClass = fullScreenMobile
-    ? `fixed inset-0 z-[100] flex flex-col bg-tsure-surface sm:inset-auto sm:relative ${widthClass} sm:mx-auto sm:my-8 sm:rounded-2xl sm:max-h-[90vh]`
-    : `relative w-full ${widthClass} bg-tsure-surface rounded-2xl max-h-[90vh] flex flex-col`;
+    ? `fixed inset-0 z-[100] flex flex-col bg-tsure-surface sm:inset-auto sm:relative ${widthClass} sm:mx-auto sm:my-8 sm:rounded-2xl sm:max-h-[90dvh]`
+    : `relative w-full ${widthClass} bg-tsure-surface rounded-2xl max-h-[90dvh] flex flex-col`;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">

@@ -5,7 +5,7 @@ export default function WebSelfRegisteredBlock() {
   const appStoreUrl = getAppStoreUrl();
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#4b4039] text-[#ede3d2] px-6">
+    <div className="min-h-dvh flex flex-col items-center justify-center bg-[#4b4039] text-[#ede3d2] px-6">
       <div className="max-w-lg bg-[#ede3d2] text-[#5a3e28] shadow-md rounded-2xl p-8 space-y-4 text-center">
         <h1 className="text-2xl font-semibold">iOS アプリからご利用ください</h1>
         <p className="text-sm leading-relaxed">

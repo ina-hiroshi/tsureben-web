@@ -46,7 +46,7 @@ export default function MateMutualFilters({
   if (!open) return null;
 
   return (
-    <div className="mb-4 sticky top-16 md:top-0 z-10 overflow-visible -mx-4 px-4 py-3 bg-tsure-surface/95 backdrop-blur-sm border-b border-tsure-border md:static md:mx-0 md:px-0 md:py-0 md:border-0 md:bg-transparent md:backdrop-blur-none">
+    <div className="mb-4 sticky top-[var(--app-header-height)] md:top-0 z-10 overflow-visible -mx-4 px-4 py-3 bg-tsure-surface/95 backdrop-blur-sm border-b border-tsure-border md:static md:mx-0 md:px-0 md:py-0 md:border-0 md:bg-transparent md:backdrop-blur-none">
       <div className="space-y-3">
         <Input
           label="検索"

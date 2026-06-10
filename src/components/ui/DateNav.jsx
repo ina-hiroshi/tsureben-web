@@ -12,7 +12,7 @@ export default function DateNav({ date, onPrevious, onNext }) {
   const d = dayjs(date);
 
   return (
-    <div className="sticky top-16 md:top-0 z-20 -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-3 md:py-0 md:h-[var(--app-subheader-height)] mb-4 shrink-0 bg-tsure-bg/95 backdrop-blur border-b border-white/10 flex items-center">
+    <div className="sticky top-[var(--app-header-height)] md:top-0 z-20 -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-3 md:py-0 md:h-[var(--app-subheader-height)] mb-4 shrink-0 bg-tsure-bg/95 backdrop-blur border-b border-white/10 flex items-center">
       <div className="flex items-center justify-between gap-1.5 sm:gap-2 w-full">
         <button type="button" className={DATE_NAV_BTN} onClick={onPrevious} aria-label="前の日">
           <AppIcon icon={ChevronLeft} size="sm" />

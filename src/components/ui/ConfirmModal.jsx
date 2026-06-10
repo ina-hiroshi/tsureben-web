@@ -13,7 +13,13 @@ export default function ConfirmModal({
       : 'bg-tsure-primary hover:bg-tsure-muted';
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-4">
+    <div
+      className="fixed inset-0 z-[110] flex items-end sm:items-center justify-center p-4"
+      style={{
+        paddingTop: 'calc(1rem + var(--safe-top))',
+        paddingBottom: 'calc(1rem + var(--safe-bottom))',
+      }}
+    >
       <button
         type="button"
         className="absolute inset-0 bg-tsure-overlay backdrop-blur-[1px]"

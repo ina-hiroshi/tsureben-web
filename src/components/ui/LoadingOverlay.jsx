@@ -12,6 +12,10 @@ export default function LoadingOverlay({
   return (
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      style={{
+        paddingTop: 'calc(1rem + var(--safe-top))',
+        paddingBottom: 'calc(1rem + var(--safe-bottom))',
+      }}
       role="status"
       aria-live="polite"
       aria-busy="true"

@@ -31,7 +31,7 @@ export default function PageLayout({
 
   return (
     <div
-      className={`min-h-full flex flex-col md:flex-row md:min-h-dvh bg-tsure-bg text-tsure-on-primary md:pb-0 ${className}`}
+      className={`min-h-dvh flex flex-col md:flex-row bg-tsure-bg text-tsure-on-primary md:pb-0 ${className}`}
       style={{
         paddingBottom: showAdSlot
           ? `calc(1rem + ${adReservePx}px + var(--safe-bottom))`

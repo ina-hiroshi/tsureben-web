@@ -47,7 +47,7 @@ function FeatureScreenshot({ feature }) {
 export default function ForSchoolsPage() {
   return (
     <div
-      className="min-h-screen bg-tsure-bg pb-28"
+      className="min-h-dvh bg-tsure-bg pb-28"
       style={{ paddingTop: 'var(--safe-top)', paddingBottom: 'var(--safe-bottom)' }}
     >
       <div className="max-w-4xl mx-auto px-4 space-y-10">
