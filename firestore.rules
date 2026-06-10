@@ -173,9 +173,13 @@ service cloud.firestore {
         || k.hasOnly(['unreadByTeacher', 'updatedAt'])
         || k.hasOnly(['unreadByStudent', 'unreadByTeacher', 'updatedAt'])
         || k.hasOnly(['lastMessageAt', 'updatedAt'])
+        || k.hasOnly(['lastMessageAt', 'lastMessagePreview', 'updatedAt'])
         || k.hasOnly(['unreadByStudent', 'lastMessageAt', 'updatedAt'])
+        || k.hasOnly(['unreadByStudent', 'lastMessageAt', 'lastMessagePreview', 'updatedAt'])
         || k.hasOnly(['unreadByTeacher', 'lastMessageAt', 'updatedAt'])
-        || k.hasOnly(['unreadByStudent', 'unreadByTeacher', 'lastMessageAt', 'updatedAt']);
+        || k.hasOnly(['unreadByTeacher', 'lastMessageAt', 'lastMessagePreview', 'updatedAt'])
+        || k.hasOnly(['unreadByStudent', 'unreadByTeacher', 'lastMessageAt', 'updatedAt'])
+        || k.hasOnly(['unreadByStudent', 'unreadByTeacher', 'lastMessageAt', 'lastMessagePreview', 'updatedAt']);
     }
 
     match /schools/{schoolId} {
