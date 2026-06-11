@@ -117,6 +117,60 @@ describe('users collection', () => {
       teacher.firestore().doc('users/student-a@school.test').get()
     );
   });
+
+  it('allows teacher to list same-school students', async () => {
+    await seedBaseData();
+    const teacher = testEnv.authenticatedContext('teacher-a@school.test', {
+      email: 'teacher-a@school.test',
+    });
+    const snap = await assertSucceeds(
+      teacher
+        .firestore()
+        .collection('users')
+        .where('schoolId', '==', 'school-a')
+        .where('role', '==', 'student')
+        .get()
+    );
+    assert.equal(snap.size, 2);
+  });
+
+  it('allows school_admin to list same-school students', async () => {
+    await seedBaseData();
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc('teachers/admin-a@school.test').set({
+        schoolId: 'school-a',
+        role: 'school_admin',
+        name: 'AdminA',
+      });
+    });
+    const admin = testEnv.authenticatedContext('admin-a@school.test', {
+      email: 'admin-a@school.test',
+    });
+    const snap = await assertSucceeds(
+      admin
+        .firestore()
+        .collection('users')
+        .where('schoolId', '==', 'school-a')
+        .where('role', '==', 'student')
+        .get()
+    );
+    assert.equal(snap.size, 2);
+  });
+
+  it('blocks teacher from listing other-school students', async () => {
+    await seedBaseData();
+    const teacher = testEnv.authenticatedContext('teacher-a@school.test', {
+      email: 'teacher-a@school.test',
+    });
+    await assertFails(
+      teacher
+        .firestore()
+        .collection('users')
+        .where('schoolId', '==', 'school-other')
+        .where('role', '==', 'student')
+        .get()
+    );
+  });
 });
 
 describe('schools collection', () => {

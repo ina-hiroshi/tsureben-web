@@ -39,13 +39,25 @@ service cloud.firestore {
     }
 
     function studentSchoolId(studentEmail) {
-      return get(/databases/$(database)/documents/users/$(studentEmail)).data.schoolId;
+      return get(/databases/$(database)/documents/users/$(studentEmail)).data.get('schoolId', null);
     }
 
     function sameSchoolAsTarget(targetEmail) {
+      let targetSchoolId = studentSchoolId(targetEmail);
+      let callerSchoolId = teacherSchoolId();
       return isTeacher()
         && exists(/databases/$(database)/documents/users/$(targetEmail))
-        && studentSchoolId(targetEmail) == teacherSchoolId();
+        && targetSchoolId != null
+        && callerSchoolId != null
+        && targetSchoolId == callerSchoolId;
+    }
+
+    function teacherCanListSchoolStudent() {
+      let callerSchoolId = teacherSchoolId();
+      return isTeacher()
+        && callerSchoolId != null
+        && resource.data.get('role', '') == 'student'
+        && resource.data.get('schoolId', '') == callerSchoolId;
     }
 
     function callerUserDoc() {
@@ -201,7 +213,8 @@ service cloud.firestore {
     }
 
     match /users/{email} {
-      allow read: if isAuthenticated() && canReadUserProfile(email);
+      allow get: if isAuthenticated() && canReadUserProfile(email);
+      allow list: if isAuthenticated() && (isSuperAdmin() || teacherCanListSchoolStudent());
       allow create: if isAuthenticated() && userEmail() == email && userCreateAllowed();
       allow update: if isAuthenticated() && userEmail() == email
         && canUpdateOwnUserProfile();
