@@ -30,6 +30,7 @@ async function seedBaseData() {
   await testEnv.withSecurityRulesDisabled(async (ctx) => {
     const db = ctx.firestore();
     await db.doc('schools/school-a').set({ name: 'A高校' });
+    await db.doc('schools/school-b').set({ name: 'B高校' });
     await db.doc('users/student-a@school.test').set({
       schoolId: 'school-a',
       role: 'student',
@@ -38,6 +39,8 @@ async function seedBaseData() {
       class: '1',
       number: '1',
       registrationType: 'school_provisioned',
+      mateScope: '学内のみ',
+      shareScope: '学年のみ',
       mutualMates: [],
       pendingSent: [],
       pendingReceived: [],
@@ -50,6 +53,22 @@ async function seedBaseData() {
       class: '1',
       number: '2',
       registrationType: 'school_provisioned',
+      mateScope: '学内のみ',
+      shareScope: '学年のみ',
+      mutualMates: [],
+      pendingSent: [],
+      pendingReceived: [],
+    });
+    await db.doc('users/student-c@school.test').set({
+      schoolId: 'school-b',
+      role: 'student',
+      name: '生徒C',
+      grade: '1',
+      class: '1',
+      number: '1',
+      registrationType: 'school_provisioned',
+      mateScope: '学内のみ',
+      shareScope: '学年のみ',
       mutualMates: [],
       pendingSent: [],
       pendingReceived: [],
@@ -58,6 +77,11 @@ async function seedBaseData() {
       schoolId: 'school-a',
       role: 'teacher',
       name: '教員A',
+    });
+    await db.doc('teachers/teacher-b@school.test').set({
+      schoolId: 'school-b',
+      role: 'teacher',
+      name: '教員B',
     });
   });
 }
@@ -255,6 +279,303 @@ describe('activeSessions collection', () => {
     });
     await assertFails(
       studentA.firestore().doc('activeSessions/student-b@school.test').get()
+    );
+  });
+
+  it('allows teacher to read same-school student session', async () => {
+    await seedBaseData();
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx.firestore().doc('activeSessions/student-a@school.test').set({
+        schoolId: 'school-a',
+        grade: '1',
+        class: '1',
+        mateEmails: [],
+        shareScope: '学年のみ',
+        subject: '数学',
+      });
+    });
+    const teacher = testEnv.authenticatedContext('teacher-a@school.test', {
+      email: 'teacher-a@school.test',
+    });
+    await assertSucceeds(
+      teacher.firestore().doc('activeSessions/student-a@school.test').get()
+    );
+  });
+});
+
+describe('logs collection', () => {
+  it('allows student to write own day log', async () => {
+    await seedBaseData();
+    const studentA = testEnv.authenticatedContext('student-a@school.test', {
+      email: 'student-a@school.test',
+    });
+    await assertSucceeds(
+      studentA
+        .firestore()
+        .doc('logs/student-a@school.test/days/2026-07-10')
+        .set({
+          entries: [{ id: '1', startTime: '10:00', subject: '数学', duration: 30 }],
+          totalMinutes: 30,
+          bySubject: { 数学: 30 },
+        })
+    );
+  });
+
+  it('allows teacher to read same-school student logs', async () => {
+    await seedBaseData();
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx
+        .firestore()
+        .doc('logs/student-a@school.test/days/2026-07-10')
+        .set({ entries: [], totalMinutes: 0, bySubject: {} });
+    });
+    const teacher = testEnv.authenticatedContext('teacher-a@school.test', {
+      email: 'teacher-a@school.test',
+    });
+    await assertSucceeds(
+      teacher.firestore().doc('logs/student-a@school.test/days/2026-07-10').get()
+    );
+  });
+
+  it('blocks teacher from reading other-school student logs', async () => {
+    await seedBaseData();
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx
+        .firestore()
+        .doc('logs/student-c@school.test/days/2026-07-10')
+        .set({ entries: [], totalMinutes: 0, bySubject: {} });
+    });
+    const teacher = testEnv.authenticatedContext('teacher-a@school.test', {
+      email: 'teacher-a@school.test',
+    });
+    await assertFails(
+      teacher.firestore().doc('logs/student-c@school.test/days/2026-07-10').get()
+    );
+  });
+
+  it('blocks student from reading another student logs', async () => {
+    await seedBaseData();
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx
+        .firestore()
+        .doc('logs/student-b@school.test/days/2026-07-10')
+        .set({ entries: [], totalMinutes: 0, bySubject: {} });
+    });
+    const studentA = testEnv.authenticatedContext('student-a@school.test', {
+      email: 'student-a@school.test',
+    });
+    await assertFails(
+      studentA.firestore().doc('logs/student-b@school.test/days/2026-07-10').get()
+    );
+  });
+});
+
+describe('plans collection', () => {
+  it('allows student to write own day plan', async () => {
+    await seedBaseData();
+    const studentA = testEnv.authenticatedContext('student-a@school.test', {
+      email: 'student-a@school.test',
+    });
+    await assertSucceeds(
+      studentA
+        .firestore()
+        .doc('plans/student-a@school.test/days/2026-07-10')
+        .set({
+          entries: [{ id: '1', start: '10:00', end: '11:00', subject: '英語' }],
+        })
+    );
+  });
+
+  it('allows teacher to read same-school student plans', async () => {
+    await seedBaseData();
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx
+        .firestore()
+        .doc('plans/student-a@school.test/days/2026-07-10')
+        .set({ entries: [] });
+    });
+    const teacher = testEnv.authenticatedContext('teacher-a@school.test', {
+      email: 'teacher-a@school.test',
+    });
+    await assertSucceeds(
+      teacher.firestore().doc('plans/student-a@school.test/days/2026-07-10').get()
+    );
+  });
+
+  it('blocks teacher from reading other-school student plans', async () => {
+    await seedBaseData();
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      await ctx
+        .firestore()
+        .doc('plans/student-c@school.test/days/2026-07-10')
+        .set({ entries: [] });
+    });
+    const teacher = testEnv.authenticatedContext('teacher-a@school.test', {
+      email: 'teacher-a@school.test',
+    });
+    await assertFails(
+      teacher.firestore().doc('plans/student-c@school.test/days/2026-07-10').get()
+    );
+  });
+});
+
+describe('mateInvites collection', () => {
+  it('blocks all client read and write', async () => {
+    await seedBaseData();
+    const studentA = testEnv.authenticatedContext('student-a@school.test', {
+      email: 'student-a@school.test',
+    });
+    await assertFails(studentA.firestore().doc('mateInvites/test-token').get());
+    await assertFails(
+      studentA.firestore().doc('mateInvites/test-token').set({
+        inviterEmail: 'student-a@school.test',
+      })
+    );
+  });
+});
+
+describe('feedbackThreads collection', () => {
+  it('allows teacher to create thread for same-school student', async () => {
+    await seedBaseData();
+    const teacher = testEnv.authenticatedContext('teacher-a@school.test', {
+      email: 'teacher-a@school.test',
+    });
+    await assertSucceeds(
+      teacher.firestore().collection('feedbackThreads').add({
+        studentEmail: 'student-a@school.test',
+        schoolId: 'school-a',
+        scope: 'daily',
+        dateKey: '2026-07-10',
+        title: '7/10 フィードバック',
+        createdBy: 'teacher-a@school.test',
+        createdByName: '教員A',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastMessageAt: new Date(),
+        unreadByStudent: true,
+        unreadByTeacher: false,
+      })
+    );
+  });
+
+  it('allows student to read own feedback thread', async () => {
+    await seedBaseData();
+    let threadId;
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const ref = await ctx.firestore().collection('feedbackThreads').add({
+        studentEmail: 'student-a@school.test',
+        schoolId: 'school-a',
+        scope: 'daily',
+        dateKey: '2026-07-10',
+        title: '7/10',
+        createdBy: 'teacher-a@school.test',
+        createdByName: '教員A',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastMessageAt: new Date(),
+        unreadByStudent: true,
+        unreadByTeacher: false,
+      });
+      threadId = ref.id;
+    });
+    const studentA = testEnv.authenticatedContext('student-a@school.test', {
+      email: 'student-a@school.test',
+    });
+    await assertSucceeds(
+      studentA.firestore().doc(`feedbackThreads/${threadId}`).get()
+    );
+  });
+
+  it('blocks teacher from reading other-school student thread', async () => {
+    await seedBaseData();
+    let threadId;
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const ref = await ctx.firestore().collection('feedbackThreads').add({
+        studentEmail: 'student-c@school.test',
+        schoolId: 'school-b',
+        scope: 'daily',
+        dateKey: '2026-07-10',
+        title: '7/10',
+        createdBy: 'teacher-b@school.test',
+        createdByName: '教員B',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastMessageAt: new Date(),
+        unreadByStudent: true,
+        unreadByTeacher: false,
+      });
+      threadId = ref.id;
+    });
+    const teacher = testEnv.authenticatedContext('teacher-a@school.test', {
+      email: 'teacher-a@school.test',
+    });
+    await assertFails(
+      teacher.firestore().doc(`feedbackThreads/${threadId}`).get()
+    );
+  });
+
+  it('blocks student from reading another student thread', async () => {
+    await seedBaseData();
+    let threadId;
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const ref = await ctx.firestore().collection('feedbackThreads').add({
+        studentEmail: 'student-b@school.test',
+        schoolId: 'school-a',
+        scope: 'daily',
+        dateKey: '2026-07-10',
+        title: '7/10',
+        createdBy: 'teacher-a@school.test',
+        createdByName: '教員A',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastMessageAt: new Date(),
+        unreadByStudent: true,
+        unreadByTeacher: false,
+      });
+      threadId = ref.id;
+    });
+    const studentA = testEnv.authenticatedContext('student-a@school.test', {
+      email: 'student-a@school.test',
+    });
+    await assertFails(
+      studentA.firestore().doc(`feedbackThreads/${threadId}`).get()
+    );
+  });
+
+  it('allows teacher to post message with authorRole teacher', async () => {
+    await seedBaseData();
+    let threadId;
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const ref = await ctx.firestore().collection('feedbackThreads').add({
+        studentEmail: 'student-a@school.test',
+        schoolId: 'school-a',
+        scope: 'daily',
+        dateKey: '2026-07-10',
+        title: '7/10',
+        createdBy: 'teacher-a@school.test',
+        createdByName: '教員A',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        lastMessageAt: new Date(),
+        unreadByStudent: true,
+        unreadByTeacher: false,
+      });
+      threadId = ref.id;
+    });
+    const teacher = testEnv.authenticatedContext('teacher-a@school.test', {
+      email: 'teacher-a@school.test',
+    });
+    await assertSucceeds(
+      teacher
+        .firestore()
+        .collection(`feedbackThreads/${threadId}/messages`)
+        .add({
+          authorEmail: 'teacher-a@school.test',
+          authorRole: 'teacher',
+          authorName: '教員A',
+          body: 'よく頑張りました',
+          createdAt: new Date(),
+        })
     );
   });
 });

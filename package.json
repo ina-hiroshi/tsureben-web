@@ -14,6 +14,11 @@
     "setup:stripe": "node scripts/setupStripeProducts.mjs",
     "migrate:legacy-school": "node scripts/migrateLegacyFreeSchool.mjs",
     "test:rules": "firebase emulators:exec --only firestore \"node --test tests/firestore.rules.test.mjs\"",
+    "test:school-onboarding": "node --test src/utils/schoolOnboarding.test.js",
+    "test:pre-release": "npm run test:rules && npm run test:school-onboarding",
+    "test:e2e-production": "node scripts/runE2eProductionTests.mjs",
+    "create-e2e-test-accounts": "node scripts/createE2eTestAccounts.mjs",
+    "verify:scheduled-functions": "node scripts/verifyScheduledFunctions.mjs",
     "postinstall": "patch-package"
   },
   "dependencies": {
