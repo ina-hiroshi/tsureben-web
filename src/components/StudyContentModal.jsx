@@ -35,6 +35,7 @@ export default function StudyContentModal({
     e.preventDefault();
     if (!subject.trim() || !topic.trim()) return;
     if (mode === 'manual' && (!duration || Number(duration) < 1)) return;
+    if (mode === 'edit' && (!duration || Number(duration) < 1)) return;
     setSaving(true);
     try {
       const saved = await onSave({

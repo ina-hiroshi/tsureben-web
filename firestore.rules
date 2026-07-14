@@ -148,6 +148,7 @@ service cloud.firestore {
 
     function canReadActiveSession(sessionEmail, sessionData) {
       return userEmail() == sessionEmail
+        || isSuperAdmin()
         || (isTeacher() && sessionData.get('schoolId', null) == teacherSchoolId())
         || userEmail() in sessionData.get('mateEmails', [])
         || activeSessionVisibleByShareScope(sessionData);

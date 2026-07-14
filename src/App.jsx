@@ -23,6 +23,7 @@ import AdminPage from './pages/AdminPage';
 import AdminTeacherCommentsPage from './pages/AdminTeacherCommentsPage';
 import TeacherStudentReviewPage from './pages/TeacherStudentReviewPage';
 import TeacherLivePresencePage from './pages/TeacherLivePresencePage';
+import TeacherStudentStatusPage from './pages/TeacherStudentStatusPage';
 import TeacherRouteShell from './components/teacher/TeacherRouteShell';
 import StudentFeedbackPage from './pages/StudentFeedbackPage';
 import PricingPage from './pages/PricingPage';
@@ -125,32 +126,15 @@ function AppLayout() {
         path="/teacher"
         element={
           <ProtectedRoute requireTeacher>
-            <TeacherRouteShell>
-              <Navigate to="/teacher/live" replace />
-            </TeacherRouteShell>
+            <TeacherRouteShell />
           </ProtectedRoute>
         }
-      />
-      <Route
-        path="/teacher/live"
-        element={
-          <ProtectedRoute requireTeacher>
-            <TeacherRouteShell>
-              <TeacherLivePresencePage />
-            </TeacherRouteShell>
-          </ProtectedRoute>
-        }
-      />
-      <Route
-        path="/teacher/students"
-        element={
-          <ProtectedRoute requireTeacher>
-            <TeacherRouteShell>
-              <TeacherStudentReviewPage />
-            </TeacherRouteShell>
-          </ProtectedRoute>
-        }
-      />
+      >
+        <Route index element={<Navigate to="live" replace />} />
+        <Route path="live" element={<TeacherLivePresencePage />} />
+        <Route path="status" element={<TeacherStudentStatusPage />} />
+        <Route path="students" element={<TeacherStudentReviewPage />} />
+      </Route>
       <Route
         path="/feedback"
         element={

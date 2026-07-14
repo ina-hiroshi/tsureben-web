@@ -1,5 +1,5 @@
 import { NAV_CARD_ICONS } from './navIcons';
-import { GraduationCap, MessageSquare, Radio, Home } from 'lucide-react';
+import { GraduationCap, MessageSquare, Radio, Home, ClipboardList } from 'lucide-react';
 
 export const NAV_ITEMS = [
   { to: '/home', label: 'ホーム', icon: NAV_CARD_ICONS.home },
@@ -12,6 +12,7 @@ export const NAV_ITEMS = [
 
 export const TEACHER_NAV_ITEMS = [
   { to: '/teacher/live', label: '現在学習中', icon: Radio },
+  { to: '/teacher/status', label: '生徒の状況', icon: ClipboardList },
 ];
 
 /** @deprecated use navigation via sidebar student list */

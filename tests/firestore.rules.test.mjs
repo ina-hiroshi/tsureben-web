@@ -301,6 +301,39 @@ describe('activeSessions collection', () => {
       teacher.firestore().doc('activeSessions/student-a@school.test').get()
     );
   });
+
+  it('allows super_admin to read another school student session', async () => {
+    await seedBaseData();
+    await testEnv.withSecurityRulesDisabled(async (ctx) => {
+      const db = ctx.firestore();
+      await db.doc('teachers/super@school.test').set({
+        schoolId: 'school-a',
+        role: 'super_admin',
+        name: 'Super',
+      });
+      await db.doc('activeSessions/student-c@school.test').set({
+        schoolId: 'school-b',
+        grade: '1',
+        class: '1',
+        mateEmails: [],
+        shareScope: '学年のみ',
+        subject: '英語',
+      });
+    });
+    const superAdmin = testEnv.authenticatedContext('super@school.test', {
+      email: 'super@school.test',
+    });
+    await assertSucceeds(
+      superAdmin.firestore().doc('activeSessions/student-c@school.test').get()
+    );
+    await assertSucceeds(
+      superAdmin
+        .firestore()
+        .collection('activeSessions')
+        .where('schoolId', '==', 'school-b')
+        .get()
+    );
+  });
 });
 
 describe('logs collection', () => {

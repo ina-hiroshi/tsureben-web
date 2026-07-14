@@ -1,16 +1,22 @@
-import { useTeacherWorkspace } from '../../contexts/TeacherWorkspaceContext';
+import { useTeacherWorkspaceOptional } from '../../contexts/TeacherWorkspaceContext';
 import Card from '../ui/Card';
 import LoadingOverlay from '../ui/LoadingOverlay';
 import SchoolManagementPanel from '../admin/SchoolManagementPanel';
 
 export default function SchoolSelectionGate({ children }) {
+  const workspace = useTeacherWorkspaceOptional();
+
+  if (!workspace) {
+    return <LoadingOverlay message="読み込み中…" />;
+  }
+
   const {
     isSuperAdmin,
     selectedSchoolId,
     setSelectedSchoolId,
     needsSchoolSelection,
     loading,
-  } = useTeacherWorkspace();
+  } = workspace;
 
   if (loading) {
     return <LoadingOverlay message="読み込み中…" />;

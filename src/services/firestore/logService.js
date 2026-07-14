@@ -1,6 +1,68 @@
-import { doc, getDoc, setDoc, getDocs, collection } from 'firebase/firestore';
+import { doc, getDoc, setDoc, getDocs, collection, query, where, documentId } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { createId } from '../../utils/planUtils';
+
+function formatDateKey(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function getRecentDateKeys(days, anchorDate = new Date()) {
+  const keys = [];
+  for (let offset = 0; offset < days; offset += 1) {
+    const date = new Date(anchorDate);
+    date.setHours(0, 0, 0, 0);
+    date.setDate(date.getDate() - offset);
+    keys.push(formatDateKey(date));
+  }
+  return keys;
+}
+
+export async function getRecentStudySummary(email, days = 7, anchorDate = new Date()) {
+  const dateKeys = getRecentDateKeys(days, anchorDate);
+  if (!dateKeys.length) {
+    return { hasStudy: false, totalMinutes: 0, days };
+  }
+
+  const oldest = dateKeys[dateKeys.length - 1];
+  const newest = dateKeys[0];
+  const snap = await getDocs(
+    query(
+      collection(db, 'logs', email, 'days'),
+      where(documentId(), '>=', oldest),
+      where(documentId(), '<=', newest)
+    )
+  );
+
+  let totalMinutes = 0;
+  let hasStudy = false;
+  snap.docs.forEach((dayDoc) => {
+    const minutes = Number(dayDoc.data().totalMinutes) || 0;
+    if (minutes <= 0) return;
+    hasStudy = true;
+    totalMinutes += minutes;
+  });
+
+  return { hasStudy, totalMinutes, days };
+}
+
+export async function getRecentStudySummaries(emails, days = 7, concurrency = 20) {
+  const uniqueEmails = [...new Set((emails || []).filter(Boolean))];
+  const summaries = {};
+
+  for (let index = 0; index < uniqueEmails.length; index += concurrency) {
+    const batch = uniqueEmails.slice(index, index + concurrency);
+    await Promise.all(
+      batch.map(async (email) => {
+        summaries[email] = await getRecentStudySummary(email, days);
+      })
+    );
+  }
+
+  return summaries;
+}
 
 function recomputeAggregates(entries) {
   let totalMinutes = 0;

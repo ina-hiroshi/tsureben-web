@@ -2,16 +2,16 @@ import { isDemoFeatureEnabled } from './demoSettings';
 import { getDemoTeacherReviewStudents } from './demoTeacherReview';
 
 const SESSION_PRESETS = [
-  { subject: '数学', topic: '数A', book: 'チャート式', startTime: '09:15' },
-  { subject: '英語', topic: '長文読解', book: 'ポレポレ', startTime: '10:30' },
-  { subject: '国語', topic: '現代文', book: 'センター過去問', startTime: '11:00' },
-  { subject: '理科', topic: '物理', book: '物理のエッセンス', startTime: '13:00' },
-  { subject: '社会', topic: '日本史', book: '詳説世界史', startTime: '09:45' },
-  { subject: '数学', topic: '数B', book: '青チャート', startTime: '10:00' },
-  { subject: '英語', topic: '英作文', book: 'ポレポレ', startTime: '11:30' },
-  { subject: '理科', topic: '化学', book: '良問の風', startTime: '12:15' },
-  { subject: '情報', topic: 'Python', book: '情報I', startTime: '14:00' },
-  { subject: '国語', topic: '古文', book: '読解の技術', startTime: '14:30' },
+  { subject: '数学', topic: '数A', book: 'チャート式', content: '第3章 確率', startTime: '09:15' },
+  { subject: '英語', topic: '長文読解', book: 'ポレポレ', content: '2024 第2問', startTime: '10:30' },
+  { subject: '国語', topic: '現代文', book: 'センター過去問', content: '評論 要約', startTime: '11:00' },
+  { subject: '理科', topic: '物理', book: '物理のエッセンス', content: '力学 演習', startTime: '13:00' },
+  { subject: '社会', topic: '日本史', book: '詳説世界史', content: '鎌倉時代', startTime: '09:45' },
+  { subject: '数学', topic: '数B', book: '青チャート', content: '積分法', startTime: '10:00' },
+  { subject: '英語', topic: '英作文', book: 'ポレポレ', content: '意見論述', startTime: '11:30' },
+  { subject: '理科', topic: '化学', book: '良問の風', content: '有機化学', startTime: '12:15' },
+  { subject: '情報', topic: 'Python', book: '情報I', content: 'リスト操作', startTime: '14:00' },
+  { subject: '国語', topic: '古文', book: '読解の技術', content: '助動詞', startTime: '14:30' },
 ];
 
 /** 生徒確認デモが無効のときのフォールバック（学年・組・番号付き） */
