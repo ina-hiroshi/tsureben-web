@@ -79,10 +79,10 @@ function PasswordResetModal({ student, schoolName, onClose, onSuccess }) {
               className="w-full border border-[#c4b5a0] rounded-lg px-3 py-2"
               autoFocus
               required
-              minLength={6}
+              minLength={MIN_PASSWORD_LENGTH}
             />
             <p className="text-xs text-gray-500 mt-1">
-              リセット後、生徒はこのパスワードでログインし、設定画面で変更を求められます。
+              リセット後、生徒はこのパスワードでログインし、初期設定画面（パスワード変更）で新しいパスワードを設定します。
             </p>
           </div>
           <div className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2">

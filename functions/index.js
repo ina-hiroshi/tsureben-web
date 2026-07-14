@@ -2,7 +2,7 @@ import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onCall, onRequest, HttpsError } from "firebase-functions/v2/https";
 import { setGlobalOptions } from "firebase-functions/v2/options";
 import { getApps, initializeApp } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import {
   acceptMateRequestHandler,
   cancelMateRequestHandler,
@@ -292,5 +292,31 @@ export const resetActiveSessions = onSchedule(
       batch.delete(docSnap.ref);
     });
     await batch.commit();
+  }
+);
+
+const MATE_INVITE_CLEANUP_BATCH_SIZE = 400;
+
+export const cleanupExpiredMateInvites = onSchedule(
+  {
+    schedule: "0 3 * * *",
+    timeZone: "Asia/Tokyo",
+  },
+  async () => {
+    const now = Timestamp.now();
+
+    while (true) {
+      const snapshot = await db
+        .collection("mateInvites")
+        .where("expiresAt", "<", now)
+        .limit(MATE_INVITE_CLEANUP_BATCH_SIZE)
+        .get();
+
+      if (snapshot.empty) break;
+
+      const batch = db.batch();
+      snapshot.docs.forEach((docSnap) => batch.delete(docSnap.ref));
+      await batch.commit();
+    }
   }
 );

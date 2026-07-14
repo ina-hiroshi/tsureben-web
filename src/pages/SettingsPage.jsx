@@ -9,6 +9,7 @@ import {
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useStudentProfile } from '../contexts/StudentProfileContext';
 import { useTeacherStatus } from '../hooks/useTeacherStatus';
 import { getProfile, updateProfile } from '../services/firestore/userService';
 import {
@@ -58,6 +59,7 @@ const DELETE_CONFIRM_PHRASE = '削除する';
 export default function SettingsPage() {
   const navigate = useNavigate();
   const { email } = useAuth();
+  const { refreshProfile } = useStudentProfile();
   const { isTeacher, schoolId: teacherSchoolId } = useTeacherStatus();
   const { toast, confirm } = useUiFeedback();
   const [profile, setProfile] = useState(null);
@@ -96,6 +98,8 @@ export default function SettingsPage() {
   const canDeleteAccount = !isTeacher && canDeleteSelfRegisteredAccount(profile);
   const isSchoolProvisionedStudent =
     !isTeacher && profile && !canDeleteSelfRegisteredAccount(profile);
+  const showMandatoryPasswordChange =
+    mustChangePassword && canChangePassword && !isSchoolProvisionedStudent;
   const isLegacyFreeSchool = schoolPlan === 'legacy_free';
   const canImportTransfer = isSchoolProvisionedStudent && !isLegacyFreeSchool;
   const activeHelp = helpId ? SETTINGS_SECTION_HELP[helpId] : null;
@@ -243,6 +247,7 @@ export default function SettingsPage() {
       await reauthenticateWithCredential(auth.currentUser, credential);
       await updatePassword(auth.currentUser, newPassword);
       await updateProfile(email, { mustChangePassword: false });
+      await refreshProfile();
       setMustChangePassword(false);
       toast.success('パスワードを変更しました');
       setCurrentPassword('');
@@ -333,12 +338,14 @@ export default function SettingsPage() {
       : null,
   ].filter(Boolean);
 
-  const passwordSectionTitle = mustChangePassword ? 'パスワード変更（必須）' : 'パスワード変更';
+  const passwordSectionTitle = showMandatoryPasswordChange
+    ? 'パスワード変更（必須）'
+    : 'パスワード変更';
 
   return (
     <PageLayout title="設定" contentWidth="settings">
       <div className="pb-8">
-        {mustChangePassword && canChangePassword && (
+        {showMandatoryPasswordChange && (
           <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 mb-4">
             パスワードの変更が必要です。下の「パスワード変更（必須）」から新しいパスワードを設定してください。
           </div>

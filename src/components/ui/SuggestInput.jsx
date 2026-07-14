@@ -9,6 +9,7 @@ export default function SuggestInput({
   disabled = false,
   maxSuggestions = 8,
   labelClassName = '',
+  compact = false,
 }) {
   const listId = useId();
   const wrapperRef = useRef(null);
@@ -65,7 +66,9 @@ export default function SuggestInput({
   return (
     <div ref={wrapperRef} className="relative">
       {label && (
-        <label className={`block text-sm font-medium text-tsure-primary mb-1 ${labelClassName}`}>
+        <label
+          className={`block font-medium text-tsure-primary ${compact ? 'text-xs mb-0.5' : 'text-sm mb-1'} ${labelClassName}`}
+        >
           {label}
         </label>
       )}
@@ -85,7 +88,9 @@ export default function SuggestInput({
         aria-expanded={open && filtered.length > 0}
         aria-controls={listId}
         aria-autocomplete="list"
-        className="w-full border border-tsure-border rounded-xl px-3 py-2.5 min-h-touch bg-white text-tsure-primary placeholder:text-tsure-muted focus:outline-none focus:ring-2 focus:ring-tsure-accent/50 disabled:opacity-50"
+        className={`w-full border border-tsure-border bg-white text-tsure-primary placeholder:text-tsure-muted focus:outline-none focus:ring-2 focus:ring-tsure-accent/50 disabled:opacity-50 px-3 ${
+          compact ? 'py-1.5 rounded-lg text-xs' : 'py-2.5 min-h-touch rounded-xl'
+        }`}
         autoComplete="off"
       />
       {open && filtered.length > 0 && (

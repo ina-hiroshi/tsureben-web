@@ -6,9 +6,10 @@ import {
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useStudentProfile } from '../contexts/StudentProfileContext';
 import { getProfile, updateProfile } from '../services/firestore/userService';
 import { redeemAccountTransfer } from '../services/authApi';
-import { needsSchoolOnboarding } from '../utils/schoolOnboarding';
+import { needsPasswordOnlyOnboarding, needsSchoolOnboarding } from '../utils/schoolOnboarding';
 import PageLayout from '../components/ui/PageLayout';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -45,9 +46,11 @@ const MATE_SCOPE_OPTIONS = [
 export default function SchoolOnboardingPage() {
   const navigate = useNavigate();
   const { email } = useAuth();
+  const { refreshProfile } = useStudentProfile();
   const { toast } = useUiFeedback();
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState(null);
+  const [passwordOnlyMode, setPasswordOnlyMode] = useState(false);
   const [schoolName, setSchoolName] = useState('');
   const [isLegacyFreeSchool, setIsLegacyFreeSchool] = useState(false);
   const [importCode, setImportCode] = useState('');
@@ -75,7 +78,10 @@ export default function SchoolOnboardingPage() {
           navigate('/home', { replace: true });
           return;
         }
+        const isPasswordOnly = needsPasswordOnlyOnboarding(p);
         setProfile(p);
+        setPasswordOnlyMode(isPasswordOnly);
+        setStepIndex(isPasswordOnly ? 1 : 0);
         setShareScope(p.shareScope || '学年のみ');
         setMateScope(p.mateScope || '学内のみ');
         if (p.schoolId) {
@@ -128,9 +134,14 @@ export default function SchoolOnboardingPage() {
     try {
       await updatePassword(auth.currentUser, newPassword);
       await updateProfile(email, { mustChangePassword: false });
+      await refreshProfile();
       setNewPassword('');
       setConfirmPassword('');
       toast.success('パスワードを変更しました');
+      if (passwordOnlyMode) {
+        navigate('/home', { replace: true });
+        return;
+      }
       setStepIndex(2);
     } catch (err) {
       if (err.code === 'auth/requires-recent-login') {
@@ -170,6 +181,7 @@ export default function SchoolOnboardingPage() {
         onboardingComplete: true,
         mustChangePassword: false,
       });
+      await refreshProfile();
       toast.success('初期設定が完了しました');
       navigate('/home', { replace: true });
     } catch (err) {
@@ -184,44 +196,54 @@ export default function SchoolOnboardingPage() {
   }
 
   const step = STEPS[stepIndex];
+  const pageTitle = passwordOnlyMode ? 'パスワードの再設定' : '初期設定';
+  const pageDescription = passwordOnlyMode
+    ? '学校管理者がパスワードをリセットしました。新しいパスワードを設定してください。'
+    : '学校アカウントの初回ログインです。次の3ステップで設定を完了してください。';
 
   return (
     <PageLayout contentWidth="narrow" showNav={false}>
-      <div className="pb-8 max-w-lg mx-auto">
-        <h1 className="text-2xl font-semibold text-tsure-on-primary text-center mb-2">初期設定</h1>
-        <p className="text-sm text-tsure-on-primary/80 mb-4 text-center">
-          学校アカウントの初回ログインです。次の3ステップで設定を完了してください。
-        </p>
+      <div
+        className={`pb-8 max-w-lg mx-auto w-full ${
+          passwordOnlyMode ? 'flex flex-col justify-center min-h-[min(100%,calc(100dvh-var(--safe-top)-var(--safe-bottom)-3rem))]' : ''
+        }`}
+      >
+        <h1 className="text-2xl font-semibold text-tsure-on-primary text-center mb-2">{pageTitle}</h1>
+        <p className="text-sm text-tsure-on-primary/80 mb-4 text-center">{pageDescription}</p>
 
-        <ol className="flex items-center justify-center gap-2 mb-6" aria-label="進捗">
-          {STEPS.map((s, i) => (
-            <li key={s.id} className="flex items-center gap-2">
-              <span
-                className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
-                  i <= stepIndex
-                    ? 'bg-tsure-primary text-tsure-on-primary'
-                    : 'bg-tsure-surface text-tsure-muted border border-tsure-border'
-                }`}
-                aria-current={i === stepIndex ? 'step' : undefined}
-              >
-                {i + 1}
-              </span>
-              {i < STEPS.length - 1 && (
+        {!passwordOnlyMode && (
+          <ol className="flex items-center justify-center gap-2 mb-6" aria-label="進捗">
+            {STEPS.map((s, i) => (
+              <li key={s.id} className="flex items-center gap-2">
                 <span
-                  className={`hidden sm:block w-8 h-0.5 ${
-                    i < stepIndex ? 'bg-tsure-primary' : 'bg-tsure-border'
+                  className={`inline-flex h-8 w-8 items-center justify-center rounded-full text-sm font-semibold ${
+                    i <= stepIndex
+                      ? 'bg-tsure-primary text-tsure-on-primary'
+                      : 'bg-tsure-surface text-tsure-muted border border-tsure-border'
                   }`}
-                />
-              )}
-            </li>
-          ))}
-        </ol>
+                  aria-current={i === stepIndex ? 'step' : undefined}
+                >
+                  {i + 1}
+                </span>
+                {i < STEPS.length - 1 && (
+                  <span
+                    className={`hidden sm:block w-8 h-0.5 ${
+                      i < stepIndex ? 'bg-tsure-primary' : 'bg-tsure-border'
+                    }`}
+                  />
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
 
         <Card>
           <h2 className="text-lg font-semibold text-tsure-primary mb-1">{step.label}</h2>
-          <p className="text-xs text-tsure-muted mb-4">
-            ステップ {stepIndex + 1} / {STEPS.length}
-          </p>
+          {!passwordOnlyMode && (
+            <p className="text-xs text-tsure-muted mb-4">
+              ステップ {stepIndex + 1} / {STEPS.length}
+            </p>
+          )}
 
           {step.id === 'profile' && (
             <>
@@ -245,7 +267,9 @@ export default function SchoolOnboardingPage() {
           {step.id === 'password' && (
             <>
               <p className="text-sm text-tsure-primary mb-4 leading-relaxed">
-                ログイン直後のため、新しいパスワードを設定するだけで変更できます。
+                {passwordOnlyMode
+                  ? '管理者が設定した仮パスワードでログイン済みです。新しいパスワードを設定するだけで変更できます。'
+                  : 'ログイン直後のため、新しいパスワードを設定するだけで変更できます。'}
               </p>
               <div className="space-y-3">
                 <Input
@@ -273,11 +297,17 @@ export default function SchoolOnboardingPage() {
                   onClick={handlePasswordSubmit}
                   disabled={changingPassword}
                 >
-                  {changingPassword ? '変更中…' : 'パスワードを変更して次へ'}
+                  {changingPassword
+                    ? '変更中…'
+                    : passwordOnlyMode
+                      ? 'パスワードを変更'
+                      : 'パスワードを変更して次へ'}
                 </Button>
-                <Button variant="secondary" className="w-full" onClick={() => setStepIndex(0)}>
-                  戻る
-                </Button>
+                {!passwordOnlyMode && (
+                  <Button variant="secondary" className="w-full" onClick={() => setStepIndex(0)}>
+                    戻る
+                  </Button>
+                )}
               </div>
             </>
           )}

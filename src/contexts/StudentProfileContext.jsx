@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { getProfile } from '../services/firestore/userService';
 
@@ -37,12 +37,12 @@ export function StudentProfileProvider({ children }) {
     };
   }, [email, authLoading]);
 
-  const refreshProfile = async () => {
+  const refreshProfile = useCallback(async () => {
     if (!email) return null;
     const loaded = await getProfile(email);
     setProfile(loaded);
     return loaded;
-  };
+  }, [email]);
 
   return (
     <StudentProfileContext.Provider value={{ profile, loading, refreshProfile }}>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
 import { doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
-import { getProfile } from '../services/firestore/userService';
+import { useStudentProfile } from '../contexts/StudentProfileContext';
 import { db } from '../firebase';
 import { isWebPlatform } from '../utils/platformAccess';
 import { needsSchoolOnboarding } from '../utils/schoolOnboarding';
@@ -17,63 +17,59 @@ export default function ProtectedRoute({
   requireSuperAdmin = false,
   blockSelfRegisteredOnWeb = false,
 }) {
-  const { email, loading } = useAuth();
+  const { email, loading: authLoading } = useAuth();
+  const { profile, loading: profileLoading, refreshProfile } = useStudentProfile();
   const location = useLocation();
-  const [checking, setChecking] = useState(true);
+  const [checkingTeacher, setCheckingTeacher] = useState(true);
   const [teacherSnap, setTeacherSnap] = useState(null);
-  const [registrationType, setRegistrationType] = useState(null);
-  const [mustChangePassword, setMustChangePassword] = useState(false);
-  const [profile, setProfile] = useState(null);
   const [error, setError] = useState(null);
 
   const needsTeacherCheck = requireTeacher || requireSchoolAdmin || requireSuperAdmin;
 
   useEffect(() => {
-    if (loading) return;
+    if (authLoading) return;
 
     if (!email) {
-      setChecking(false);
+      setCheckingTeacher(false);
+      return;
+    }
+
+    if (!needsTeacherCheck) {
+      setCheckingTeacher(false);
+      setTeacherSnap(null);
+      setError(null);
       return;
     }
 
     let active = true;
-    const verify = async () => {
-      setChecking(true);
+    const verifyTeacher = async () => {
+      setCheckingTeacher(true);
       try {
-        const profilePromise = getProfile(email);
-        const teacherPromise = needsTeacherCheck
-          ? getDoc(doc(db, 'teachers', email))
-          : Promise.resolve(null);
-
-        const [profile, teacherDoc] = await Promise.all([profilePromise, teacherPromise]);
+        const teacherDoc = await getDoc(doc(db, 'teachers', email));
         if (!active) return;
-
-        setProfile(profile);
-        setMustChangePassword(profile?.mustChangePassword === true);
-        setRegistrationType(profile?.registrationType ?? null);
-        if (needsTeacherCheck) {
-          setTeacherSnap(teacherDoc?.exists() ? teacherDoc.data() : null);
-        }
+        setTeacherSnap(teacherDoc.exists() ? teacherDoc.data() : null);
         setError(null);
       } catch (err) {
-        console.error('ProtectedRoute check failed:', err);
+        console.error('ProtectedRoute teacher check failed:', err);
         if (active) {
           setTeacherSnap(null);
-          setRegistrationType(null);
-          setProfile(null);
-          setMustChangePassword(false);
           setError('failed');
         }
       } finally {
-        if (active) setChecking(false);
+        if (active) setCheckingTeacher(false);
       }
     };
 
-    verify();
+    verifyTeacher();
     return () => {
       active = false;
     };
-  }, [email, loading, needsTeacherCheck]);
+  }, [email, authLoading, needsTeacherCheck]);
+
+  useEffect(() => {
+    if (authLoading || !email || needsTeacherCheck) return;
+    refreshProfile();
+  }, [authLoading, email, needsTeacherCheck, location.pathname, refreshProfile]);
 
   const role = teacherSnap?.role || null;
   const authorized = useMemo(() => {
@@ -84,21 +80,26 @@ export default function ProtectedRoute({
     return true;
   }, [needsTeacherCheck, teacherSnap, role, requireSuperAdmin, requireSchoolAdmin]);
 
+  const registrationType = profile?.registrationType ?? null;
+  const mustChangePassword = profile?.mustChangePassword === true;
+
   const blockedOnWeb =
     blockSelfRegisteredOnWeb &&
     isWebPlatform() &&
     !!email &&
     registrationType === 'self_registered';
 
+  const checking = needsTeacherCheck ? checkingTeacher : profileLoading;
+
   useEffect(() => {
-    if (loading || checking || email) return;
+    if (authLoading || checking || email) return;
     const returnUrl = `${location.pathname}${location.search}`;
     if (returnUrl && returnUrl !== '/') {
       setPostLoginReturnUrl(returnUrl);
     }
-  }, [loading, checking, email, location.pathname, location.search]);
+  }, [authLoading, checking, email, location.pathname, location.search]);
 
-  if (loading || checking) return <FullScreenLoader label="読み込み中…" />;
+  if (authLoading || checking) return <FullScreenLoader label="読み込み中…" />;
 
   if (!email) {
     return <Navigate to="/" replace />;
@@ -133,9 +134,11 @@ export default function ProtectedRoute({
     return <Navigate to="/onboarding" replace state={{ from: location.pathname }} />;
   }
 
+  const isSchoolProvisioned = registrationType === 'school_provisioned';
   if (
     mustChangePassword &&
     !schoolOnboardingRequired &&
+    !isSchoolProvisioned &&
     location.pathname !== '/settings'
   ) {
     return <Navigate to="/settings" replace state={{ from: location.pathname }} />;

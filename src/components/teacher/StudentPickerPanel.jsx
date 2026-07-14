@@ -105,18 +105,25 @@ export default function StudentPickerPanel({
     ? 'flex-1 min-h-0 overflow-y-auto overscroll-y-contain [-webkit-overflow-scrolling:touch]'
     : 'flex-1 min-h-0 overflow-y-auto overscroll-y-contain border border-tsure-border rounded-xl bg-white [-webkit-overflow-scrolling:touch]';
   const loadingTextClass = sidebar ? 'text-tsure-on-primary/60' : 'text-tsure-muted';
-  const filterShellClass = 'grid grid-cols-2 gap-2 shrink-0';
+  const filterShellClass = sidebar
+    ? 'grid grid-cols-2 gap-1.5 shrink-0 pt-1'
+    : 'grid grid-cols-2 gap-2 shrink-0';
 
   return (
-    <div className="flex flex-col min-h-0 h-full gap-3">
+    <div className={`flex flex-col min-h-0 h-full ${sidebar ? 'gap-1.5' : 'gap-3'}`}>
       {sidebar && (
-        <div className="shrink-0 space-y-1">
+        <div className="shrink-0 flex items-baseline justify-between gap-2 px-0.5 pt-1">
           <p className="text-xs font-semibold text-tsure-on-primary/85">生徒一覧</p>
-          {isLivePage && (
-            <p className="text-[11px] text-tsure-on-primary/55 leading-snug">
-              学年・組・氏名で、一覧と現在学習中を絞り込み
-            </p>
-          )}
+          <p className={`text-[11px] tabular-nums shrink-0 ${countClass}`}>
+            {loading
+              ? '…'
+              : `${filteredStudents.length}件${
+                  filteredStudents.length !== students.length ? `/${students.length}` : ''
+                }`}
+            {!loading && isLivePage && studyingInViewCount > 0 && (
+              <span className="ml-1 text-tsure-live font-semibold">· {studyingInViewCount}人</span>
+            )}
+          </p>
         </div>
       )}
 
@@ -133,6 +140,7 @@ export default function StudentPickerPanel({
           optionsClassName={elevatedSelect ? 'z-[250]' : ''}
           optionsModal={!elevatedSelect}
           labelClassName={filterLabelClass}
+          compact={sidebar}
         />
         <FilterSelect
           label="組"
@@ -146,6 +154,7 @@ export default function StudentPickerPanel({
           optionsClassName={elevatedSelect ? 'z-[250]' : ''}
           optionsModal={!elevatedSelect}
           labelClassName={filterLabelClass}
+          compact={sidebar}
         />
         <div className="col-span-2">
           <SuggestInput
@@ -156,20 +165,18 @@ export default function StudentPickerPanel({
             placeholder="氏名で検索"
             disabled={loading}
             labelClassName={filterLabelClass}
+            compact={sidebar}
           />
         </div>
       </div>
 
-      <p className={`text-xs tabular-nums shrink-0 ${countClass}`}>
-        {loading
-          ? '読み込み中...'
-          : `${filteredStudents.length} 件${filteredStudents.length !== students.length ? ` / 全 ${students.length} 件` : ''}`}
-        {sidebar && isLivePage && !loading && studyingInViewCount > 0 && (
-          <span className="ml-2 text-tsure-live font-semibold">
-            · 学習中 {studyingInViewCount}人
-          </span>
-        )}
-      </p>
+      {!sidebar && (
+        <p className={`text-xs tabular-nums shrink-0 ${countClass}`}>
+          {loading
+            ? '読み込み中...'
+            : `${filteredStudents.length} 件${filteredStudents.length !== students.length ? ` / 全 ${students.length} 件` : ''}`}
+        </p>
+      )}
 
       <div className={listShellClass}>
         {loading && (
@@ -197,18 +204,18 @@ export default function StudentPickerPanel({
                     type="button"
                     onClick={() => onSelect(student)}
                     aria-current={active ? 'true' : undefined}
-                    className={`w-full text-left px-3 py-3 transition rounded-lg ${
+                    className={`w-full text-left transition rounded-lg ${
                       sidebar
-                        ? active
+                        ? `px-2.5 py-2 ${active
                           ? 'bg-white border-l-4 border-tsure-accent shadow-tsure-raised ring-1 ring-white/30'
                           : isStudying
                             ? 'bg-tsure-surface border-l-4 border-tsure-live shadow-tsure-chip ring-1 ring-tsure-live/20'
-                            : 'bg-tsure-surface/90 hover:bg-tsure-surface hover:ring-1 hover:ring-inset hover:ring-tsure-border'
-                        : active
+                            : 'bg-tsure-surface/90 hover:bg-tsure-surface hover:ring-1 hover:ring-inset hover:ring-tsure-border'}`
+                        : `px-3 py-3 ${active
                           ? 'border-l-4 border-tsure-primary bg-white'
                           : isStudying
                             ? 'border-l-4 border-tsure-live bg-white'
-                            : 'bg-white hover:ring-1 hover:ring-inset hover:ring-tsure-border'
+                            : 'bg-white hover:ring-1 hover:ring-inset hover:ring-tsure-border'}`
                     }`}
                   >
                     <div className="flex items-start justify-between gap-2 min-w-0">

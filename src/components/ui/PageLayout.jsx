@@ -45,7 +45,11 @@ export default function PageLayout({
         {showNav && <StudyTimerMiniBar />}
       </div>
       <main
-          className={`flex-1 w-full px-4 md:px-6 lg:px-8 pt-1 md:pt-0 pb-4 ${mainWidthClass}`}
+          className={`flex-1 w-full px-4 md:px-6 lg:px-8 pb-4 ${
+            showNav
+              ? 'pt-1 md:pt-0'
+              : 'pt-[calc(var(--safe-top)+1rem)] md:pt-8 flex flex-col justify-center sm:justify-start'
+          } ${mainWidthClass}`}
         >
           {children}
         </main>
