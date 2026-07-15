@@ -25,6 +25,7 @@ export default function PeriodNav({
   mode = 'day',
   onModeChange,
   onDateChange,
+  stickyTopClass = 'top-[var(--app-header-height)]',
 }) {
   const d = dayjs(date);
   const navLabels = getPeriodNavLabels(mode);
@@ -39,7 +40,9 @@ export default function PeriodNav({
   };
 
   return (
-    <div className="sticky top-[var(--app-header-height)] md:top-0 z-20 -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-3 md:py-0 md:min-h-[var(--app-subheader-height)] mb-4 shrink-0 bg-tsure-bg/95 backdrop-blur border-b border-white/10">
+    <div
+      className={`sticky ${stickyTopClass} md:top-0 z-20 -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-3 md:py-0 md:min-h-[var(--app-subheader-height)] mb-4 shrink-0 bg-tsure-bg/95 backdrop-blur border-b border-white/10`}
+    >
       <div className="flex flex-col gap-3 md:h-[var(--app-subheader-height)] md:justify-center">
         <div
           className="flex justify-center gap-1.5"

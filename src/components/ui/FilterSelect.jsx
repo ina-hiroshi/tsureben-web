@@ -20,8 +20,9 @@ export default function FilterSelect({
   compact = false,
 }) {
   const selected =
-    options.find((opt) => opt.value === value) ||
-    options.find((opt) => opt.value === '') || { value: '', label: placeholder };
+    value === ''
+      ? { value: '', label: placeholder }
+      : options.find((opt) => opt.value === value) || { value: '', label: placeholder };
 
   return (
     <Listbox value={value} onChange={onChange} disabled={disabled}>
@@ -40,7 +41,7 @@ export default function FilterSelect({
               compact ? 'py-1.5 rounded-lg text-xs' : 'py-2.5 min-h-touch rounded-xl text-sm'
             }`}
           >
-            <span className="truncate text-sm">{selected.label}</span>
+            <span className={`truncate ${compact ? 'text-xs' : 'text-sm'}`}>{selected.label}</span>
             <AppIcon
               icon={ChevronDown}
               size="sm"

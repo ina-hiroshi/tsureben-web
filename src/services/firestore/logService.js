@@ -37,15 +37,61 @@ export async function getRecentStudySummary(email, days = 7, anchorDate = new Da
   );
 
   let totalMinutes = 0;
-  let hasStudy = false;
+  let studyDayCount = 0;
   snap.docs.forEach((dayDoc) => {
     const minutes = Number(dayDoc.data().totalMinutes) || 0;
     if (minutes <= 0) return;
-    hasStudy = true;
+    studyDayCount += 1;
     totalMinutes += minutes;
   });
 
-  return { hasStudy, totalMinutes, days };
+  return {
+    hasStudy: studyDayCount > 0,
+    studyDayCount,
+    totalMinutes,
+    days,
+  };
+}
+
+export async function getRecentStudyDetail(email, days = 7, anchorDate = new Date()) {
+  const dateKeys = getRecentDateKeys(days, anchorDate);
+  if (!dateKeys.length) {
+    return { hasStudy: false, studyDayCount: 0, totalMinutes: 0, bySubject: {}, days };
+  }
+
+  const oldest = dateKeys[dateKeys.length - 1];
+  const newest = dateKeys[0];
+  const snap = await getDocs(
+    query(
+      collection(db, 'logs', email, 'days'),
+      where(documentId(), '>=', oldest),
+      where(documentId(), '<=', newest)
+    )
+  );
+
+  let totalMinutes = 0;
+  let studyDayCount = 0;
+  const bySubject = {};
+  snap.docs.forEach((dayDoc) => {
+    const minutes = Number(dayDoc.data().totalMinutes) || 0;
+    if (minutes <= 0) return;
+    studyDayCount += 1;
+    totalMinutes += minutes;
+    const dayBySubject = dayDoc.data().bySubject || {};
+    Object.entries(dayBySubject).forEach(([subject, mins]) => {
+      const value = Number(mins) || 0;
+      if (value <= 0) return;
+      bySubject[subject] = (bySubject[subject] || 0) + value;
+    });
+  });
+
+  return {
+    hasStudy: studyDayCount > 0,
+    studyDayCount,
+    totalMinutes,
+    bySubject,
+    days,
+  };
 }
 
 export async function getRecentStudySummaries(emails, days = 7, concurrency = 20) {

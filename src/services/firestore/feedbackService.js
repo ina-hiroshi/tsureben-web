@@ -266,6 +266,18 @@ export async function markThreadRead(threadId, readerRole) {
   });
 }
 
+export async function fetchThreadsForStudent(studentEmail) {
+  if (!studentEmail) return [];
+
+  if (isDemoTeacherReviewEnabled() && isDemoTeacherReviewEmail(studentEmail)) {
+    return sortThreadsByLastMessage(getDemoFeedbackThreads(studentEmail));
+  }
+
+  const q = query(collection(db, 'feedbackThreads'), where('studentEmail', '==', studentEmail));
+  const snap = await getDocs(q);
+  return sortThreadsByLastMessage(snap.docs.map(mapThreadDoc));
+}
+
 export async function getUnreadCountForStudent(studentEmail) {
   if (!studentEmail) return 0;
   const q = query(collection(db, 'feedbackThreads'), where('studentEmail', '==', studentEmail));

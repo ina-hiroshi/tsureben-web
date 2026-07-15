@@ -24,6 +24,7 @@ export default function TeacherStudentReviewPage() {
   } = useTeacherWorkspace();
   const [searchParams] = useSearchParams();
   const targetEmail = normalizeEmail(searchParams.get('email'));
+  const openFeedback = searchParams.get('feedback') === '1';
   const demoRevision = useDemoSettingsRevision();
   const [teacherName, setTeacherName] = useState('');
   const [mobileShowDetail, setMobileShowDetail] = useState(false);
@@ -130,6 +131,7 @@ export default function TeacherStudentReviewPage() {
                   teacherName={teacherName || email}
                   onBack={handleBack}
                   showBackButton
+                  initialFeedbackOpen={openFeedback}
                 />
               )}
             </div>
@@ -140,6 +142,7 @@ export default function TeacherStudentReviewPage() {
                   student={selectedStudent}
                   schoolId={effectiveSchoolId}
                   teacherName={teacherName || email}
+                  initialFeedbackOpen={openFeedback}
                 />
               ) : (
                 <TeacherStudentReviewPlaceholder />

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
 import { ArrowLeft, MessageSquare } from 'lucide-react';
 import { useStudentPeriodData } from '../../hooks/useStudentPeriodData';
@@ -19,8 +19,8 @@ import {
 } from '../../content/emptyStatePresets';
 
 const TABS = [
-  { id: 'plan', label: '学習計画' },
   { id: 'log', label: '学習記録' },
+  { id: 'plan', label: '学習計画' },
 ];
 
 export default function StudentReviewDetailPanel({
@@ -29,11 +29,20 @@ export default function StudentReviewDetailPanel({
   teacherName,
   onBack,
   showBackButton = false,
+  initialFeedbackOpen = false,
 }) {
   const [selectedDate, setSelectedDate] = useState(dayjs());
   const [periodMode, setPeriodMode] = useState('day');
-  const [activeTab, setActiveTab] = useState('plan');
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('log');
+  const [feedbackOpen, setFeedbackOpen] = useState(initialFeedbackOpen);
+
+  useEffect(() => {
+    setActiveTab('log');
+  }, [student?.email]);
+
+  useEffect(() => {
+    setFeedbackOpen(initialFeedbackOpen);
+  }, [student?.email, initialFeedbackOpen]);
 
   const dateKey = selectedDate.format('YYYY-MM-DD');
   const {
@@ -82,12 +91,15 @@ export default function StudentReviewDetailPanel({
         </div>
       )}
 
-      <PeriodNav
-        date={selectedDate}
-        mode={periodMode}
-        onModeChange={setPeriodMode}
-        onDateChange={setSelectedDate}
-      />
+      <div className="pt-2 md:pt-0 shrink-0">
+        <PeriodNav
+          date={selectedDate}
+          mode={periodMode}
+          onModeChange={setPeriodMode}
+          onDateChange={setSelectedDate}
+          stickyTopClass="top-[calc(var(--app-header-height)+0.75rem)]"
+        />
+      </div>
 
       <div className="border-b border-white/10 shrink-0" role="tablist" aria-label="学習情報の表示切替">
         <div className="relative flex items-center gap-1">

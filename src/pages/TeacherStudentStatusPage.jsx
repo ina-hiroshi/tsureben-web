@@ -1,64 +1,52 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { doc, getDoc } from 'firebase/firestore';
-import {
-  matchesTeacherStudentFilter,
-  useTeacherWorkspace,
-} from '../contexts/TeacherWorkspaceContext';
+import { useTeacherWorkspace } from '../contexts/TeacherWorkspaceContext';
 import { fetchStudentsForSchool } from '../services/firestore/userService';
 import { getRecentStudySummaries } from '../services/firestore/logService';
 import { mergeDemoStudents } from '../dev/demoTeacherReview';
 import { useDemoSettingsRevision } from '../hooks/useDemoSettings';
+import { uniqueSorted } from '../utils/adminStudents';
 import PageLayout from '../components/ui/PageLayout';
 import SectionTitle from '../components/ui/SectionTitle';
 import LoadingOverlay from '../components/ui/LoadingOverlay';
-import AppIcon from '../components/ui/AppIcon';
+import Modal from '../components/ui/Modal';
+import FilterSelect from '../components/ui/FilterSelect';
+import SuggestInput from '../components/ui/SuggestInput';
+import StudentStatusDashboardPanel from '../components/teacher/StudentStatusDashboardPanel';
 import { db } from '../firebase';
 import {
   accountStatusBadgeClass,
   buildTeacherMateSummary,
   formatMateCountSummary,
+  getLivePresenceStatus,
   getTeacherAccountStatus,
+  livePresenceBadgeClass,
+  matchesStudentStatusTableFilter,
 } from '../utils/teacherStudentStatus';
 
 const RECENT_STUDY_DAYS = 7;
 
-function formatFilterSummary({ filterGrade, filterClass, nameQuery }) {
-  const parts = [];
-  if (filterGrade) parts.push(`${filterGrade}年`);
-  if (filterClass) parts.push(`${filterClass}組`);
-  if (nameQuery.trim()) parts.push(`「${nameQuery.trim()}」`);
-  return parts.join(' · ');
-}
+const PRESENCE_FILTER_OPTIONS = [
+  { value: '', label: 'すべて' },
+  { value: 'studying', label: '学習中' },
+  { value: 'paused', label: '休憩中' },
+  { value: 'offline', label: '—' },
+];
 
-function MateDetailSection({ title, items }) {
-  if (!items.length) {
-    return (
-      <div>
-        <p className="text-xs font-semibold text-tsure-primary mb-1">{title}</p>
-        <p className="text-xs text-tsure-muted">なし</p>
-      </div>
-    );
-  }
+const ACCOUNT_FILTER_OPTIONS = [
+  { value: '', label: 'すべて' },
+  { value: 'ready', label: '利用可能' },
+  { value: 'onboarding', label: '初期設定未完了' },
+  { value: 'password_reset', label: 'パスワード未変更' },
+  { value: 'disabled', label: '無効' },
+  { value: 'migrated', label: '引き継ぎ済み' },
+];
 
-  return (
-    <div>
-      <p className="text-xs font-semibold text-tsure-primary mb-1">{title}</p>
-      <ul className="space-y-1">
-        {items.map((item, index) => (
-          <li
-            key={`${title}-${index}`}
-            className={`text-xs ${
-              item.kind === 'external' ? 'text-tsure-muted italic' : 'text-tsure-primary'
-            }`}
-          >
-            {item.label}
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+const STUDY_FILTER_OPTIONS = [
+  { value: '', label: 'すべて' },
+  { value: 'yes', label: 'あり' },
+  { value: 'no', label: 'なし' },
+];
 
 function StatusBadge({ status }) {
   return (
@@ -70,21 +58,45 @@ function StatusBadge({ status }) {
   );
 }
 
+function LiveStatusCell({ presence }) {
+  return (
+    <span
+      className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[11px] font-bold whitespace-nowrap ${livePresenceBadgeClass(presence.status)}`}
+    >
+      {presence.label}
+    </span>
+  );
+}
+
 function StudyStatusCell({ loadingStudy, study }) {
   if (loadingStudy && !study) {
     return <span className="text-xs text-tsure-muted">取得中…</span>;
   }
   if (study?.hasStudy) {
+    const dayCount = study.studyDayCount ?? 1;
     return (
-      <span className="text-tsure-primary font-medium">
-        あり
-        {study.totalMinutes > 0 && (
-          <span className="text-xs text-tsure-muted font-normal ml-1">({study.totalMinutes}分)</span>
-        )}
+      <span className="text-tsure-primary tabular-nums whitespace-nowrap">
+        {dayCount}日 · {study.totalMinutes}分
       </span>
     );
   }
   return <span className="text-tsure-muted">なし</span>;
+}
+
+function stopRowClick(event) {
+  event.stopPropagation();
+}
+
+function TableHeaderCell({ title, children, className = '' }) {
+  return (
+    <th
+      className={`text-left px-2 py-2 align-top bg-tsure-surface border-b border-tsure-border font-normal ${className}`}
+      onClick={stopRowClick}
+    >
+      <div className="text-xs font-semibold text-tsure-primary leading-none mb-1.5">{title}</div>
+      {children}
+    </th>
+  );
 }
 
 export default function TeacherStudentStatusPage() {
@@ -92,7 +104,14 @@ export default function TeacherStudentStatusPage() {
     effectiveSchoolId,
     loading: workspaceLoading,
     studentFilters,
-    hasStudentFilter,
+    studentFilterGrade,
+    studentFilterClass,
+    studentNameQuery,
+    setStudentFilterGrade,
+    setStudentFilterClass,
+    setStudentNameQuery,
+    selectStudent,
+    activeSessions,
   } = useTeacherWorkspace();
   const demoRevision = useDemoSettingsRevision();
   const [students, setStudents] = useState([]);
@@ -100,7 +119,10 @@ export default function TeacherStudentStatusPage() {
   const [schoolName, setSchoolName] = useState('');
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [loadingStudy, setLoadingStudy] = useState(false);
-  const [expandedEmail, setExpandedEmail] = useState(null);
+  const [modalStudent, setModalStudent] = useState(null);
+  const [presenceFilter, setPresenceFilter] = useState('');
+  const [accountFilter, setAccountFilter] = useState('');
+  const [studyFilter, setStudyFilter] = useState('');
 
   useEffect(() => {
     if (!effectiveSchoolId) {
@@ -112,6 +134,13 @@ export default function TeacherStudentStatusPage() {
         setSchoolName(snap.exists() ? snap.data().name || effectiveSchoolId : effectiveSchoolId);
       })
       .catch(() => setSchoolName(effectiveSchoolId));
+  }, [effectiveSchoolId]);
+
+  useEffect(() => {
+    setModalStudent(null);
+    setPresenceFilter('');
+    setAccountFilter('');
+    setStudyFilter('');
   }, [effectiveSchoolId]);
 
   useEffect(() => {
@@ -170,15 +199,81 @@ export default function TeacherStudentStatusPage() {
     return map;
   }, [students]);
 
-  const filteredStudents = useMemo(
-    () => students.filter((student) => matchesTeacherStudentFilter(student, studentFilters)),
-    [students, studentFilters]
+  const gradeOptions = useMemo(
+    () => uniqueSorted(students.map((student) => student.grade)),
+    [students]
   );
 
-  const filterSummary = useMemo(
-    () => formatFilterSummary(studentFilters),
-    [studentFilters]
+  const classOptions = useMemo(() => {
+    const source = studentFilterGrade
+      ? students.filter((student) => String(student.grade ?? '') === studentFilterGrade)
+      : students;
+    return uniqueSorted(source.map((student) => student.class));
+  }, [students, studentFilterGrade]);
+
+  const nameSuggestions = useMemo(
+    () => uniqueSorted(students.map((student) => student.name)),
+    [students]
   );
+
+  const tableFilters = useMemo(
+    () => ({
+      studentFilters,
+      presenceFilter,
+      accountFilter,
+      studyFilter,
+    }),
+    [studentFilters, presenceFilter, accountFilter, studyFilter]
+  );
+
+  const filteredStudents = useMemo(
+    () =>
+      students.filter((student) =>
+        matchesStudentStatusTableFilter(student, tableFilters, {
+          activeSessions,
+          studySummaries,
+        })
+      ),
+    [students, tableFilters, activeSessions, studySummaries]
+  );
+
+  const hasTableFilter = Boolean(
+    studentFilterGrade ||
+      studentFilterClass ||
+      studentNameQuery.trim() ||
+      presenceFilter ||
+      accountFilter ||
+      studyFilter
+  );
+
+  const modalStudentRecord = useMemo(() => {
+    if (!modalStudent?.email) return null;
+    return studentsByEmail[modalStudent.email] || modalStudent;
+  }, [modalStudent, studentsByEmail]);
+
+  const handleOpenDashboard = (student) => {
+    selectStudent({
+      email: student.email,
+      name: student.name,
+      grade: student.grade,
+      class: student.class,
+      number: student.number,
+    });
+    setModalStudent(student);
+  };
+
+  const handleCloseModal = () => {
+    setModalStudent(null);
+  };
+
+  const handleClearFilters = () => {
+    setStudentFilterGrade('');
+    setStudentFilterClass('');
+    setStudentNameQuery('');
+    setPresenceFilter('');
+    setAccountFilter('');
+    setStudyFilter('');
+  };
 
   if (workspaceLoading) {
     return <LoadingOverlay message="読み込み中…" />;
@@ -191,9 +286,12 @@ export default function TeacherStudentStatusPage() {
           <SectionTitle
             onDark
             action={
-              filteredStudents.length > 0 ? (
+              !loadingStudents ? (
                 <span className="text-sm text-tsure-on-primary/60 tabular-nums">
                   {filteredStudents.length}人
+                  {filteredStudents.length !== students.length
+                    ? ` / 全${students.length}人`
+                    : ''}
                 </span>
               ) : null
             }
@@ -204,31 +302,97 @@ export default function TeacherStudentStatusPage() {
           {schoolName && <p className="text-sm text-tsure-on-primary/70">{schoolName}</p>}
 
           <p className="text-xs text-tsure-on-primary/60 leading-relaxed">
-            アカウント状態・直近{RECENT_STUDY_DAYS}日の学習有無・連れ勉の申請状況を表示します。連れ勉の相手は学内のみ氏名を表示し、学外は匿名化します。
+            各列の見出し下で絞り込みできます。行をタップすると概要を表示します。
           </p>
-
-          {hasStudentFilter && (
-            <p className="text-xs text-tsure-on-primary/60">
-              サイドバーの条件で表示中
-              {filterSummary ? `: ${filterSummary}` : ''}
-            </p>
-          )}
         </div>
 
         <div className="flex flex-col min-h-0 h-[calc(100dvh-15rem)] md:h-[calc(100dvh-6.5rem)] border border-tsure-border rounded-xl overflow-hidden bg-tsure-surface/90">
           <div className="flex-1 min-h-0 overflow-auto">
-            <table className="w-full text-sm min-w-[760px]">
-              <thead className="bg-tsure-surface sticky top-0 z-10 border-b border-tsure-border">
+            <table className="w-full text-sm min-w-[860px]">
+              <thead className="sticky top-0 z-10">
                 <tr>
-                  <th className="text-left px-3 py-2 font-semibold text-tsure-primary w-8" />
-                  <th className="text-left px-3 py-2 font-semibold text-tsure-primary">生徒</th>
-                  <th className="text-left px-3 py-2 font-semibold text-tsure-primary whitespace-nowrap">
-                    アカウント
-                  </th>
-                  <th className="text-left px-3 py-2 font-semibold text-tsure-primary whitespace-nowrap">
-                    直近{RECENT_STUDY_DAYS}日
-                  </th>
-                  <th className="text-left px-3 py-2 font-semibold text-tsure-primary">連れ勉</th>
+                  <TableHeaderCell title="生徒" className="min-w-[220px]">
+                    <div className="space-y-1">
+                      <div className="grid grid-cols-2 gap-1">
+                        <FilterSelect
+                          value={studentFilterGrade}
+                          onChange={setStudentFilterGrade}
+                          placeholder="学年"
+                          options={[
+                            { value: '', label: 'すべて' },
+                            ...gradeOptions.map((grade) => ({
+                              value: grade,
+                              label: `${grade}年`,
+                            })),
+                          ]}
+                          disabled={loadingStudents}
+                          compact
+                        />
+                        <FilterSelect
+                          value={studentFilterClass}
+                          onChange={setStudentFilterClass}
+                          placeholder="組"
+                          options={[
+                            { value: '', label: 'すべて' },
+                            ...classOptions.map((classNum) => ({
+                              value: classNum,
+                              label: `${classNum}組`,
+                            })),
+                          ]}
+                          disabled={loadingStudents}
+                          compact
+                        />
+                      </div>
+                      <SuggestInput
+                        value={studentNameQuery}
+                        onChange={setStudentNameQuery}
+                        suggestions={nameSuggestions}
+                        placeholder="氏名"
+                        disabled={loadingStudents}
+                        compact
+                      />
+                      {hasTableFilter && (
+                        <button
+                          type="button"
+                          onClick={handleClearFilters}
+                          className="text-[11px] text-tsure-accent hover:underline"
+                        >
+                          絞り込み解除
+                        </button>
+                      )}
+                    </div>
+                  </TableHeaderCell>
+                  <TableHeaderCell title="今" className="whitespace-nowrap min-w-[6.5rem]">
+                    <FilterSelect
+                      value={presenceFilter}
+                      onChange={setPresenceFilter}
+                      options={PRESENCE_FILTER_OPTIONS}
+                      disabled={loadingStudents}
+                      compact
+                    />
+                  </TableHeaderCell>
+                  <TableHeaderCell title="アカウント" className="min-w-[9rem]">
+                    <FilterSelect
+                      value={accountFilter}
+                      onChange={setAccountFilter}
+                      options={ACCOUNT_FILTER_OPTIONS}
+                      disabled={loadingStudents}
+                      compact
+                    />
+                  </TableHeaderCell>
+                  <TableHeaderCell
+                    title={`直近${RECENT_STUDY_DAYS}日`}
+                    className="whitespace-nowrap min-w-[6.5rem]"
+                  >
+                    <FilterSelect
+                      value={studyFilter}
+                      onChange={setStudyFilter}
+                      options={STUDY_FILTER_OPTIONS}
+                      disabled={loadingStudents || loadingStudy}
+                      compact
+                    />
+                  </TableHeaderCell>
+                  <TableHeaderCell title="連れ勉" className="min-w-[5.5rem]" />
                 </tr>
               </thead>
               <tbody>
@@ -242,7 +406,7 @@ export default function TeacherStudentStatusPage() {
                 {!loadingStudents && filteredStudents.length === 0 && (
                   <tr>
                     <td colSpan={5} className="px-3 py-8 text-center text-tsure-muted">
-                      該当する生徒がいません
+                      {hasTableFilter ? '条件に一致する生徒がいません' : '該当する生徒がいません'}
                     </td>
                   </tr>
                 )}
@@ -251,68 +415,40 @@ export default function TeacherStudentStatusPage() {
                     const accountStatus = getTeacherAccountStatus(student);
                     const study = studySummaries[student.email];
                     const mateSummary = buildTeacherMateSummary(student, studentsByEmail);
-                    const expanded = expandedEmail === student.email;
-                    const hasMateDetails =
-                      mateSummary.counts.mutual +
-                        mateSummary.counts.sent +
-                        mateSummary.counts.received >
-                      0;
+                    const presence = getLivePresenceStatus(student.email, activeSessions);
+                    const isOpen = modalStudent?.email === student.email;
 
                     return (
-                      <Fragment key={student.email}>
-                        <tr className="border-t border-tsure-border hover:bg-tsure-surface-hover/60">
-                          <td className="px-2 py-2 align-top">
-                            {hasMateDetails ? (
-                              <button
-                                type="button"
-                                onClick={() =>
-                                  setExpandedEmail(expanded ? null : student.email)
-                                }
-                                aria-expanded={expanded}
-                                aria-label={`${student.name || '生徒'}の連れ勉詳細を${expanded ? '閉じる' : '開く'}`}
-                                className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-tsure-primary hover:bg-tsure-surface"
-                              >
-                                <AppIcon
-                                  icon={ChevronDown}
-                                  size="sm"
-                                  className={`transition-transform ${expanded ? 'rotate-180' : ''}`}
-                                />
-                              </button>
-                            ) : null}
-                          </td>
-                          <td className="px-3 py-2 align-top">
-                            <p className="font-semibold text-tsure-primary">
-                              {student.name || '—'}
-                            </p>
-                            <p className="text-xs text-tsure-muted mt-0.5">
-                              {student.grade}年{student.class}組 {student.number}番
-                            </p>
-                          </td>
-                          <td className="px-3 py-2 align-top">
-                            <StatusBadge status={accountStatus} />
-                          </td>
-                          <td className="px-3 py-2 align-top whitespace-nowrap">
-                            <StudyStatusCell loadingStudy={loadingStudy} study={study} />
-                          </td>
-                          <td className="px-3 py-2 align-top">
-                            <p className="text-xs text-tsure-primary tabular-nums">
-                              {formatMateCountSummary(mateSummary.counts)}
-                            </p>
-                          </td>
-                        </tr>
-                        {expanded && (
-                          <tr className="border-t border-tsure-border bg-tsure-surface/70">
-                            <td />
-                            <td colSpan={4} className="px-3 py-3">
-                              <div className="grid gap-4 sm:grid-cols-3">
-                                <MateDetailSection title="仲間" items={mateSummary.mutual} />
-                                <MateDetailSection title="送信中" items={mateSummary.sent} />
-                                <MateDetailSection title="受信中" items={mateSummary.received} />
-                              </div>
-                            </td>
-                          </tr>
-                        )}
-                      </Fragment>
+                      <tr
+                        key={student.email}
+                        onClick={() => handleOpenDashboard(student)}
+                        className={`border-t border-tsure-border cursor-pointer transition ${
+                          isOpen
+                            ? 'bg-tsure-primary/10 hover:bg-tsure-primary/12'
+                            : 'hover:bg-tsure-surface-hover/60'
+                        }`}
+                      >
+                        <td className="px-3 py-2 align-top">
+                          <p className="font-semibold text-tsure-primary">{student.name || '—'}</p>
+                          <p className="text-xs text-tsure-muted mt-0.5">
+                            {student.grade}年{student.class}組 {student.number}番
+                          </p>
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <LiveStatusCell presence={presence} />
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <StatusBadge status={accountStatus} />
+                        </td>
+                        <td className="px-3 py-2 align-top whitespace-nowrap">
+                          <StudyStatusCell loadingStudy={loadingStudy} study={study} />
+                        </td>
+                        <td className="px-3 py-2 align-top">
+                          <p className="text-xs text-tsure-primary tabular-nums">
+                            {formatMateCountSummary(mateSummary.counts)}
+                          </p>
+                        </td>
+                      </tr>
                     );
                   })}
               </tbody>
@@ -320,6 +456,23 @@ export default function TeacherStudentStatusPage() {
           </div>
         </div>
       </div>
+
+      <Modal
+        open={Boolean(modalStudentRecord)}
+        onClose={handleCloseModal}
+        title={modalStudentRecord ? `${modalStudentRecord.name || '生徒'}の概要` : ''}
+        size="wide"
+      >
+        {modalStudentRecord && (
+          <StudentStatusDashboardPanel
+            student={modalStudentRecord}
+            studentsByEmail={studentsByEmail}
+            studySummary={studySummaries[modalStudentRecord.email]}
+            inModal
+            onClose={handleCloseModal}
+          />
+        )}
+      </Modal>
     </PageLayout>
   );
 }

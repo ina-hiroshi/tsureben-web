@@ -3,8 +3,12 @@ import assert from 'node:assert/strict';
 import {
   buildTeacherMateSummary,
   formatMateCountSummary,
+  getAttentionMessages,
+  getLivePresenceStatus,
   getTeacherAccountStatus,
+  matchesStudentStatusTableFilter,
   resolveMateEmailForTeacher,
+  summarizeFeedbackThreads,
 } from './teacherStudentStatus.js';
 
 describe('getTeacherAccountStatus', () => {
@@ -73,5 +77,123 @@ describe('buildTeacherMateSummary', () => {
     assert.equal(summary.sent[0].label, '学外への申請');
     assert.equal(summary.received[0].kind, 'internal');
     assert.equal(formatMateCountSummary(summary.counts), '仲間 2 · 送信中 1 · 受信中 1');
+  });
+});
+
+describe('getLivePresenceStatus', () => {
+  it('returns studying for active non-paused session', () => {
+    const result = getLivePresenceStatus('a@school.jp', [
+      { email: 'a@school.jp', isPaused: false },
+    ]);
+    assert.equal(result.label, '学習中');
+    assert.equal(result.status, 'studying');
+  });
+
+  it('returns paused for paused session', () => {
+    const result = getLivePresenceStatus('a@school.jp', [
+      { email: 'a@school.jp', isPaused: true },
+    ]);
+    assert.equal(result.label, '休憩中');
+  });
+
+  it('returns offline when no session', () => {
+    const result = getLivePresenceStatus('a@school.jp', []);
+    assert.equal(result.label, '—');
+    assert.equal(result.status, 'offline');
+  });
+});
+
+describe('summarizeFeedbackThreads', () => {
+  it('counts unread and picks latest message date', () => {
+    const summary = summarizeFeedbackThreads([
+      { unreadByTeacher: true, lastMessageAt: { toDate: () => new Date('2026-06-01') } },
+      { unreadByTeacher: false, lastMessageAt: { toDate: () => new Date('2026-06-10') } },
+    ]);
+    assert.equal(summary.unreadCount, 1);
+    assert.equal(summary.lastMessageAt?.toISOString().slice(0, 10), '2026-06-10');
+  });
+});
+
+describe('getAttentionMessages', () => {
+  it('returns onboarding and no-study messages', () => {
+    const messages = getAttentionMessages({
+      accountStatus: { key: 'onboarding' },
+      studySummary: { hasStudy: false },
+      recentDays: 7,
+    });
+    assert.equal(messages.length, 2);
+  });
+});
+
+describe('matchesStudentStatusTableFilter', () => {
+  const student = {
+    email: 'a@school.jp',
+    name: '山田',
+    grade: 1,
+    class: 2,
+    onboardingComplete: true,
+    mustChangePassword: false,
+    registrationType: 'school_provisioned',
+  };
+
+  it('filters by grade and presence', () => {
+    const match = matchesStudentStatusTableFilter(
+      student,
+      {
+        studentFilters: { filterGrade: '1', filterClass: '', nameQuery: '' },
+        presenceFilter: 'studying',
+        accountFilter: '',
+        studyFilter: '',
+      },
+      {
+        activeSessions: [{ email: 'a@school.jp', isPaused: false }],
+        studySummaries: {},
+      }
+    );
+    assert.equal(match, true);
+
+    const noMatch = matchesStudentStatusTableFilter(
+      student,
+      {
+        studentFilters: { filterGrade: '2', filterClass: '', nameQuery: '' },
+        presenceFilter: '',
+        accountFilter: '',
+        studyFilter: '',
+      },
+      { activeSessions: [], studySummaries: {} }
+    );
+    assert.equal(noMatch, false);
+  });
+
+  it('filters by study summary', () => {
+    const yes = matchesStudentStatusTableFilter(
+      student,
+      {
+        studentFilters: { filterGrade: '', filterClass: '', nameQuery: '' },
+        presenceFilter: '',
+        accountFilter: '',
+        studyFilter: 'yes',
+      },
+      {
+        activeSessions: [],
+        studySummaries: { 'a@school.jp': { hasStudy: true } },
+      }
+    );
+    assert.equal(yes, true);
+
+    const no = matchesStudentStatusTableFilter(
+      student,
+      {
+        studentFilters: { filterGrade: '', filterClass: '', nameQuery: '' },
+        presenceFilter: '',
+        accountFilter: '',
+        studyFilter: 'no',
+      },
+      {
+        activeSessions: [],
+        studySummaries: { 'a@school.jp': { hasStudy: true } },
+      }
+    );
+    assert.equal(no, false);
   });
 });

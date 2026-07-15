@@ -2,6 +2,9 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState } 
 import { useTeacherStatus } from '../hooks/useTeacherStatus';
 import { useDemoSettingsRevision } from '../hooks/useDemoSettings';
 import { subscribeSchoolActiveSessions } from '../services/firestore/presenceService';
+import { matchesTeacherStudentFilter } from '../utils/teacherStudentStatus';
+
+export { matchesTeacherStudentFilter };
 
 const STORAGE_KEY = 'teacherSelectedSchoolId';
 
@@ -25,14 +28,6 @@ function writeStoredSchoolId(id) {
   } catch {
     // ignore storage errors
   }
-}
-
-export function matchesTeacherStudentFilter(student, { filterGrade, filterClass, nameQuery }) {
-  if (filterGrade && String(student.grade ?? '') !== filterGrade) return false;
-  if (filterClass && String(student.class ?? '') !== filterClass) return false;
-  const name = nameQuery.trim();
-  if (name && !String(student.name ?? '').includes(name)) return false;
-  return true;
 }
 
 export function TeacherWorkspaceProvider({ children }) {
