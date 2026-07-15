@@ -34,8 +34,11 @@ import StudyTimerStalePrompt from './components/StudyTimerStalePrompt';
 import { InAppReviewProvider } from './contexts/InAppReviewContext';
 import InAppReviewPrompt from './components/InAppReviewPrompt';
 import AppleStudentRegistrationSync from './components/AppleStudentRegistrationSync';
+import { usePlanNotificationSync } from './hooks/usePlanNotificationSync';
 
 function AppLayout() {
+  usePlanNotificationSync();
+
   return (
     <>
       <DemoSettingsAccessSync />

@@ -125,7 +125,10 @@ service cloud.firestore {
         || k.hasOnly(['subjectCatalog', 'updatedAt'])
         || k.hasOnly(['shareScope', 'mateScope', 'updatedAt'])
         || k.hasOnly(['hiddenMates', 'updatedAt'])
-        || k.hasOnly(['hiddenRequests', 'updatedAt']);
+        || k.hasOnly(['hiddenRequests', 'updatedAt'])
+        || k.hasOnly(['planNotifyEnabled', 'updatedAt'])
+        || k.hasOnly(['planNotifyLeadMinutes', 'updatedAt'])
+        || k.hasOnly(['planNotifyEnabled', 'planNotifyLeadMinutes', 'updatedAt']);
     }
 
     function canUpdateOwnUserProfile() {

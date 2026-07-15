@@ -12,6 +12,11 @@
       "serverClientId": "77789669140-61nhedsb0v3i2qsthnsq0pm7nba0ahkr.apps.googleusercontent.com",
       "iosClientId": "77789669140-inaoihtj3lg3q0sqbfb0cjqmoduu1oes.apps.googleusercontent.com",
       "forceCodeForRefreshToken": true
+    },
+    "LocalNotifications": {
+      "smallIcon": "ic_stat_icon_config_sample",
+      "iconColor": "#488AFF",
+      "sound": "beep.wav"
     }
   },
   "packageClassList": []

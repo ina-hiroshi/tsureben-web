@@ -14,7 +14,7 @@ export default function StudyTimerStalePrompt() {
   return (
     <Modal
       open
-      onClose={timer.discardStale}
+      onClose={() => {}}
       title="前回の学習タイマー"
       showHeaderClose={false}
       fullScreenMobile={false}

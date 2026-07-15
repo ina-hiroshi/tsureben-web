@@ -132,6 +132,20 @@ describe('users collection', () => {
     );
   });
 
+  it('allows student to update plan notification preferences', async () => {
+    await seedBaseData();
+    const studentA = testEnv.authenticatedContext('student-a@school.test', {
+      email: 'student-a@school.test',
+    });
+    await assertSucceeds(
+      studentA.firestore().doc('users/student-a@school.test').update({
+        planNotifyEnabled: true,
+        planNotifyLeadMinutes: 15,
+        updatedAt: new Date(),
+      })
+    );
+  });
+
   it('allows teacher to read same-school student', async () => {
     await seedBaseData();
     const teacher = testEnv.authenticatedContext('teacher-a@school.test', {

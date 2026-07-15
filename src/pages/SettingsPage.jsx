@@ -37,6 +37,12 @@ import Modal from '../components/ui/Modal';
 import { useUiFeedback } from '../contexts/UiFeedbackContext';
 import { isIOSNative } from '../utils/platformAccess';
 import { setReviewPromptBlocked } from '../services/inAppReviewService';
+import {
+  DEFAULT_PLAN_NOTIFY_LEAD_MINUTES,
+  PLAN_NOTIFY_LEAD_OPTIONS,
+  requestPlanNotificationPermission,
+  syncPlanNotifications,
+} from '../services/planNotificationService';
 import { SETTINGS_SECTION_HELP } from '../content/settingsSectionHelp';
 import {
   MIN_PASSWORD_LENGTH,
@@ -54,6 +60,11 @@ const MATE_SCOPE_OPTIONS = [
   { value: '学内外', label: '学内外' },
 ];
 
+const PLAN_NOTIFY_LEAD_SELECT_OPTIONS = PLAN_NOTIFY_LEAD_OPTIONS.map((minutes) => ({
+  value: String(minutes),
+  label: minutes === 0 ? '開始ちょうど' : `${minutes}分前`,
+}));
+
 const DELETE_CONFIRM_PHRASE = '削除する';
 
 export default function SettingsPage() {
@@ -67,6 +78,11 @@ export default function SettingsPage() {
   const [name, setName] = useState('');
   const [shareScope, setShareScope] = useState('学年のみ');
   const [mateScope, setMateScope] = useState('学内のみ');
+  const [planNotifyEnabled, setPlanNotifyEnabled] = useState(false);
+  const [planNotifyLeadMinutes, setPlanNotifyLeadMinutes] = useState(
+    DEFAULT_PLAN_NOTIFY_LEAD_MINUTES
+  );
+  const [savingPlanNotify, setSavingPlanNotify] = useState(false);
   const [subjectCatalog, setSubjectCatalog] = useState({});
   const [mustChangePassword, setMustChangePassword] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
@@ -103,6 +119,7 @@ export default function SettingsPage() {
   const isLegacyFreeSchool = schoolPlan === 'legacy_free';
   const canImportTransfer = isSchoolProvisionedStudent && !isLegacyFreeSchool;
   const activeHelp = helpId ? SETTINGS_SECTION_HELP[helpId] : null;
+  const showPlanNotificationSettings = isIOSNative() && !isTeacher;
 
   useEffect(() => {
     if (!email) return;
@@ -112,6 +129,12 @@ export default function SettingsPage() {
       setName(p.name || '');
       setShareScope(p.shareScope || '学年のみ');
       setMateScope(p.mateScope || '学内のみ');
+      setPlanNotifyEnabled(p.planNotifyEnabled === true);
+      setPlanNotifyLeadMinutes(
+        PLAN_NOTIFY_LEAD_OPTIONS.includes(p.planNotifyLeadMinutes)
+          ? p.planNotifyLeadMinutes
+          : DEFAULT_PLAN_NOTIFY_LEAD_MINUTES
+      );
       setSubjectCatalog(p.subjectCatalog || {});
       setMustChangePassword(p.mustChangePassword === true);
       const schoolId = p.schoolId || teacherSchoolId;
@@ -154,6 +177,78 @@ export default function SettingsPage() {
     setMateScope(value);
     await updateProfile(email, { mateScope: value });
     toast.success('保存しました');
+  };
+
+  const persistPlanNotificationPrefs = async (nextEnabled, nextLeadMinutes) => {
+    await updateProfile(email, {
+      planNotifyEnabled: nextEnabled,
+      planNotifyLeadMinutes: nextLeadMinutes,
+    });
+    await syncPlanNotifications(email, {
+      enabled: nextEnabled,
+      leadMinutes: nextLeadMinutes,
+    });
+    setProfile((prev) =>
+      prev
+        ? {
+            ...prev,
+            planNotifyEnabled: nextEnabled,
+            planNotifyLeadMinutes: nextLeadMinutes,
+          }
+        : prev
+    );
+    toast.success('保存しました');
+  };
+
+  const handlePlanNotifyToggle = async (event) => {
+    const nextEnabled = event.target.checked;
+    if (!email || savingPlanNotify) {
+      event.preventDefault();
+      return;
+    }
+
+    setSavingPlanNotify(true);
+    try {
+      if (nextEnabled) {
+        const granted = await requestPlanNotificationPermission();
+        if (!granted) {
+          event.target.checked = false;
+          toast.warning('通知を許可してください。設定アプリから変更できます。');
+          return;
+        }
+        setPlanNotifyEnabled(true);
+        await persistPlanNotificationPrefs(true, planNotifyLeadMinutes);
+        return;
+      }
+
+      setPlanNotifyEnabled(false);
+      await persistPlanNotificationPrefs(false, planNotifyLeadMinutes);
+    } catch (err) {
+      event.target.checked = planNotifyEnabled;
+      toast.error(err.message || '通知設定の保存に失敗しました');
+    } finally {
+      setSavingPlanNotify(false);
+    }
+  };
+
+  const savePlanNotifyLeadMinutes = async (value) => {
+    const nextLeadMinutes = Number(value);
+    if (!PLAN_NOTIFY_LEAD_OPTIONS.includes(nextLeadMinutes)) return;
+
+    setPlanNotifyLeadMinutes(nextLeadMinutes);
+    setSavingPlanNotify(true);
+    try {
+      await persistPlanNotificationPrefs(planNotifyEnabled, nextLeadMinutes);
+    } catch (err) {
+      setPlanNotifyLeadMinutes(
+        PLAN_NOTIFY_LEAD_OPTIONS.includes(profile?.planNotifyLeadMinutes)
+          ? profile.planNotifyLeadMinutes
+          : DEFAULT_PLAN_NOTIFY_LEAD_MINUTES
+      );
+      toast.error(err.message || '通知設定の保存に失敗しました');
+    } finally {
+      setSavingPlanNotify(false);
+    }
   };
 
   const handleGenerateTransferCode = async () => {
@@ -427,6 +522,45 @@ export default function SettingsPage() {
               />
               <p className="text-xs text-tsure-muted mt-2">招待経由で申請を受け付ける相手の範囲</p>
             </Card>
+
+            {showPlanNotificationSettings && (
+              <Card className="order-4 lg:order-none">
+                <SectionTitle
+                  action={
+                    <SectionHelpButton
+                      ariaLabel="学習計画の通知の説明"
+                      onClick={() => setHelpId('planNotifications')}
+                    />
+                  }
+                >
+                  学習計画の通知
+                </SectionTitle>
+                <label className="flex items-center justify-between gap-3 text-sm text-tsure-primary">
+                  <span>学習計画の開始を通知する</span>
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 accent-tsure-primary"
+                    checked={planNotifyEnabled}
+                    onChange={handlePlanNotifyToggle}
+                    disabled={savingPlanNotify}
+                    aria-label="学習計画の開始を通知する"
+                  />
+                </label>
+                <div className="mt-4">
+                  <p className="text-xs text-tsure-muted mb-2">開始何分前に通知するか</p>
+                  <FilterSelect
+                    value={String(planNotifyLeadMinutes)}
+                    onChange={savePlanNotifyLeadMinutes}
+                    options={PLAN_NOTIFY_LEAD_SELECT_OPTIONS}
+                    placeholder="10分前"
+                    disabled={!planNotifyEnabled || savingPlanNotify}
+                  />
+                </div>
+                <p className="text-xs text-tsure-muted mt-2">
+                  今日から14日先までの学習計画が対象です
+                </p>
+              </Card>
+            )}
 
             {canChangePassword && (
               <Card className="order-5 lg:order-none">

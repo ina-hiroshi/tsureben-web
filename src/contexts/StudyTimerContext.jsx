@@ -16,6 +16,7 @@ import * as logService from '../services/firestore/logService';
 import * as presenceService from '../services/firestore/presenceService';
 import { flattenDayPlans } from '../utils/planUtils';
 import * as studyTimerStorage from '../utils/studyTimerStorage';
+import { resolveHydrationAction } from '../utils/studyTimerHydration';
 
 const StudyTimerContext = createContext(null);
 
@@ -50,7 +51,7 @@ function buildStoredState(email, status, startMsRef, startTimeStr, elapsedMinute
 }
 
 export function StudyTimerProvider({ children }) {
-  const { email } = useAuth();
+  const { email, loading: authLoading } = useAuth();
   const { isTeacher } = useTeacherStatus();
   const [status, setStatus] = useState('idle');
   const [elapsedMinutes, setElapsedMinutes] = useState(0);
@@ -123,19 +124,23 @@ export function StudyTimerProvider({ children }) {
   }, [resetUiToIdle]);
 
   useEffect(() => {
-    if (!email) {
-      resetToIdle();
-      setHydrated(true);
+    const stored = email ? studyTimerStorage.load(email) : null;
+    const action = resolveHydrationAction({
+      loading: authLoading,
+      email,
+      stored,
+    });
+
+    if (action === 'wait') {
       return;
     }
 
-    const stored = studyTimerStorage.load(email);
     setHydrated(false);
     pendingStoredRef.current = null;
     setStalePrompt(null);
 
-    if (!stored) {
-      resetToIdle();
+    if (action === 'idle') {
+      resetUiToIdle();
       setHydrated(true);
       return;
     }
@@ -152,7 +157,7 @@ export function StudyTimerProvider({ children }) {
     }
 
     applyStoredState(stored).finally(() => setHydrated(true));
-  }, [email, applyStoredState, resetToIdle, resetUiToIdle]);
+  }, [email, authLoading, applyStoredState, resetToIdle, resetUiToIdle]);
 
   useEffect(() => {
     if (status !== 'running') return undefined;

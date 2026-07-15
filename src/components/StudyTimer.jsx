@@ -90,8 +90,8 @@ export default function StudyTimer({ className = '', large = false }) {
           }}
           subjectCatalog={subjectCatalog}
           onSave={handleSave}
-        onClose={() => setShowModal(false)}
-      />
+          onClose={() => setShowModal(false)}
+        />
     </div>
   );
 }
