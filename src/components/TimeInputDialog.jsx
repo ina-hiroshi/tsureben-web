@@ -89,7 +89,7 @@ export default function TimeInputDialog({
   return (
     <Modal open={open} onClose={onClose} title={entry ? '計画を編集' : '計画を追加'}>
       <form onSubmit={handleSave} className="space-y-3">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <Input label="開始" type="time" value={form.start} onChange={handleStartChange} required />
           <Input label="終了" type="time" value={form.end} onChange={set('end')} required />
         </div>

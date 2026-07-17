@@ -1,4 +1,5 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { FIELD_CONTROL, FIELD_CONTROL_COMPACT } from './fieldStyles';
 
 export default function SuggestInput({
   label,
@@ -64,7 +65,7 @@ export default function SuggestInput({
   };
 
   return (
-    <div ref={wrapperRef} className="relative">
+    <div ref={wrapperRef} className="relative min-w-0">
       {label && (
         <label
           className={`block font-medium text-tsure-primary ${compact ? 'text-xs mb-0.5' : 'text-sm mb-1'} ${labelClassName}`}
@@ -88,9 +89,7 @@ export default function SuggestInput({
         aria-expanded={open && filtered.length > 0}
         aria-controls={listId}
         aria-autocomplete="list"
-        className={`w-full border border-tsure-border bg-white text-tsure-primary placeholder:text-tsure-muted focus:outline-none focus:ring-2 focus:ring-tsure-accent/50 disabled:opacity-50 px-3 ${
-          compact ? 'py-1.5 rounded-lg text-xs' : 'py-2.5 min-h-touch rounded-xl'
-        }`}
+        className={`${compact ? FIELD_CONTROL_COMPACT : FIELD_CONTROL} disabled:opacity-50`}
         autoComplete="off"
       />
       {open && filtered.length > 0 && (

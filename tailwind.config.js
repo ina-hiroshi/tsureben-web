@@ -24,6 +24,9 @@ export default {
       minHeight: {
         touch: '44px',
       },
+      height: {
+        touch: '44px',
+      },
       minWidth: {
         touch: '44px',
       },

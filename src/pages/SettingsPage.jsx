@@ -35,7 +35,7 @@ import SectionTitle from '../components/ui/SectionTitle';
 import SectionHelpButton from '../components/ui/SectionHelpButton';
 import Modal from '../components/ui/Modal';
 import { useUiFeedback } from '../contexts/UiFeedbackContext';
-import { isIOSNative } from '../utils/platformAccess';
+import { isIOSNative, isNativeApp } from '../utils/platformAccess';
 import { setReviewPromptBlocked } from '../services/inAppReviewService';
 import {
   DEFAULT_PLAN_NOTIFY_LEAD_MINUTES,
@@ -119,7 +119,8 @@ export default function SettingsPage() {
   const isLegacyFreeSchool = schoolPlan === 'legacy_free';
   const canImportTransfer = isSchoolProvisionedStudent && !isLegacyFreeSchool;
   const activeHelp = helpId ? SETTINGS_SECTION_HELP[helpId] : null;
-  const showPlanNotificationSettings = isIOSNative() && !isTeacher;
+  // 通知の実処理は iOS のみ。設定 UI はネイティブなら表示する（教員アカウントでも確認できるようにする）。
+  const showPlanNotificationSettings = isNativeApp();
 
   useEffect(() => {
     if (!email) return;
@@ -524,7 +525,7 @@ export default function SettingsPage() {
             </Card>
 
             {showPlanNotificationSettings && (
-              <Card className="order-4 lg:order-none">
+              <Card className="order-4 lg:order-none border-tsure-primary/30">
                 <SectionTitle
                   action={
                     <SectionHelpButton
@@ -535,30 +536,38 @@ export default function SettingsPage() {
                 >
                   学習計画の通知
                 </SectionTitle>
-                <label className="flex items-center justify-between gap-3 text-sm text-tsure-primary">
-                  <span>学習計画の開始を通知する</span>
-                  <input
-                    type="checkbox"
-                    className="h-5 w-5 accent-tsure-primary"
-                    checked={planNotifyEnabled}
-                    onChange={handlePlanNotifyToggle}
-                    disabled={savingPlanNotify}
-                    aria-label="学習計画の開始を通知する"
-                  />
-                </label>
-                <div className="mt-4">
-                  <p className="text-xs text-tsure-muted mb-2">開始何分前に通知するか</p>
-                  <FilterSelect
-                    value={String(planNotifyLeadMinutes)}
-                    onChange={savePlanNotifyLeadMinutes}
-                    options={PLAN_NOTIFY_LEAD_SELECT_OPTIONS}
-                    placeholder="10分前"
-                    disabled={!planNotifyEnabled || savingPlanNotify}
-                  />
-                </div>
-                <p className="text-xs text-tsure-muted mt-2">
-                  今日から14日先までの学習計画が対象です
-                </p>
+                {!isIOSNative() ? (
+                  <p className="text-sm text-tsure-muted leading-relaxed">
+                    学習計画のリマインダー通知は iPhone / iPad アプリで利用できます。
+                  </p>
+                ) : (
+                  <>
+                    <label className="flex items-center justify-between gap-3 text-sm text-tsure-primary">
+                      <span>学習計画の開始を通知する</span>
+                      <input
+                        type="checkbox"
+                        className="h-5 w-5 accent-tsure-primary"
+                        checked={planNotifyEnabled}
+                        onChange={handlePlanNotifyToggle}
+                        disabled={savingPlanNotify}
+                        aria-label="学習計画の開始を通知する"
+                      />
+                    </label>
+                    <div className="mt-4">
+                      <p className="text-xs text-tsure-muted mb-2">開始何分前に通知するか</p>
+                      <FilterSelect
+                        value={String(planNotifyLeadMinutes)}
+                        onChange={savePlanNotifyLeadMinutes}
+                        options={PLAN_NOTIFY_LEAD_SELECT_OPTIONS}
+                        placeholder="10分前"
+                        disabled={!planNotifyEnabled || savingPlanNotify}
+                      />
+                    </div>
+                    <p className="text-xs text-tsure-muted mt-2">
+                      今日から14日先までの学習計画が対象です
+                    </p>
+                  </>
+                )}
               </Card>
             )}
 
@@ -721,7 +730,7 @@ export default function SettingsPage() {
             )}
           </div>
 
-          <Card className="order-4 lg:order-none lg:flex-1 lg:min-w-0 lg:self-start lg:sticky lg:top-0">
+          <Card className="order-10 lg:order-none lg:flex-1 lg:min-w-0 lg:self-start lg:sticky lg:top-0">
             <SectionTitle
               action={
                 <SectionHelpButton

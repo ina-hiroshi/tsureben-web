@@ -34,7 +34,7 @@ export default function Modal({
       <div
         role="dialog"
         aria-modal="true"
-        className={`${panelClass} shadow-tsure-raised overflow-hidden`}
+        className={`${panelClass} shadow-tsure-raised overflow-x-hidden`}
         style={{
           paddingBottom: 'var(--safe-bottom)',
           // フルスクリーン表示時はノッチ/ステータスバーと重ならないよう上部にも安全領域を確保

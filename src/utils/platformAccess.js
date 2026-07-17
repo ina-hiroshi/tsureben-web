@@ -6,8 +6,12 @@ export const isNativeApp = () => Capacitor.isNativePlatform();
 
 export const isWebPlatform = () => !Capacitor.isNativePlatform();
 
-export const isIOSNative = () =>
-  Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'ios';
+export const isIOSNative = () => {
+  if (!Capacitor.isNativePlatform()) return false;
+  const platform = Capacitor.getPlatform();
+  // iPad でも通常は 'ios'。将来の 'ipados' にも備える。
+  return platform === 'ios' || platform === 'ipados';
+};
 
 export const isAndroidNative = () =>
   Capacitor.isNativePlatform() && Capacitor.getPlatform() === 'android';
