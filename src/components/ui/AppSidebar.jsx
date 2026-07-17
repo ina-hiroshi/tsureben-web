@@ -108,7 +108,7 @@ export default function AppSidebar() {
       }`}
     >
       <div
-        className={`px-4 flex items-center border-b border-white/10 shrink-0 ${
+        className={`px-4 flex items-center shrink-0 ${
           showStudentList ? 'h-14' : 'h-[var(--app-subheader-height)]'
         }`}
       >
@@ -159,7 +159,7 @@ export default function AppSidebar() {
           ))}
 
           {inTeacherMode && isTeacher && (
-            <li className={showStudentList ? 'pt-1 mt-1 border-t border-white/10' : 'pt-2 mt-2 border-t border-white/10'}>
+            <li>
               <Link
                 to={STUDENT_MODE_ENTRY.to}
                 className={`${navLinkClass} hover:bg-white/10`}
@@ -175,7 +175,7 @@ export default function AppSidebar() {
       </nav>
 
       {showStudentList && (
-        <div className="flex flex-col min-h-0 flex-1 overflow-hidden px-2 pb-1 border-t border-white/10">
+        <div className="flex flex-col min-h-0 flex-1 overflow-hidden px-2 pb-1">
           <StudentPickerPanel
             schoolId={workspace.effectiveSchoolId}
             selectedEmail={workspace.selectedStudent?.email}

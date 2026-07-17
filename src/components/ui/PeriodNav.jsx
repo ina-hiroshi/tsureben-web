@@ -41,9 +41,9 @@ export default function PeriodNav({
 
   return (
     <div
-      className={`sticky ${stickyTopClass} md:top-0 z-20 -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-3 md:py-0 md:min-h-[var(--app-subheader-height)] mb-4 shrink-0 bg-tsure-bg/95 backdrop-blur border-b border-white/10`}
+      className={`sticky ${stickyTopClass} md:top-0 z-20 -mx-4 md:-mx-6 lg:-mx-8 px-4 md:px-6 lg:px-8 py-3 md:py-0 md:min-h-[var(--app-subheader-height)] mb-4 shrink-0 bg-tsure-bg/95 backdrop-blur`}
     >
-      <div className="flex flex-col gap-3 md:h-[var(--app-subheader-height)] md:justify-center">
+      <div className="flex flex-col gap-2 md:gap-3 md:min-h-[var(--app-subheader-height)] md:py-2 md:justify-center">
         <div
           className="flex justify-center gap-1.5"
           role="tablist"
@@ -71,44 +71,45 @@ export default function PeriodNav({
           })}
         </div>
 
-        <div className="flex items-center justify-between gap-1.5 sm:gap-2 w-full">
-          <button
-            type="button"
-            className={DATE_NAV_BTN}
-            onClick={() => shift(-1)}
-            aria-label={navLabels.previous}
-          >
-            <AppIcon icon={ChevronLeft} size="sm" />
-            <span className="hidden sm:inline">{navLabels.previous}</span>
-          </button>
+        <div className="flex flex-col items-center gap-1 w-full">
+          <div className="flex items-center justify-center gap-3 sm:gap-5 md:gap-8">
+            <button
+              type="button"
+              className={DATE_NAV_BTN}
+              onClick={() => shift(-1)}
+              aria-label={navLabels.previous}
+            >
+              <AppIcon icon={ChevronLeft} size="sm" />
+              <span className="hidden sm:inline">{navLabels.previous}</span>
+            </button>
 
-          <div className="flex-1 flex flex-col items-center justify-center min-w-0 px-1 gap-1">
             <span
               className="text-xl sm:text-2xl md:text-3xl font-bold text-tsure-on-primary tabular-nums leading-none tracking-wide text-center"
               aria-label={formatPeriodLabel(d, mode)}
             >
               {formatPeriodLabel(d, mode)}
             </span>
-            {!isCurrent && (
-              <button
-                type="button"
-                className={RETURN_BTN}
-                onClick={goToCurrentPeriod}
-              >
-                {getReturnToCurrentPeriodLabel(mode)}
-              </button>
-            )}
+
+            <button
+              type="button"
+              className={DATE_NAV_BTN}
+              onClick={() => shift(1)}
+              aria-label={navLabels.next}
+            >
+              <span className="hidden sm:inline">{navLabels.next}</span>
+              <AppIcon icon={ChevronRight} size="sm" />
+            </button>
           </div>
 
-          <button
-            type="button"
-            className={DATE_NAV_BTN}
-            onClick={() => shift(1)}
-            aria-label={navLabels.next}
-          >
-            <span className="hidden sm:inline">{navLabels.next}</span>
-            <AppIcon icon={ChevronRight} size="sm" />
-          </button>
+          {!isCurrent && (
+            <button
+              type="button"
+              className={RETURN_BTN}
+              onClick={goToCurrentPeriod}
+            >
+              {getReturnToCurrentPeriodLabel(mode)}
+            </button>
+          )}
         </div>
       </div>
     </div>
